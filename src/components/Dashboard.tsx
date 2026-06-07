@@ -255,7 +255,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            {/* Header */}
            <div className="mb-8 animate-fadeUp" style={{ animationDelay: '0.1s' }}>
               <div className="flex items-center gap-4 mb-1">
-                <h1 className="text-4xl md:text-5xl font-orbitron font-bold text-white tracking-widest drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)]">Home</h1>
+                <h1 className="ar-zone-logo text-4xl md:text-5xl pb-1">Home</h1>
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/10 ml-2">
                    <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
                    <span className="text-xs font-orbitron text-[#00ff88] font-bold tracking-wider">LIVE</span>
@@ -321,7 +321,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
               <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.4s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Level</h3>
-                 <div className="text-white font-orbitron text-2xl font-bold tracking-wider mb-3 leading-tight mt-1">System Admin</div>
+                 <div className="text-white font-bobbaluna text-3xl tracking-wider mb-2 leading-tight mt-1">SYSTEM ADMIN</div>
                  <div className="inline-block px-2.5 py-1 rounded border border-[var(--green)]/40 bg-[var(--green)]/10 text-[var(--green)] text-xs font-bold font-exo tracking-widest mt-1">TOP TIER</div>
               </div>
 

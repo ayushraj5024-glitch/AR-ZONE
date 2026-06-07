@@ -14,6 +14,7 @@ export default function CreateStockist({ onCancel, onSave }: CreateStockistProps
   const [fixLimit, setFixLimit] = useState('');
   const [myShare, setMyShare] = useState('');
   const [maxShare, setMaxShare] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +29,8 @@ export default function CreateStockist({ onCancel, onSave }: CreateStockistProps
         name: `${firstName} ${lastName}`.trim(),
         fixLimit: fixLimit || '0',
         myShare: `${myShare || '0'}%`,
-        maxShare: `${maxShare || '0'}%`
+        maxShare: `${maxShare || '0'}%`,
+        password: password || 'defaultPass123'
       });
     }, 800);
   };
@@ -86,7 +88,7 @@ export default function CreateStockist({ onCancel, onSave }: CreateStockistProps
             </FormRow>
             
             <FormRow label="Password">
-              <input type="password" placeholder="Enter Password" className="form-input" />
+              <input type="password" placeholder="Enter Password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} />
             </FormRow>
             
             <FormRow label="Confirm Password">

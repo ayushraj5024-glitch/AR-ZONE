@@ -9,6 +9,7 @@ type Agent = {
   myShare: string;
   maxShare: string;
   status?: string;
+  password?: string;
   actions?: string;
 };
 
@@ -33,14 +34,7 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
   const [localData, setLocalData] = useState<Agent[]>([]);
 
   useEffect(() => {
-    if (data.length > 0) {
-      setLocalData(data.map(d => ({ ...d, status: d.status || 'active' })));
-    } else {
-      setLocalData([
-        { id: '101', userName: 'master_agent2', name: 'Master Two', fixLimit: '50000', myShare: '5%', maxShare: '10%', status: 'active' },
-        { id: '102', userName: 'sm_trader_5', name: 'SM Trader', fixLimit: '20000', myShare: '2%', maxShare: '5%', status: 'active' }
-      ]);
-    }
+    setLocalData(data.map(d => ({ ...d, status: d.status || 'active' })));
   }, [data]);
 
   const filteredData = localData.filter(d => 
@@ -227,6 +221,12 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                   <span className="text-slate-400">Max Share</span>
                   <span className="text-white font-medium">{selectedProfile.maxShare}</span>
                 </div>
+                {selectedProfile.password && (
+                  <div className="flex justify-between border-b border-slate-800 pb-2">
+                    <span className="text-slate-400">Password</span>
+                    <span className="text-[#f0b429] font-medium font-mono bg-[#f0b429]/10 px-2 rounded">{selectedProfile.password}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

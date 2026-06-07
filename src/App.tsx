@@ -56,6 +56,7 @@ export type AgentData = {
   fixLimit: string;
   myShare: string;
   maxShare: string;
+  password?: string;
 };
 
 export default function App() {
@@ -68,14 +69,9 @@ export default function App() {
   const [isManageClientsExpanded, setIsManageClientsExpanded] = useState(false);
   const [isManageLedgersExpanded, setIsManageLedgersExpanded] = useState(false);
 
-  const [agents, setAgents] = useState<AgentData[]>([
-    { id: '101', userName: 'master_agent2', name: 'Master Two', fixLimit: '50000', myShare: '5%', maxShare: '10%' },
-    { id: '102', userName: 'sm_trader_5', name: 'SM Trader', fixLimit: '20000', myShare: '2%', maxShare: '5%' }
-  ]);
+  const [agents, setAgents] = useState<AgentData[]>([]);
 
-  const [stockists, setStockists] = useState<AgentData[]>([
-    { id: '201', userName: 'stockist_1', name: 'Main Stockist', fixLimit: '100000', myShare: '10%', maxShare: '20%' },
-  ]);
+  const [stockists, setStockists] = useState<AgentData[]>([]);
 
   const handleNavClick = (view?: ViewType) => {
     if (view) setCurrentView(view);
@@ -154,11 +150,15 @@ export default function App() {
           ${isSidebarOpen ? 'translate-x-0 w-64 shadow-[0_0_20px_rgba(0,255,136,0.1)] md:shadow-none' : '-translate-x-full w-64 md:translate-x-0 md:w-20'}
         `}
       >
-        <div className="h-16 flex items-center justify-between px-4 border-b border-[#00ff88]/20 bg-[#030a06]">
+        <div className="h-16 flex items-center justify-between px-4 bg-[#030a06] shrink-0 relative overflow-hidden">
+          {/* Subtle background light for professional look */}
           {isSidebarOpen && (
-            <div className="flex flex-col">
-              <span className="font-orbitron font-bold text-white text-lg tracking-widest uppercase">System Admin</span>
-              <span className="text-xs text-[#00ff88] font-medium tracking-wider">Master Account</span>
+            <div className="absolute -left-4 top-0 w-32 h-16 bg-[#00ff88]/10 blur-2xl"></div>
+          )}
+          {isSidebarOpen && (
+            <div className="flex flex-col justify-center w-full pr-2 relative z-10">
+              <span className="font-bobbaluna text-white text-[20px] uppercase tracking-wider whitespace-nowrap leading-none py-1 drop-shadow-[0_2px_4px_rgba(0,255,136,0.3)] mt-1">SYSTEM ADMIN</span>
+              <span className="text-[11px] text-[#00ff88] font-medium tracking-wide drop-shadow-md">Master Account</span>
             </div>
           )}
           <button
@@ -394,7 +394,10 @@ export default function App() {
               <Menu size={20} />
             </button>
             <h1 className="flex items-center space-x-2">
-              <span className="ar-zone-logo text-3xl pb-1 tracking-normal">AR ZONE</span>
+              <span className="ar-zone-logo text-3xl pb-1 tracking-normal flex items-center">
+                <img src="/logo.png" alt="AR Logo" className="h-10 w-10 mr-2 object-contain" />
+                ZONE
+              </span>
             </h1>
           </div>
           
@@ -551,7 +554,10 @@ export default function App() {
           {/* Footer */}
           <footer className="mt-8 border-t border-[#00ff88]/20 bg-[#05100a] py-6 px-4 lg:px-8 text-xs font-medium tracking-wide text-slate-500 flex flex-col sm:flex-row justify-between items-center font-exo">
             <div>
-              <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-[#f0b429] font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021-2026
+              <span className="ar-zone-logo text-lg flex items-center inline-flex">
+                <img src="/logo.png" alt="AR Logo" className="h-6 w-6 mr-1.5 object-contain" />
+                ZONE
+              </span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-[#f0b429] font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021-2026
             </div>
             <div className="mt-2 sm:mt-0 font-orbitron text-[#00ff88]">
               Admin Panel <span className="font-bold">v2.0.0</span>
