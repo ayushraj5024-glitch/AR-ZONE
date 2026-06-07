@@ -1,20 +1,36 @@
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { AgentData } from '../App';
 
 interface CreateStockistProps {
   onCancel: () => void;
+  onSave: (stockist: AgentData) => void;
 }
 
-export default function CreateStockist({ onCancel }: CreateStockistProps) {
+export default function CreateStockist({ onCancel, onSave }: CreateStockistProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [fixLimit, setFixLimit] = useState('');
+  const [myShare, setMyShare] = useState('');
+  const [maxShare, setMaxShare] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!firstName) return;
+    
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      onCancel(); // navigate back
-    }, 1000);
+      onSave({
+        id: Math.floor(1000 + Math.random() * 9000).toString(),
+        userName: `${firstName.toLowerCase().replace(/\s+/g, '')}_stk_${Math.floor(Math.random() * 100)}`,
+        name: `${firstName} ${lastName}`.trim(),
+        fixLimit: fixLimit || '0',
+        myShare: `${myShare || '0'}%`,
+        maxShare: `${maxShare || '0'}%`
+      });
+    }, 800);
   };
 
   return (
@@ -42,23 +58,23 @@ export default function CreateStockist({ onCancel }: CreateStockistProps) {
             </FormRow>
             
             <FormRow label="First Name">
-              <input type="text" placeholder="First Name" className="form-input" />
+              <input type="text" placeholder="First Name" className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} required />
             </FormRow>
             
             <FormRow label="Last Name">
-              <input type="text" placeholder="Last Name" className="form-input" />
+              <input type="text" placeholder="Last Name" className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} />
             </FormRow>
             
             <FormRow label="Fix Limit" note="Fix Limit can be set from 0 to 1000.00">
-              <input type="number" defaultValue="0" className="form-input" />
+              <input type="number" defaultValue="0" className="form-input" value={fixLimit} onChange={e => setFixLimit(e.target.value)} />
             </FormRow>
             
             <FormRow label="My Match Share" note="My Match Share can be set from 0 to 50.0">
-              <input type="number" placeholder="Enter Share" className="form-input" />
+              <input type="number" placeholder="Enter Share" className="form-input" value={myShare} onChange={e => setMyShare(e.target.value)} />
             </FormRow>
             
             <FormRow label="Stockist Match Share" note="Stockist Match Share can be set from 0 to 50.0">
-              <input type="number" defaultValue="0" className="form-input" />
+              <input type="number" defaultValue="0" className="form-input" value={maxShare} onChange={e => setMaxShare(e.target.value)} />
             </FormRow>
             
             <FormRow label="Stockist Match Commission" note="Match Commission can be set from 0 to 3">

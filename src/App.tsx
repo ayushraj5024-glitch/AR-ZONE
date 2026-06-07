@@ -49,6 +49,15 @@ import Dashboard from './components/Dashboard';
 
 type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_stockist' | 'my_clients' | 'blocked_clients' | 'commission_limits' | 'collection_report' | 'company_ledgers' | 'my_stmt' | 'profit_loss' | 'manage_password' | 'live_matches' | 'live_report' | 'completed_matches' | 'live_casino' | 'casino_game';
 
+export type AgentData = {
+  id: string;
+  userName: string;
+  name: string;
+  fixLimit: string;
+  myShare: string;
+  maxShare: string;
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -58,6 +67,15 @@ export default function App() {
   const [isManageExpanded, setIsManageExpanded] = useState(false);
   const [isManageClientsExpanded, setIsManageClientsExpanded] = useState(false);
   const [isManageLedgersExpanded, setIsManageLedgersExpanded] = useState(false);
+
+  const [agents, setAgents] = useState<AgentData[]>([
+    { id: '101', userName: 'master_agent2', name: 'Master Two', fixLimit: '50000', myShare: '5%', maxShare: '10%' },
+    { id: '102', userName: 'sm_trader_5', name: 'SM Trader', fixLimit: '20000', myShare: '2%', maxShare: '5%' }
+  ]);
+
+  const [stockists, setStockists] = useState<AgentData[]>([
+    { id: '201', userName: 'stockist_1', name: 'Main Stockist', fixLimit: '100000', myShare: '10%', maxShare: '20%' },
+  ]);
 
   const handleNavClick = (view?: ViewType) => {
     if (view) setCurrentView(view);
@@ -431,6 +449,7 @@ export default function App() {
               title="Stockists" 
               breadcrumb="Stockists" 
               buttonLabel="Create Stockists" 
+              data={stockists}
               onCreateClick={() => setCurrentView('create_stockist')}
             />
           )}
@@ -440,16 +459,29 @@ export default function App() {
               title="Agent" 
               breadcrumb="Agent" 
               buttonLabel="Create Agent" 
+              data={agents}
               onCreateClick={() => setCurrentView('create_agent')}
             />
           )}
 
           {currentView === 'create_agent' && (
-            <CreateAgent onCancel={() => setCurrentView('agent')} />
+            <CreateAgent 
+              onCancel={() => setCurrentView('agent')} 
+              onSave={(newAgent) => {
+                setAgents([newAgent, ...agents]);
+                setCurrentView('agent');
+              }}
+            />
           )}
 
           {currentView === 'create_stockist' && (
-            <CreateStockist onCancel={() => setCurrentView('stockists')} />
+            <CreateStockist 
+              onCancel={() => setCurrentView('stockists')} 
+              onSave={(newStockist) => {
+                setStockists([newStockist, ...stockists]);
+                setCurrentView('stockists');
+              }}
+            />
           )}
 
           {currentView === 'my_clients' && (
