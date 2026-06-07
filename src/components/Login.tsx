@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lock, User, ArrowRight, ShieldCheck, Gauge, TrendingUp, Eye, EyeOff } from 'lucide-react';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../firebase';
 
 interface LoginProps {
   onLogin: () => void;
@@ -34,6 +36,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -163,12 +166,44 @@ export default function Login({ onLogin }: LoginProps) {
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim().toLowerCase() === 'admin' && password === 'admin') {
+    setIsLoggingIn(true);
+    setError('');
+    try {
+      const formattedEmail = username.includes('@') ? username : `${username}@ar-zone-app.com`;
+      await signInWithEmailAndPassword(auth, formattedEmail, password);
       onLogin();
-    } else {
-      setError('Invalid credentials. Hint: use admin / admin');
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+         setError('Invalid email or password.');
+      } else {
+         setError(err.message || 'Login failed.');
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+    
+    setIsSendingReset(true);
+    setResetMessage('');
+    setError('');
+    
+    try {
+      const formattedResetEmail = resetEmail.includes('@') ? resetEmail : `${resetEmail}@ar-zone-app.com`;
+      await sendPasswordResetEmail(auth, formattedResetEmail);
+      setResetMessage("Reset link has been sent to " + resetEmail);
+      setResetEmail('');
+    } catch (err: any) {
+       console.error(err);
+       setError(err.message || 'Failed to send reset link.');
+    } finally {
+       setIsSendingReset(false);
     }
   };
 
@@ -241,7 +276,7 @@ export default function Login({ onLogin }: LoginProps) {
             <div className="flex flex-col items-center mb-5 mt-1 text-center">
               <h1 className="ar-zone-logo text-3xl sm:text-4xl mb-3">AR ZONE</h1>
               <h2 className="text-xl sm:text-2xl font-orbitron font-bold text-white tracking-widest">{showForgotPassword ? "Reset Key" : "Welcome Back"}</h2>
-              <p className="text-slate-400 text-xs sm:text-sm mt-1 sm:mt-2 font-exo">{showForgotPassword ? "Enter your admin email to receive reset instructions" : "Authenticate identity to continue"}</p>
+              <p className="text-slate-400 text-xs sm:text-sm mt-1 sm:mt-2 font-exo">{showForgotPassword ? "Enter your User ID to receive reset instructions" : "Authenticate identity to continue"}</p>
             </div>
 
             {!showForgotPassword ? (
@@ -254,7 +289,7 @@ export default function Login({ onLogin }: LoginProps) {
                 )}
                 
                 <div className="space-y-1 sm:space-y-2">
-                  <label className="text-xs font-bold text-slate-300 font-orbitron uppercase tracking-widest">Username</label>
+                  <label className="text-xs font-bold text-slate-300 font-orbitron uppercase tracking-widest">User ID</label>
                   <div className="relative group/input">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                       <User size={18} className="text-slate-500 group-focus-within/input:text-[#00ff88] transition-colors" />
@@ -264,7 +299,7 @@ export default function Login({ onLogin }: LoginProps) {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm font-exo placeholder-slate-600 shadow-inner"
-                      placeholder="Enter system username"
+                      placeholder="Enter User ID"
                       autoComplete="off"
                     />
                   </div>
@@ -305,26 +340,21 @@ export default function Login({ onLogin }: LoginProps) {
 
                 <button
                   type="submit"
-                  className="w-full bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88] font-orbitron font-bold tracking-widest uppercase py-3 px-4 rounded shadow-[0_0_15px_rgba(0,255,136,0.2)] hover:shadow-[0_0_25px_rgba(0,255,136,0.4)] transition-all flex items-center justify-center space-x-3 group/btn mt-2 relative z-20"
+                  disabled={isLoggingIn}
+                  className="w-full bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88] font-orbitron font-bold tracking-widest uppercase py-3 px-4 rounded shadow-[0_0_15px_rgba(0,255,136,0.2)] hover:shadow-[0_0_25px_rgba(0,255,136,0.4)] transition-all flex items-center justify-center space-x-3 group/btn mt-2 relative z-20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>LOGIN</span>
-                  <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                  <span>{isLoggingIn ? "AUTHENTICATING..." : "LOGIN"}</span>
+                  {!isLoggingIn && <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />}
                 </button>
               </form>
             ) : (
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (resetEmail) {
-                  setIsSendingReset(true);
-                  setResetMessage('');
-                  // Simulate API call to send email
-                  setTimeout(() => {
-                    setIsSendingReset(false);
-                    setResetMessage("Reset link has been sent to " + resetEmail);
-                    setResetEmail('');
-                  }, 1500);
-                }
-              }} className="space-y-4">
+              <form onSubmit={handleResetSubmit} className="space-y-4">
+                {error && (
+                  <div className="bg-[#ff3355]/10 text-[#ff3355] px-4 py-2 rounded text-sm border border-[#ff3355]/30 text-center font-medium shadow-sm flex items-center justify-center gap-2">
+                    <Lock size={14} />
+                    {error}
+                  </div>
+                )}
                 {resetMessage && (
                   <div className="bg-[#00ff88]/10 text-[#00ff88] px-4 py-2 rounded text-sm border border-[#00ff88]/30 text-center font-medium shadow-sm flex items-center justify-center gap-2">
                     <ShieldCheck size={14} />
@@ -333,7 +363,7 @@ export default function Login({ onLogin }: LoginProps) {
                 )}
 
                 <div className="space-y-1 sm:space-y-2">
-                  <label className="text-xs font-bold text-slate-300 font-orbitron uppercase tracking-widest">Email or Username</label>
+                  <label className="text-xs font-bold text-slate-300 font-orbitron uppercase tracking-widest">User ID</label>
                   <div className="relative group/input">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                       <User size={18} className="text-slate-500 group-focus-within/input:text-[#00ff88] transition-colors" />
@@ -343,7 +373,7 @@ export default function Login({ onLogin }: LoginProps) {
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm font-exo placeholder-slate-600 shadow-inner"
-                      placeholder="Enter registered email"
+                      placeholder="Enter registered User ID"
                       required
                     />
                   </div>

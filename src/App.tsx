@@ -28,6 +28,8 @@ import {
   FileText
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
 import AgentsTable from './components/AgentsTable';
 import CreateAgent from './components/CreateAgent';
 import CreateStockist from './components/CreateStockist';
@@ -49,6 +51,7 @@ type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_s
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedCasinoGame, setSelectedCasinoGame] = useState<{id: string, name: string} | null>(null);
@@ -62,6 +65,19 @@ export default function App() {
       setSidebarOpen(false);
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+      setIsLoadingAuth(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -90,6 +106,15 @@ export default function App() {
     { title: "Match Commission", value: "3" },
     { title: "Session Commission", value: "3" },
   ];
+
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen bg-[#05100a] flex items-center justify-center flex-col">
+        <div className="w-12 h-12 border-4 border-[#00ff88]/30 border-t-[#00ff88] rounded-full animate-spin mb-4"></div>
+        <p className="text-[#00ff88] font-orbitron font-bold tracking-widest animate-pulse">AUTHENTICATING...</p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Login onLogin={() => setIsAuthenticated(true)} />;
@@ -331,7 +356,11 @@ export default function App() {
         <main className="flex-1 min-w-0 h-[100dvh] overflow-hidden">
            <Dashboard 
              onMenuClick={() => setSidebarOpen(!isSidebarOpen)} 
-             onLogout={() => setIsAuthenticated(false)} 
+             onLogout={() => {
+               signOut(auth).then(() => {
+                 setIsAuthenticated(false);
+               });
+             }} 
              onNavigate={(view) => setCurrentView(view)}
            />
         </main>
@@ -360,7 +389,11 @@ export default function App() {
             <div className="h-6 w-px bg-[#00ff88]/20 hidden sm:block"></div>
             
             <button 
-              onClick={() => setIsAuthenticated(false)}
+              onClick={() => {
+                signOut(auth).then(() => {
+                  setIsAuthenticated(false);
+                });
+              }}
               className="flex items-center space-x-2 text-sm font-bold font-orbitron uppercase text-[#ff3355] hover:text-[#ff3355]/80 hover:bg-[#ff3355]/10 px-3 py-1.5 rounded transition-all border border-transparent hover:border-[#ff3355]/30"
             >
               <LogOut size={18} />
