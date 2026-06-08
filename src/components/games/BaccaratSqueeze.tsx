@@ -91,18 +91,18 @@ const PlayingCard = ({
         }}
         transition={{
           rotateY: { duration: squeezing ? 3 : 0.6, ease: "easeInOut" },
-          scale: { duration: 0.5, yoyo: Infinity },
+          scale: { duration: 0.5, repeat: Infinity, repeatType: "reverse" as const },
           opacity: { duration: 0.3 },
         }}
         style={{ transformStyle: "preserve-3d" }}
       >
         {/* Card Back */}
         <div
-          className="absolute w-full h-full backface-hidden rounded-lg bg-gradient-to-br from-red-800 to-red-950 border-2 border-red-400/30 flex items-center justify-center overflow-hidden shadow-xl"
+          className="absolute w-full h-full backface-hidden rounded-lg bg-linear-to-br from-red-800 to-red-950 border-2 border-red-400/30 flex items-center justify-center overflow-hidden shadow-xl"
           style={{ transform: "rotateY(180deg)", backfaceVisibility: "hidden" }}
         >
           <div className="w-[80%] h-[80%] rounded border border-red-500/20 bg-[url('https://www.transparenttextures.com/patterns/argyle.png')] opacity-30"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
         </div>
 
         {/* Card Front */}
@@ -281,24 +281,24 @@ export default function BaccaratSqueeze({
       {/* Background Decor */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#0f171e] mix-blend-multiply opacity-50"></div>
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-br from-yellow-500/5 to-transparent rounded-full blur-[120px] pointer-events-none transform translate-x-1/3 -translate-y-1/3"></div>
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-red-900/10 to-transparent rounded-full blur-[100px] pointer-events-none transform -translate-x-1/4 translate-y-1/4"></div>
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-600/50 to-transparent"></div>
+        <div className="absolute top-0 right-0 w-200 h-200 bg-linear-to-br from-yellow-500/5 to-transparent rounded-full blur-[120px] pointer-events-none transform translate-x-1/3 -translate-y-1/3"></div>
+        <div className="absolute bottom-0 left-0 w-150 h-150 bg-linear-to-tr from-red-900/10 to-transparent rounded-full blur-[100px] pointer-events-none transform -translate-x-1/4 translate-y-1/4"></div>
+        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-yellow-600/50 to-transparent"></div>
       </div>
 
-      <div className="relative z-10 flex flex-col lg:flex-row min-h-[550px]">
+      <div className="relative z-10 flex flex-col lg:flex-row min-h-137.5">
         {/* Main Table Area */}
         <div className="flex-1 flex flex-col p-4 md:p-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-b from-yellow-600 to-yellow-800 flex items-center justify-center shadow-lg shadow-yellow-900/50 border border-yellow-400">
+              <div className="w-10 h-10 rounded-full bg-linear-to-b from-yellow-600 to-yellow-800 flex items-center justify-center shadow-lg shadow-yellow-900/50 border border-yellow-400">
                 <div className="w-8 h-8 rounded-full border border-yellow-800 flex items-center justify-center text-xs font-serif font-black text-white">
                   B
                 </div>
               </div>
               <div>
-                <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-yellow-200 to-yellow-500 bg-clip-text text-transparent uppercase tracking-widest">
+                <h2 className="text-xl md:text-2xl font-bold bg-linear-to-r from-yellow-200 to-yellow-500 bg-clip-text text-transparent uppercase tracking-widest">
                   {gameName}
                 </h2>
                 <div className="text-xs text-yellow-500/60 uppercase tracking-widest font-medium flex items-center gap-2">
@@ -457,7 +457,7 @@ export default function BaccaratSqueeze({
         </div>
 
         {/* Controls Panel */}
-        <div className="w-full lg:w-[340px] bg-black/40 backdrop-blur-xl border-l border-white/5 p-5 flex flex-col h-full z-10">
+        <div className="w-full lg:w-85 bg-black/40 backdrop-blur-xl border-l border-white/5 p-5 flex flex-col h-full z-10">
           <div className="mb-6 flex-1">
             <div className="text-yellow-500/80 uppercase tracking-widest text-xs font-bold mb-3 flex items-center justify-between">
               Betting Area
@@ -475,7 +475,7 @@ export default function BaccaratSqueeze({
                 }`}
               >
                 {selectedBet === "PLAYER" && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-blue-700/50 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-blue-700/50 to-transparent" />
                 )}
                 <span
                   className={`relative z-10 font-bold tracking-widest uppercase text-sm ${selectedBet === "PLAYER" ? "text-white" : "text-blue-400"}`}
@@ -499,7 +499,7 @@ export default function BaccaratSqueeze({
                 }`}
               >
                 {selectedBet === "TIE" && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-green-700/50 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-green-700/50 to-transparent" />
                 )}
                 <span
                   className={`relative z-10 font-bold tracking-widest uppercase text-sm ${selectedBet === "TIE" ? "text-white" : "text-green-400"}`}
@@ -523,7 +523,7 @@ export default function BaccaratSqueeze({
                 }`}
               >
                 {selectedBet === "BANKER" && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-red-700/50 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-red-700/50 to-transparent" />
                 )}
                 <span
                   className={`relative z-10 font-bold tracking-widest uppercase text-sm ${selectedBet === "BANKER" ? "text-white" : "text-red-500"}`}
@@ -573,7 +573,7 @@ export default function BaccaratSqueeze({
             className={`w-full py-4 rounded-xl font-bold tracking-widest uppercase text-sm transition-all relative overflow-hidden ${
               (gameState !== "IDLE" && gameState !== "RESULT") || !selectedBet || betAmount <= 0
                 ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
-                : "bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-600 text-yellow-950 shadow-[0_0_30px_rgba(234,179,8,0.3)] hover:shadow-[0_0_40px_rgba(234,179,8,0.5)] border border-yellow-400"
+                : "bg-linear-to-r from-yellow-600 via-yellow-500 to-yellow-600 text-yellow-950 shadow-[0_0_30px_rgba(234,179,8,0.3)] hover:shadow-[0_0_40px_rgba(234,179,8,0.5)] border border-yellow-400"
             }`}
           >
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay pointer-events-none"></div>

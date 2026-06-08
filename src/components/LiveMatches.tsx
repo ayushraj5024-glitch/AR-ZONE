@@ -3,17 +3,24 @@ import React, { useState } from 'react';
 type MatchType = 'inplay' | 'upcoming';
 type SportType = 'cricket' | 'tennis' | 'soccer';
 
-interface Match {
+export interface Match {
   id: string;
   pid: string;
   title: string;
   sport: string;
   date: string;
   liveReportUrl?: string;
+  status?: string;
+  t1s?: string;
+  t2s?: string;
+  t1?: string;
+  t2?: string;
+  team1Img?: string;
+  team2Img?: string;
 }
 
 interface LiveMatchesProps {
-  onViewReport?: () => void;
+  onViewReport?: (match: Match) => void;
 }
 
 export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
@@ -93,15 +100,25 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
           setMatches(initialMockMatches); // Fallback to mock data
         } else if (data.matches && data.matches.length > 0) {
           // Map real CricAPI data to the Match interface
-          const liveMatches = data.matches.map((m: any) => ({
-            id: m.id || String(Math.floor(Math.random() * 1000000)),
-            pid: m.series_id || '-',
-            title: m.name || m.title || 'Unknown Match',
-            sport: 'CRICKET',
-            date: m.dateTimeGMT ? new Date(m.dateTimeGMT + "Z").toLocaleString() : (m.date || 'Update Pending'),
-            liveReportUrl: m.matchStarted ? 'true' : undefined,
-            status: m.status
-          }));
+          const liveMatches = data.matches.map((m: any) => {
+            const title = m.name || m.title || (m.t1 && m.t2 ? `${m.t1} vs ${m.t2}` : 'Unknown Match');
+            const dt = m.dateTimeGMT ? new Date(m.dateTimeGMT + "Z").toLocaleString() : (m.date || 'Update Pending');
+            return {
+              id: m.id || String(Math.floor(Math.random() * 1000000)),
+              pid: m.series_id || (m.id ? m.id.split('-')[0] : String(Math.floor(Math.random() * 1000000))),
+              title: title,
+              sport: 'CRICKET',
+              date: dt,
+              liveReportUrl: m.matchStarted || m.ms === "live" || m.ms === "fixture" ? 'true' : undefined,
+              status: m.status,
+              t1s: m.t1s || '',
+              t2s: m.t2s || '',
+              t1: m.t1 || '',
+              t2: m.t2 || '',
+              team1Img: m.t1img || '',
+              team2Img: m.t2img || ''
+            };
+          });
           setMatches(liveMatches); 
           setApiError(null);
         } else {
@@ -238,8 +255,8 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
                 ) : filteredMatches.length > 0 ? (
                   filteredMatches.map((match, idx) => (
                     <tr key={idx} className="hover:bg-[#020503]/50 transition-colors">
-                      <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20">{match.id}</td>
-                      <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20">{match.pid}</td>
+                      <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.id}</td>
+                      <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.pid}</td>
                       <td className="px-4 py-3 font-medium text-[#00ff88] hover:text-blue-700 cursor-pointer border-r border-[#00ff88]/20">
                         {match.title}
                       </td>
@@ -251,7 +268,7 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
                       <td className="px-4 py-3 text-center">
                         {match.liveReportUrl && (
                           <button
-                            onClick={() => onViewReport?.()}
+                            onClick={() => onViewReport?.(match)}
                             className="inline-block px-3 py-1.5 bg-[#62a2a3] text-white text-xs font-semibold rounded hover:bg-[#4d8687] transition-colors shadow-sm cursor-pointer border-none"
                           >
                             LiveReport

@@ -70,6 +70,6 @@
 
 @layer components {
   .form-input {
-    @apply border border-[#00ff88]/30 w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-shadow transition-colors bg-[rgba(5,16,10,0.5)] text-white shadow-sm;
+    @apply border border-[#00ff88]/30 w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm;
   }
 }

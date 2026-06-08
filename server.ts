@@ -23,8 +23,8 @@ async function startServer() {
   apiRouter.get("/live-matches", async (req, res) => {
     try {
       // 1. Apne environment variables se API Key aur URL get karein
-      const apiUrl = process.env.LIVE_MATCHES_API_URL || "https://api.cricapi.com/v1/currentMatches?apikey=55deec14-d2da-412e-a0ba-e98090b4cce8&offset=0";
-      const apiKey = process.env.LIVE_MATCHES_API_KEY || "55deec14-d2da-412e-a0ba-e98090b4cce8";
+      const apiUrl = "https://api.cricapi.com/v1/cricScore?apikey=55deec14-d2da-412e-a0ba-e98090b4cce8";
+      const apiKey = "55deec14-d2da-412e-a0ba-e98090b4cce8";
 
       // Fetch from actual API
       const response = await fetch(apiUrl);

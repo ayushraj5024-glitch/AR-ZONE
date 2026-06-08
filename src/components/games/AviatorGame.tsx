@@ -106,7 +106,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
       </div>
 
       {/* Main Display Area */}
-      <div className="bg-[#0b1016] h-[200px] sm:h-[280px] md:h-[320px] rounded-2xl border border-slate-700/50 relative overflow-hidden flex flex-col justify-end shadow-inner">
+      <div className="bg-[#0b1016] h-50 sm:h-70 md:h-80 rounded-2xl border border-slate-700/50 relative overflow-hidden flex flex-col justify-end shadow-inner">
         {/* Starry background effect */}
         <div className="absolute inset-0 opacity-40">
           <div className="absolute top-10 left-[10%] w-1 h-1 bg-white rounded-full"></div>
@@ -146,12 +146,12 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
                {multiplier.toFixed(2)}x
              </div>
             {/* Plane Icon near the multiplier */}
-             <Plane className={`w-10 h-10 sm:w-16 sm:h-16 absolute -top-4 -right-8 sm:-top-4 sm:-right-16 filter transition-all ${gameState === 'crashed' ? 'text-rose-500 fill-rose-500 translate-y-16 translate-x-8 -rotate-[10deg] opacity-0 drop-shadow-[0_0_15px_rgba(244,63,94,0.6)] duration-500' : 'text-[#00ff88] fill-[#00ff88] drop-shadow-[0_0_15px_rgba(0,255,136,0.6)] -rotate-[30deg] animate-[pulse_1s_ease-in-out_infinite] duration-[50ms]'}`} />
+             <Plane className={`w-10 h-10 sm:w-16 sm:h-16 absolute -top-4 -right-8 sm:-top-4 sm:-right-16 filter transition-all ${gameState === 'crashed' ? 'text-rose-500 fill-rose-500 translate-y-16 translate-x-8 rotate-[-10deg] opacity-0 drop-shadow-[0_0_15px_rgba(244,63,94,0.6)] duration-500' : 'text-[#00ff88] fill-[#00ff88] drop-shadow-[0_0_15px_rgba(0,255,136,0.6)] rotate-[-30deg] animate-[pulse_1s_ease-in-out_infinite] duration-50'}`} />
           </div>
         </div>
 
         {/* Grid lines or curve (Optional, doing simple bottom line instead for style) */}
-        <div className="absolute bottom-0 left-0 right-0 h-[100px] bg-gradient-to-t from-[#00ff88]/5 to-transparent border-t border-[#00ff88]/10"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-25 bg-linear-to-t from-[#00ff88]/5 to-transparent border-t border-[#00ff88]/10"></div>
       </div>
 
       {/* History Bar */}
@@ -159,7 +159,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
         {history.map((h, i) => (
           <div
             key={i}
-            className={`px-4 py-1.5 rounded-full text-sm font-bold border ${h.c} flex-shrink-0`}
+            className={`px-4 py-1.5 rounded-full text-sm font-bold border ${h.c} shrink-0`}
           >
             {h.m}
           </div>
@@ -208,7 +208,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
               >
                 Auto cash {autoCashoutEnabled ? 'ON' : 'OFF'}
               </button>
-              <div className={`flex-1 border rounded-lg p-1 shadow-inner max-w-[80px] transition-colors ${autoCashoutEnabled ? 'bg-[#212b3a] border-[#00ff88]/50' : 'bg-[#1a212d] border-slate-700'}`}>
+              <div className={`flex-1 border rounded-lg p-1 shadow-inner max-w-20 transition-colors ${autoCashoutEnabled ? 'bg-[#212b3a] border-[#00ff88]/50' : 'bg-[#1a212d] border-slate-700'}`}>
                 <input
                   type="text"
                   value={autoCashout}
@@ -236,19 +236,27 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
                 setActiveBetAmount(bet);
                 setCashedOutAmount(null);
                 
-                // Algorithm: 60% chance to crash early (House win), 40% chance to fly higher
-                // Using a continuous random distribution to make it unpredictable
+                // RTP Crash Distribution
                 const rand = Math.random();
                 let crash = 1.0;
-                if (rand < 0.60) {
-                  // 60% chance to crash low (House win)
-                  crash = 1.00 + (Math.random() * 0.80); // Crashes anywhere between 1.00 and 1.80
-                } else if (rand < 0.90) {
-                  // 30% chance to go medium
-                  crash = 1.80 + (Math.random() * 4.20); // Crashes between 1.80 and 6.00
+                if (rand < 0.30) {
+                  // 30% chance: 1.00x – 1.20x
+                  crash = 1.00 + (Math.random() * 0.20);
+                } else if (rand < 0.54) {
+                  // 24% chance: 1.21x – 1.50x
+                  crash = 1.21 + (Math.random() * 0.29);
+                } else if (rand < 0.72) {
+                  // 18% chance: 1.51x – 2.00x
+                  crash = 1.51 + (Math.random() * 0.49);
+                } else if (rand < 0.92) {
+                  // 20% chance: 2.01x – 5.00x
+                  crash = 2.01 + (Math.random() * 2.99);
+                } else if (rand < 0.97) {
+                  // 5% chance: 5.01x – 10.00x
+                  crash = 5.01 + (Math.random() * 4.99);
                 } else {
-                  // 10% chance to go high
-                  crash = 6.00 + (Math.random() * 24.00); // Crashes between 6.00 and 30.00
+                  // 3% chance: 10.00x+ (Capped at 30x for playability)
+                  crash = 10.01 + (Math.random() * 19.99);
                 }
                 
                 setCrashPoint(Number(crash.toFixed(2)));
@@ -272,7 +280,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
               }
             }}
             disabled={gameState === 'flying' && activeBetAmount === 0}
-            className={`w-full py-2.5 border-[2px] rounded-lg font-black tracking-[0.1em] text-sm transition-all shadow-md active:scale-[0.98]
+            className={`w-full py-2.5 border-2 rounded-lg font-black tracking-widest text-sm transition-all shadow-md active:scale-[0.98]
               ${gameState === 'flying' && activeBetAmount > 0
                 ? 'bg-orange-500 text-white border-orange-400 hover:bg-orange-600' 
                 : gameState === 'flying' && activeBetAmount === 0
@@ -294,7 +302,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
             Live Players
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 h-[140px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 h-35 overflow-y-auto pr-2 custom-scrollbar">
             {players.map((p, i) => (
               <div
                 key={i}
@@ -316,7 +324,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
       </div>
 
       {/* My Bets History Section */}
-      <div className="bg-[#18212e] p-4 sm:p-5 rounded-xl border border-slate-700/50 shadow-lg !mt-6">
+      <div className="bg-[#18212e] p-4 sm:p-5 rounded-xl border border-slate-700/50 shadow-lg mt-6!">
         <h3 className="text-slate-400 font-bold uppercase tracking-widest mb-3 text-xs sm:text-sm">
           My Bets History
         </h3>
