@@ -75,7 +75,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
           </div>
         </div>
 
-        <div className="overflow-x-auto min-h-[300px]">
+        <div className="overflow-x-auto min-h-75">
           <table className="w-full text-sm text-left text-slate-200">
             <thead className="text-xs text-slate-200 bg-[#020503] border-b border-[#00ff88]/20">
               <tr>
@@ -160,7 +160,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedUserForManage(null)}></div>
           
           <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
             
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                       checked={selectedUserForManage.autoBlock} 
                       onChange={(e) => updateStatus(selectedUserForManage.id, 'autoBlock', e.target.checked)}
                     />
-                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#00ff88]"></div>
+                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#00ff88]"></div>
                   </label>
                 </div>
                 <p className="text-xs text-slate-400 font-exo leading-relaxed">
@@ -248,7 +248,7 @@ function SortableHeader({ label, hideSort = false }: { label: string, hideSort?:
       <div className="flex items-center justify-between">
         <span>{label}</span>
         {!hideSort && (
-          <div className="flex flex-col ml-2 opacity-30 group-hover:opacity-100 space-y-[-4px]">
+          <div className="flex flex-col ml-2 opacity-30 group-hover:opacity-100 -space-y-1">
             <ChevronUp size={12} />
             <ChevronDown size={12} />
           </div>

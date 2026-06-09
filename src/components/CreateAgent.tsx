@@ -77,7 +77,7 @@ export default function CreateAgent({ onCancel, onSave }: CreateAgentProps) {
             </FormRow>
             
             <FormRow label="AGT Match Share" note="AGT Match Share can be set from 0 to 50.0">
-              <input type="number" defaultValue="0" className="form-input" value={maxShare} onChange={e => setMaxShare(e.target.value)} />
+              <input type="number" className="form-input" value={maxShare} onChange={e => setMaxShare(e.target.value)} />
             </FormRow>
             
             <FormRow label="AGT Match Commission" note="Match Commission can be set from 0 to 3">
@@ -108,7 +108,7 @@ export default function CreateAgent({ onCancel, onSave }: CreateAgentProps) {
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-[#60999b] text-white rounded hover:bg-[#4d7a7c] transition-colors text-sm font-medium flex items-center gap-2 min-w-[120px] justify-center"
+                className="px-4 py-2 bg-[#60999b] text-white rounded hover:bg-[#4d7a7c] transition-colors text-sm font-medium flex items-center gap-2 min-w-30 justify-center"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
               </button>

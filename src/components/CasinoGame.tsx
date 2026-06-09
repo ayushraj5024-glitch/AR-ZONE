@@ -9,7 +9,9 @@ import {
   AlertCircle,
   X,
   Loader2,
+  Ban,
 } from "lucide-react";
+import { useMarketStatus } from "../hooks/useMarketStatus";
 import TeenPattiT20 from "./games/TeenPattiT20";
 import HeadAndTail from "./games/HeadAndTail";
 import BaccaratSqueeze from "./games/BaccaratSqueeze";
@@ -73,7 +75,7 @@ const Lucky7Slot = ({
       clearInterval(spinInterval);
 
       const userWins = Math.random() < 0.49;
-      let r1, r2, r3;
+      let r1: string, r2: string, r3: string;
 
       if (userWins) {
         const rand = Math.random();
@@ -141,20 +143,20 @@ const Lucky7Slot = ({
   };
 
   return (
-    <div className="relative w-full max-w-xl mx-auto flex flex-col items-center justify-center py-10 px-4 md:px-0 bg-gradient-to-b from-yellow-50 to-amber-100 rounded-3xl border border-amber-200 shadow-[inset_0_0_100px_rgba(251,191,36,0.2)]">
+    <div className="relative w-full max-w-xl mx-auto flex flex-col items-center justify-center py-10 px-4 md:px-0 bg-linear-to-b from-yellow-50 to-amber-100 rounded-3xl border border-amber-200 shadow-[inset_0_0_100px_rgba(251,191,36,0.2)]">
       {/* Background glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-300/20 via-transparent to-transparent pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-yellow-300/20 via-transparent to-transparent pointer-events-none"></div>
 
       {/* Machine Container */}
-      <div className="relative bg-gradient-to-b from-red-600 via-red-700 to-red-900 rounded-[3rem] p-4 md:p-8 shadow-2xl border-x-[12px] border-b-[16px] border-t-[8px] border-red-950 w-full z-10">
+      <div className="relative bg-linear-to-b from-red-600 via-red-700 to-red-900 rounded-[3rem] p-4 md:p-8 shadow-2xl border-x-12 border-b-16 border-t-8 border-red-950 w-full z-10">
         {/* Lever (Visible on md) */}
-        <div className="hidden md:block absolute top-[40%] -right-[40px] w-8 h-32 z-[-1]">
-          <div className="w-8 h-12 bg-gradient-to-r from-gray-400 to-gray-600 rounded-r-lg border-y-2 border-r-2 border-gray-700 shadow-[10px_0_15px_rgba(0,0,0,0.5)]"></div>
+        <div className="hidden md:block absolute top-[40%] -right-10 w-8 h-32 z-[-1]">
+          <div className="w-8 h-12 bg-linear-to-r from-gray-400 to-gray-600 rounded-r-lg border-y-2 border-r-2 border-gray-700 shadow-[10px_0_15px_rgba(0,0,0,0.5)]"></div>
           <div
-            className={`absolute top-2 left-3 w-4 h-32 bg-gradient-to-r from-slate-300 to-slate-400 rounded-full transition-transform duration-500 origin-bottom shadow-lg ${isSpinning ? "rotate-[60deg] translate-y-12" : "rotate-0"}`}
+            className={`absolute top-2 left-3 w-4 h-32 bg-linear-to-r from-slate-300 to-slate-400 rounded-full transition-transform duration-500 origin-bottom shadow-lg ${isSpinning ? "rotate-60 translate-y-12" : "rotate-0"}`}
           ></div>
           <div
-            className={`absolute -top-4 w-12 h-12 -ml-2 bg-gradient-to-tr from-rose-500 to-red-600 rounded-full shadow-[inset_-4px_-4px_10px_rgba(0,0,0,0.5),_4px_4px_10px_rgba(0,0,0,0.5)] transition-transform duration-500 origin-bottom ${isSpinning ? "rotate-[60deg] translate-y-[130px] translate-x-[90px]" : ""}`}
+            className={`absolute -top-4 w-12 h-12 -ml-2 bg-linear-to-tr from-rose-500 to-red-600 rounded-full shadow-[inset_-4px_-4px_10px_rgba(0,0,0,0.5),4px_4px_10px_rgba(0,0,0,0.5)] transition-transform duration-500 origin-bottom ${isSpinning ? "rotate-60 translate-y-32.5 translate-x-22.5" : ""}`}
           ></div>
         </div>
 
@@ -169,29 +171,29 @@ const Lucky7Slot = ({
               ></div>
             ))}
           </div>
-          <h2 className="relative text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 tracking-widest drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] filter">
+          <h2 className="relative text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-linear-to-b from-yellow-200 via-amber-400 to-amber-600 tracking-widest drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] filter">
             BIG WIN
           </h2>
         </div>
 
         {/* Reels Area */}
-        <div className="bg-slate-950 p-4 md:p-6 rounded-[2rem] flex gap-2 md:gap-4 mt-8 md:mt-4 shadow-[inset_0_0_40px_rgba(0,0,0,1)] border-4 border-red-950 relative overflow-hidden">
+        <div className="bg-slate-950 p-4 md:p-6 rounded-4xl flex gap-2 md:gap-4 mt-8 md:mt-4 shadow-[inset_0_0_40px_rgba(0,0,0,1)] border-4 border-red-950 relative overflow-hidden">
           {/* Machine bulbs inside border */}
-          <div className="absolute inset-1 border-[3px] border-dotted border-amber-500/50 rounded-[1.5rem] pointer-events-none"></div>
+          <div className="absolute inset-1 border-[3px] border-dotted border-amber-500/50 rounded-3xl pointer-events-none"></div>
 
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="flex-1 aspect-[3/4] bg-gradient-to-b from-slate-200 via-white to-slate-200 rounded-xl shadow-[inset_0_8px_16px_rgba(0,0,0,0.4)] flex items-center justify-center relative overflow-hidden border border-[#00ff88]/30"
+              className="flex-1 aspect-3/4 bg-linear-to-b from-slate-200 via-white to-slate-200 rounded-xl shadow-[inset_0_8px_16px_rgba(0,0,0,0.4)] flex items-center justify-center relative overflow-hidden border border-[#00ff88]/30"
             >
               <div className="absolute inset-x-0 top-1/2 h-px bg-black/10"></div>
-              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/40 pointer-events-none"></div>
 
               <div
                 className={`transform transition-transform ${isSpinning ? "scale-110 blur-[1px]" : "scale-100"} text-5xl md:text-7xl`}
               >
                 {reels[i] === "7" ? (
-                  <span className="font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-300 via-yellow-500 to-amber-700 drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)] filter">
+                  <span className="font-black text-transparent bg-clip-text bg-linear-to-b from-amber-300 via-yellow-500 to-amber-700 drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)] filter">
                     7
                   </span>
                 ) : (
@@ -216,7 +218,7 @@ const Lucky7Slot = ({
                   disabled={isSpinning}
                   className={`px-3 py-2 rounded-lg font-bold text-sm md:text-base border-2 transition-all ${
                     betAmount === amt
-                      ? "bg-gradient-to-b from-amber-400 to-amber-600 border-amber-300 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.6)]"
+                      ? "bg-linear-to-b from-amber-400 to-amber-600 border-amber-300 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.6)]"
                       : "bg-slate-800 border-slate-700 text-amber-500 hover:bg-slate-700 disabled:opacity-50"
                   }`}
                 >
@@ -244,10 +246,10 @@ const Lucky7Slot = ({
               className="flex-1 md:flex-none relative group"
             >
               <div
-                className={`absolute inset-0 bg-gradient-to-b from-emerald-500 to-emerald-700 rounded-full blur-[2px] opacity-70 group-hover:opacity-100 transition-opacity ${isSpinning ? "hidden" : ""}`}
+                className={`absolute inset-0 bg-linear-to-b from-emerald-500 to-emerald-700 rounded-full blur-[2px] opacity-70 group-hover:opacity-100 transition-opacity ${isSpinning ? "hidden" : ""}`}
               ></div>
               <div
-                className={`relative bg-gradient-to-b from-emerald-400 to-emerald-600 border-y-[3px] border-emerald-300 text-slate-950 font-black text-2xl px-10 py-4 rounded-full shadow-[0_8px_0_1px_rgba(6,95,70,1)] active:shadow-[0_0px_0_1px_rgba(6,95,70,1)] active:translate-y-[8px] transition-all disabled:opacity-50 disabled:translate-y-[8px] disabled:shadow-[0_0px_0_1px_rgba(6,95,70,1)] flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer`}
+                className={`relative bg-linear-to-b from-emerald-400 to-emerald-600 border-y-[3px] border-emerald-300 text-slate-950 font-black text-2xl px-10 py-4 rounded-full shadow-[0_8px_0_1px_rgba(6,95,70,1)] active:shadow-[0_0px_0_1px_rgba(6,95,70,1)] active:translate-y-2 transition-all disabled:opacity-50 disabled:translate-y-2 disabled:shadow-[0_0px_0_1px_rgba(6,95,70,1)] flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer`}
               >
                 {isSpinning ? "Spinning..." : "SPIN"}
               </div>
@@ -268,6 +270,8 @@ export default function CasinoGame({
   gameName: string;
   onBack: () => void;
 }) {
+  const { status, loading } = useMarketStatus();
+
   // Determine game configuration based on gameId
   let oddsData: OddsRow[] = [];
   let showCardsArea = true;
@@ -447,9 +451,35 @@ export default function CasinoGame({
     }, 1500);
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-125">
+        <Loader2 className="w-8 h-8 animate-spin text-[#00ff88]" />
+      </div>
+    );
+  }
+
+  if (!status.liveCasino) {
+    return (
+      <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans pb-16 relative">
+        <button
+          onClick={onBack}
+          className="absolute top-6 right-6 lg:top-10 lg:right-10 z-50 text-slate-400 hover:text-white transition-colors"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        <div className="flex flex-col items-center justify-center p-12 bg-[#05100a] border border-red-500/20 rounded-2xl text-center space-y-4">
+          <Ban className="w-16 h-16 text-red-500" />
+          <h2 className="text-2xl font-bold text-white">Live Casino is Currently Suspended</h2>
+          <p className="text-slate-400">This market has been blocked by the administrator. Please check back later.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (gameId === "aviator") {
     return (
-      <div className="p-4 lg:p-8 max-w-[1400px] mx-auto pb-16 relative">
+      <div className="p-4 lg:p-8 max-w-350 mx-auto pb-16 relative">
         <button
           onClick={onBack}
           className="absolute top-6 right-6 lg:top-10 lg:right-10 z-50 text-slate-400 hover:text-white transition-colors"
@@ -465,7 +495,7 @@ export default function CasinoGame({
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-[1400px] mx-auto space-y-6 font-sans text-sm pb-16">
+    <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans text-sm pb-16">
       {/* Top Bar with Balance */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#05100a] p-4 rounded-xl shadow-sm border border-[#00ff88]/20">
         <div>
@@ -506,8 +536,8 @@ export default function CasinoGame({
       </div>
 
       {/* Alert Banner / Ticker */}
-      <div className="bg-gradient-to-r from-[#00ff88]/10 to-[#020503] border border-[#00ff88]/20 rounded-xl px-4 py-3 flex items-center shadow-sm text-slate-200 overflow-hidden mb-6">
-        <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 flex-shrink-0 border border-[#00ff88]/30">
+      <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border border-[#00ff88]/20 rounded-xl px-4 py-3 flex items-center shadow-sm text-slate-200 overflow-hidden mb-6">
+        <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
           <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
         </div>
         <div className="flex-1 overflow-hidden relative h-6">
@@ -552,7 +582,7 @@ export default function CasinoGame({
             <>
               {/* Main Game Stream */}
               <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-xl relative">
-                <div className="flex flex-col lg:flex-row h-auto xl:h-[450px]">
+                <div className="flex flex-col lg:flex-row h-auto xl:h-112.5">
                   {/* Cards overlay side */}
                   {showCardsArea && (
                     <div className="w-full lg:w-72 bg-slate-800/80 border-b lg:border-b-0 lg:border-r border-slate-700 p-5 shrink-0 flex flex-col gap-5 overflow-y-auto backdrop-blur-md z-10 relative">
@@ -577,9 +607,9 @@ export default function CasinoGame({
                               return (
                                 <div
                                   key={j}
-                                  className="w-10 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded flex items-center justify-center shrink-0 shadow-lg border border-[#00ff88]/30"
+                                  className="w-10 h-14 bg-linear-to-br from-slate-100 to-slate-200 rounded flex items-center justify-center shrink-0 shadow-lg border border-[#00ff88]/30"
                                 >
-                                  <div className="w-8 h-12 rounded-[2px] border border-[#00ff88]/20/50 bg-[#05100a] flex items-center justify-center">
+                                  <div className="w-8 h-12 rounded-xs border border-[#00ff88]/20/50 bg-[#05100a] flex items-center justify-center">
                                     <span
                                       className={`text-[14px] font-bold ${card === "?" ? "text-slate-300" : isRed ? "text-red-500" : "text-white"}`}
                                     >
@@ -596,14 +626,14 @@ export default function CasinoGame({
                   )}
 
                   {/* Video Stream Area */}
-                  <div className="flex-1 relative bg-black group min-h-[300px] flex items-center justify-center overflow-hidden">
+                  <div className="flex-1 relative bg-black group min-h-75 flex items-center justify-center overflow-hidden">
                     <div
                       className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 hover:scale-105"
                       style={{
                         backgroundImage: `url('https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=1200&q=80')`,
                       }}
                     ></div>
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80"></div>
+                    <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/80"></div>
 
                     <div className="absolute bottom-6 left-6 z-10 flex flex-col items-start">
                       <h3 className="text-white text-xl font-bold font-serif mb-1 tracking-wide">
@@ -824,7 +854,7 @@ export default function CasinoGame({
           ) : null}
 
           {/* Matched Bets History */}
-          <div className="bg-[#05100a] rounded-xl shadow-sm border border-[#00ff88]/20 overflow-hidden flex flex-col min-h-[300px]">
+          <div className="bg-[#05100a] rounded-xl shadow-sm border border-[#00ff88]/20 overflow-hidden flex flex-col min-h-75">
             <div className="px-5 py-4 bg-[#020503] border-b border-[#00ff88]/20 flex items-center justify-between">
               <h3 className="font-bold text-white flex items-center gap-2">
                 <History className="w-4 h-4 text-slate-400" />

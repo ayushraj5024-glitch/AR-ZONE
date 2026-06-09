@@ -40,14 +40,18 @@ import LedgerTable from './components/LedgerTable';
 import ProfitLoss from './components/ProfitLoss';
 import ManagePassword from './components/ManagePassword';
 import Login from './components/Login';
-import LiveMatches from './components/LiveMatches';
+import LiveMatches, { Match } from './components/LiveMatches';
 import LiveMatchReport from './components/LiveMatchReport';
 import CompletedMatches from './components/CompletedMatches';
 import LiveCasino from './components/LiveCasino';
 import CasinoGame from './components/CasinoGame';
 import Dashboard from './components/Dashboard';
+import RoyalCasino from './components/RoyalCasino';
+import RoyalCasinoReport from './components/RoyalCasinoReport';
+import CheckCasinoResult from './components/CheckCasinoResult';
+import BlockMarket from './components/BlockMarket';
 
-type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_stockist' | 'my_clients' | 'blocked_clients' | 'commission_limits' | 'collection_report' | 'company_ledgers' | 'my_stmt' | 'profit_loss' | 'manage_password' | 'live_matches' | 'live_report' | 'completed_matches' | 'live_casino' | 'casino_game';
+type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_stockist' | 'my_clients' | 'blocked_clients' | 'commission_limits' | 'collection_report' | 'company_ledgers' | 'my_stmt' | 'profit_loss' | 'manage_password' | 'live_matches' | 'live_report' | 'completed_matches' | 'live_casino' | 'casino_game' | 'royal_casino' | 'royal_casino_report' | 'check_casino_result' | 'block_market';
 
 export type AgentData = {
   id: string;
@@ -64,6 +68,7 @@ export default function App() {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedCasinoGame, setSelectedCasinoGame] = useState<{id: string, name: string} | null>(null);
   const [isManageExpanded, setIsManageExpanded] = useState(false);
   const [isManageClientsExpanded, setIsManageClientsExpanded] = useState(false);
@@ -231,9 +236,9 @@ export default function App() {
           <NavItem icon={<PlayCircle size={20} />} label="Live Matches" isOpen={isSidebarOpen} active={currentView === 'live_matches' || currentView === 'live_report'} onClick={() => handleNavClick('live_matches')} />
           <NavItem icon={<CheckCircle size={20} />} label="Completed Matches" isOpen={isSidebarOpen} active={currentView === 'completed_matches'} onClick={() => handleNavClick('completed_matches')} />
           <NavItem icon={<Gamepad2 size={20} />} label="Live Casino" isOpen={isSidebarOpen} active={currentView === 'live_casino' || currentView === 'casino_game'} onClick={() => handleNavClick('live_casino')} />
-          <NavItem icon={<Crown size={20} />} label="Royal Casino" isOpen={isSidebarOpen} onClick={() => handleNavClick()} />
-          <NavItem icon={<ClipboardList size={20} />} label="Check Casino Result" isOpen={isSidebarOpen} onClick={() => handleNavClick()} />
-          <NavItem icon={<Ban size={20} />} label="Block Market" isOpen={isSidebarOpen} onClick={() => handleNavClick()} />
+          <NavItem icon={<Crown size={20} />} label="Royal Casino" isOpen={isSidebarOpen} active={currentView === 'royal_casino' || currentView === 'royal_casino_report'} onClick={() => handleNavClick('royal_casino')} />
+          <NavItem icon={<ClipboardList size={20} />} label="Check Casino Result" isOpen={isSidebarOpen} active={currentView === 'check_casino_result'} onClick={() => handleNavClick('check_casino_result')} />
+          <NavItem icon={<Ban size={20} />} label="Block Market" isOpen={isSidebarOpen} active={currentView === 'block_market'} onClick={() => handleNavClick('block_market')} />
           
           {/* Manage Clients Dropdown */}
           <div className="space-y-1">
@@ -371,7 +376,7 @@ export default function App() {
 
       {/* Main Content */}
       {currentView === 'dashboard' ? (
-        <main className="flex-1 min-w-0 h-[100dvh] overflow-hidden">
+        <main className="flex-1 min-w-0 h-dvh overflow-hidden">
            <Dashboard 
              onMenuClick={() => setSidebarOpen(!isSidebarOpen)} 
              onLogout={() => {
@@ -383,9 +388,9 @@ export default function App() {
            />
         </main>
       ) : (
-      <main className="flex-1 flex flex-col min-w-0 h-[100dvh] overflow-hidden bg-[#020503]">
+      <main className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden bg-[#020503]">
         {/* Header */}
-        <header className="h-16 bg-[#05100a] border-b border-[#00ff88]/20 flex flex-shrink-0 items-center justify-between px-4 lg:px-8 z-10 sticky top-0 shadow-[0_4px_20px_rgba(0,255,136,0.05)]">
+        <header className="h-16 bg-[#05100a] border-b border-[#00ff88]/20 flex shrink-0 items-center justify-between px-4 lg:px-8 z-10 sticky top-0 shadow-[0_4px_20px_rgba(0,255,136,0.05)]">
           <div className="flex items-center space-x-4">
             <button 
               className="md:hidden p-2 -ml-2 text-[#00ff88] hover:bg-[#00ff88]/10 rounded border border-transparent hover:border-[#00ff88]/30"
@@ -394,9 +399,8 @@ export default function App() {
               <Menu size={20} />
             </button>
             <h1 className="flex items-center space-x-2">
-              <span className="ar-zone-logo text-3xl pb-1 tracking-normal flex items-center">
-                <img src="/logo.png" alt="AR Logo" className="h-10 w-10 mr-2 object-contain" />
-                ZONE
+              <span className="ar-zone-logo text-3xl pb-1 tracking-normal">
+                AR ZONE
               </span>
             </h1>
           </div>
@@ -427,8 +431,8 @@ export default function App() {
         <div className="flex-1 overflow-auto bg-[#020503] text-slate-200">
           
           {/* Alert Banner */}
-          <div className="bg-gradient-to-r from-[#00ff88]/10 to-[#020503] border-b border-[#00ff88]/20 text-slate-200 px-4 py-3 flex items-center shadow-sm">
-            <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 flex-shrink-0 border border-[#00ff88]/30">
+          <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border-b border-[#00ff88]/20 text-slate-200 px-4 py-3 flex items-center shadow-sm">
+            <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
             </div>
             <div className="text-sm font-medium overflow-hidden text-ellipsis whitespace-nowrap animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
@@ -520,18 +524,28 @@ export default function App() {
           )}
 
           {currentView === 'live_matches' && (
-            <LiveMatches onViewReport={() => setCurrentView('live_report')} />
+            <LiveMatches onViewReport={(match) => {
+              setSelectedMatch(match);
+              setCurrentView('live_report');
+            }} />
           )}
 
           {currentView === 'live_report' && (
             <LiveMatchReport 
+              matchData={selectedMatch}
               onNavigateBack={() => setCurrentView('live_matches')}
               onGoToDashboard={() => setCurrentView('dashboard')}
             />
           )}
 
           {currentView === 'completed_matches' && (
-            <CompletedMatches />
+            <CompletedMatches 
+              title="Completed Matches" 
+              subTitle="All Matches" 
+              breadcrumb="Matches" 
+              hideCreate={true}
+              hideActions={true}
+            />
           )}
 
           {currentView === 'live_casino' && (
@@ -550,14 +564,27 @@ export default function App() {
                onBack={() => setCurrentView('live_casino')}
              />
           )}
+
+          {currentView === 'royal_casino' && (
+            <RoyalCasino onOpenReport={() => setCurrentView('royal_casino_report')} />
+          )}
+
+          {currentView === 'royal_casino_report' && (
+            <RoyalCasinoReport />
+          )}
+
+          {currentView === 'check_casino_result' && (
+            <CheckCasinoResult />
+          )}
+
+          {currentView === 'block_market' && (
+            <BlockMarket />
+          )}
           
           {/* Footer */}
           <footer className="mt-8 border-t border-[#00ff88]/20 bg-[#05100a] py-6 px-4 lg:px-8 text-xs font-medium tracking-wide text-slate-500 flex flex-col sm:flex-row justify-between items-center font-exo">
             <div>
-              <span className="ar-zone-logo text-lg flex items-center inline-flex">
-                <img src="/logo.png" alt="AR Logo" className="h-6 w-6 mr-1.5 object-contain" />
-                ZONE
-              </span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-[#f0b429] font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021-2026
+              <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-[#f0b429] font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021-2026
             </div>
             <div className="mt-2 sm:mt-0 font-orbitron text-[#00ff88]">
               Admin Panel <span className="font-bold">v2.0.0</span>

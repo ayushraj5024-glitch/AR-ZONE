@@ -74,11 +74,11 @@ export default function Login({ onLogin }: LoginProps) {
 
     const resizeCanvas = () => {
        if (containerRef.current) {
-          canvas.width = containerRef.current.clientWidth;
-          canvas.height = containerRef.current.clientHeight;
+          canvas!.width = containerRef.current.clientWidth;
+          canvas!.height = containerRef.current.clientHeight;
        } else {
-         canvas.width = window.innerWidth;
-         canvas.height = window.innerHeight;
+         canvas!.width = window.innerWidth;
+         canvas!.height = window.innerHeight;
        }
     };
 
@@ -94,8 +94,8 @@ export default function Login({ onLogin }: LoginProps) {
       color: string;
 
       constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
+        this.x = Math.random() * canvas!.width;
+        this.y = Math.random() * canvas!.height;
         this.vx = (Math.random() - 0.5) * 1.5;
         this.vy = (Math.random() - 0.5) * 1.5;
         this.radius = Math.random() * 2 + 1;
@@ -106,8 +106,8 @@ export default function Login({ onLogin }: LoginProps) {
         this.x += this.vx;
         this.y += this.vy;
 
-        if (this.x < 0 || this.x > canvas.width) this.vx = -this.vx;
-        if (this.y < 0 || this.y > canvas.height) this.vy = -this.vy;
+        if (this.x < 0 || this.x > canvas!.width) this.vx = -this.vx;
+        if (this.y < 0 || this.y > canvas!.height) this.vy = -this.vy;
       }
 
       draw() {
@@ -133,7 +133,7 @@ export default function Login({ onLogin }: LoginProps) {
 
     const animate = () => {
       if (!ctx) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas!.width, canvas!.height);
 
       for (let i = 0; i < particles.length; i++) {
         particles[i].update();
@@ -208,15 +208,15 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-[100dvh] bg-[#05100a] text-slate-200 flex items-center justify-center p-4 lg:p-12 overflow-hidden font-exo touch-none overscroll-none" style={{ '--gold': '#f0b429', '--gold2': '#ffda6a', '--green': '#00ff88', '--green2': '#00cc6a', '--blue': '#00aaff', '--red': '#ff3355' } as React.CSSProperties}>
+    <div ref={containerRef} className="fixed inset-0 w-full h-dvh bg-[#05100a] text-slate-200 flex items-center justify-center p-4 lg:p-12 overflow-hidden font-exo touch-none overscroll-none" style={{ '--gold': '#f0b429', '--gold2': '#ffda6a', '--green': '#00ff88', '--green2': '#00cc6a', '--blue': '#00aaff', '--red': '#ff3355' } as React.CSSProperties}>
       <style>{LoginStyles}</style>
 
       {/* Background Elements */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <canvas ref={canvasRef} className="absolute inset-0 z-0" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,136,0.03)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-[#00ff88]/5 rounded-full blur-[150px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-[#f0b429]/5 rounded-full blur-[150px]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,136,0.03)_1px,transparent_1px)] bg-size-[40px_40px]"></div>
+        <div className="absolute top-1/4 left-1/4 w-150 h-150 bg-[#00ff88]/5 rounded-full blur-[150px]"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-125 h-125 bg-[#f0b429]/5 rounded-full blur-[150px]"></div>
         <div className="absolute inset-0 crt-scanlines z-10"></div>
         {/* Corner brackets */}
         <div className="fixed inset-4 z-10 pointer-events-none">
@@ -245,21 +245,21 @@ export default function Login({ onLogin }: LoginProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
             <div className="flex flex-col">
-              <div className="w-10 h-10 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(0,255,136,0.15)] flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(0,255,136,0.15)] shrink-0">
                 <ShieldCheck className="text-[#00ff88]" size={20} />
               </div>
               <h4 className="font-semibold text-white text-base font-orbitron tracking-wide">Secure</h4>
               <p className="text-xs text-slate-400 mt-1">Advanced 2FA security</p>
             </div>
             <div className="flex flex-col">
-              <div className="w-10 h-10 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(0,255,136,0.15)] flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(0,255,136,0.15)] shrink-0">
                 <Gauge className="text-[#f0b429]" size={20} />
               </div>
               <h4 className="font-semibold text-white text-base font-orbitron tracking-wide">Fast</h4>
               <p className="text-xs text-slate-400 mt-1">API level performance</p>
             </div>
             <div className="flex flex-col">
-              <div className="w-10 h-10 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(0,255,136,0.15)] flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(0,255,136,0.15)] shrink-0">
                 <TrendingUp className="text-[#00ff88]" size={20} />
               </div>
               <h4 className="font-semibold text-white text-base font-orbitron tracking-wide">Reliable</h4>
@@ -269,9 +269,9 @@ export default function Login({ onLogin }: LoginProps) {
         </div>
 
         {/* Right Column (Login Card) */}
-        <div className="w-full max-w-[380px] lg:w-[400px] shrink-0">
+        <div className="w-full max-w-95 lg:w-100 shrink-0">
           <div className="bg-[rgba(255,255,255,0.02)] backdrop-blur-xl border border-[#00ff88]/20 rounded-2xl shadow-[0_0_50px_rgba(0,255,136,0.05)] p-5 sm:p-6 relative overflow-hidden group hover:border-[#00ff88]/40 transition-colors">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
             
             <div className="flex flex-col items-center mb-5 mt-1 text-center">
               <h1 className="ar-zone-logo text-3xl sm:text-4xl mb-3">AR ZONE</h1>

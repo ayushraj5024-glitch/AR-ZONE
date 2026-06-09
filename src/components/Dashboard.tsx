@@ -88,11 +88,11 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
     const resizeCanvas = () => {
        if (containerRef.current) {
-          canvas.width = containerRef.current.clientWidth;
-          canvas.height = containerRef.current.clientHeight;
+          canvas!.width = containerRef.current.clientWidth;
+          canvas!.height = containerRef.current.clientHeight;
        } else {
-         canvas.width = window.innerWidth;
-         canvas.height = window.innerHeight;
+         canvas!.width = window.innerWidth;
+         canvas!.height = window.innerHeight;
        }
     };
 
@@ -108,8 +108,8 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
       color: string;
 
       constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
+        this.x = Math.random() * canvas!.width;
+        this.y = Math.random() * canvas!.height;
         this.vx = (Math.random() - 0.5) * 1.5;
         this.vy = (Math.random() - 0.5) * 1.5;
         this.radius = Math.random() * 2 + 1;
@@ -120,8 +120,8 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
         this.x += this.vx;
         this.y += this.vy;
 
-        if (this.x < 0 || this.x > canvas.width) this.vx = -this.vx;
-        if (this.y < 0 || this.y > canvas.height) this.vy = -this.vy;
+        if (this.x < 0 || this.x > canvas!.width) this.vx = -this.vx;
+        if (this.y < 0 || this.y > canvas!.height) this.vy = -this.vy;
       }
 
       draw() {
@@ -147,7 +147,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
     const animate = () => {
       if (!ctx) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas!.width, canvas!.height);
 
       for (let i = 0; i < particles.length; i++) {
         particles[i].update();
@@ -187,9 +187,9 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
       {/* Background Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <canvas ref={canvasRef} className="absolute inset-0 z-0" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,136,0.03)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-[#00ff88]/5 rounded-full blur-[150px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-[#f0b429]/5 rounded-full blur-[150px]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,136,0.03)_1px,transparent_1px)] bg-size-[40px_40px]"></div>
+        <div className="absolute top-1/4 left-1/4 w-150 h-150 bg-[#00ff88]/5 rounded-full blur-[150px]"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-125 h-125 bg-[#f0b429]/5 rounded-full blur-[150px]"></div>
         <div className="absolute inset-0 crt-scanlines z-10"></div>
         {/* Corner brackets */}
         <div className="fixed inset-4 z-10 pointer-events-none">
@@ -229,8 +229,8 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
         {/* Alert Marquee */}
         <div className="bg-[#00ff88]/5 border-b border-[#00ff88]/20 overflow-hidden flex items-center relative h-10 shadow-[inset_0_0_20px_rgba(0,255,136,0.02)] sm:hidden md:flex">
-          <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#05100a] to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#05100a] to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-16 bg-linear-to-r from-[#05100a] to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-32 bg-linear-to-l from-[#05100a] to-transparent z-10 pointer-events-none"></div>
           
           <div className="whitespace-nowrap text-[#00ff88] text-sm font-exo flex items-center gap-8 pl-4" style={{ animation: 'marquee 25s linear infinite' }}>
              <span className="w-2 h-2 rounded-full bg-[#00ff88] shadow-[0_0_8px_rgba(0,255,136,1)] animate-pulse"></span>
@@ -312,103 +312,103 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               
               {/* Row 1 */}
-              <div className="bg-[var(--card-bg)] border border-[var(--gold)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.3s' }}>
+              <div className="bg-(--card-bg) border border-(--gold) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.3s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Username</h3>
-                 <div className="text-[var(--gold)] font-orbitron text-3xl font-bold tracking-wider mb-2">ADMIN</div>
+                 <div className="text-(--gold) font-orbitron text-3xl font-bold tracking-wider mb-2">ADMIN</div>
                  <div className="text-slate-300 text-sm font-exo mb-3">System Level Access</div>
-                 <div className="inline-block px-2.5 py-1 rounded border border-[var(--gold)]/40 bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold font-exo tracking-widest">MASTER</div>
+                 <div className="inline-block px-2.5 py-1 rounded border border-(--gold)/40 bg-(--gold)/10 text-(--gold) text-xs font-bold font-exo tracking-widest">MASTER</div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.4s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.4s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Level</h3>
                  <div className="text-white font-bobbaluna text-3xl tracking-wider mb-2 leading-tight mt-1">SYSTEM ADMIN</div>
-                 <div className="inline-block px-2.5 py-1 rounded border border-[var(--green)]/40 bg-[var(--green)]/10 text-[var(--green)] text-xs font-bold font-exo tracking-widest mt-1">TOP TIER</div>
+                 <div className="inline-block px-2.5 py-1 rounded border border-(--green)/40 bg-(--green)/10 text-(--green) text-xs font-bold font-exo tracking-widest mt-1">TOP TIER</div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.5s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.5s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Fix Limit</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">1,000</div>
-                 <div className="text-[var(--green)] text-sm font-exo mt-3">Active Limit</div>
+                 <div className="text-(--green) text-sm font-exo mt-3">Active Limit</div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.6s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.6s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Company Contact</h3>
                  <div className="text-white font-orbitron text-2xl font-bold tracking-wider mb-3 mt-1">SC211607</div>
-                 <div className="inline-block px-2.5 py-1 rounded border border-[var(--green)]/40 bg-[var(--green)]/10 text-[var(--green)] text-xs font-bold font-exo tracking-widest mt-1">VERIFIED</div>
+                 <div className="inline-block px-2.5 py-1 rounded border border-(--green)/40 bg-(--green)/10 text-(--green) text-xs font-bold font-exo tracking-widest mt-1">VERIFIED</div>
               </div>
 
               {/* Row 2 */}
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3 leading-relaxed">Maximum My<br/>Share</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">50.0%</div>
                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-[var(--blue)] to-[var(--green)] w-1/2"></div>
+                    <div className="h-full bg-linear-to-r from-(--blue) to-(--green) w-1/2"></div>
                  </div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3 leading-relaxed">Minimum Company<br/>Share</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">50%</div>
                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-[var(--gold)] w-1/2 shadow-[0_0_10px_var(--gold)]"></div>
+                    <div className="h-full bg-(--gold) w-1/2 shadow-[0_0_10px_var(--gold)]"></div>
                  </div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-4 leading-relaxed">Match<br/>Commission</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">3</div>
-                 <div className="text-[var(--green)] text-sm font-exo mt-3">Per Transaction</div>
+                 <div className="text-(--green) text-sm font-exo mt-3">Per Transaction</div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-[3px] transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-4 leading-relaxed">Session<br/>Commission</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">3</div>
-                 <div className="text-[var(--green)] text-sm font-exo mt-3">Per Session</div>
+                 <div className="text-(--green) text-sm font-exo mt-3">Per Session</div>
               </div>
            </div>
 
            {/* Live Stats Row */}
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeUp" style={{ animationDelay: '0.8s' }}>
               
-              <div className="bg-[var(--card-bg)] border-x border-t border-[var(--card-border)] live-stat-card rounded-t-[14px] rounded-b-[4px] p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-[2px] transition-all backdrop-blur-md">
+              <div className="bg-(--card-bg) border-x border-t border-(--card-border) live-stat-card rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Active Sessions</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{sessions.toLocaleString()}</div>
-                 <div className="text-[var(--green)] text-sm font-exo font-semibold flex items-center gap-1">↑ +12 live</div>
+                 <div className="text-(--green) text-sm font-exo font-semibold flex items-center gap-1">↑ +12 live</div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border-x border-t border-[var(--card-border)] live-stat-card rounded-t-[14px] rounded-b-[4px] p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-[2px] transition-all backdrop-blur-md">
+              <div className="bg-(--card-bg) border-x border-t border-(--card-border) live-stat-card rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Today's Transactions</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{transactions.toLocaleString()}</div>
-                 <div className="text-[var(--green)] text-sm font-exo font-semibold flex items-center gap-1">↑ +8.4%</div>
+                 <div className="text-(--green) text-sm font-exo font-semibold flex items-center gap-1">↑ +8.4%</div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border-x border-t border-[rgba(255,51,85,0.3)] border-b-2 border-b-[var(--red)] shadow-[0_4px_15px_rgba(255,51,85,0.1)] rounded-t-[14px] rounded-b-[4px] p-6 hover:shadow-[0_0_25px_rgba(255,51,85,0.2)] hover:-translate-y-[2px] transition-all backdrop-blur-md">
+              <div className="bg-(--card-bg) border-x border-t border-[rgba(255,51,85,0.3)] border-b-2 border-b-(--red) shadow-[0_4px_15px_rgba(255,51,85,0.1)] rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(255,51,85,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Blocked Attempts</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{blocked.toLocaleString()}</div>
-                 <div className="text-[var(--red)] text-sm font-exo font-semibold flex items-center gap-1">
+                 <div className="text-(--red) text-sm font-exo font-semibold flex items-center gap-1">
                    <AlertTriangle size={14} className="mb-0.5" />
                    Monitored
                  </div>
               </div>
 
-              <div className="bg-[var(--card-bg)] border-x border-t border-[var(--card-border)] live-stat-card rounded-t-[14px] rounded-b-[4px] p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-[2px] transition-all backdrop-blur-md">
+              <div className="bg-(--card-bg) border-x border-t border-(--card-border) live-stat-card rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Uptime</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">99.9%</div>
-                 <div className="text-[var(--green)] text-sm font-exo font-semibold flex items-center gap-1">↑ Stable</div>
+                 <div className="text-(--green) text-sm font-exo font-semibold flex items-center gap-1">↑ Stable</div>
               </div>
 
            </div>
         </div>
 
         {/* Footer */}
-        <footer className="mt-auto px-6 py-4 border-t border-[var(--green)]/40 bg-[#05100a]/95 backdrop-blur flex flex-wrap max-md:flex-col items-center justify-between gap-4 z-20">
+        <footer className="mt-auto px-6 py-4 border-t border-(--green)/40 bg-[#05100a]/95 backdrop-blur flex flex-wrap max-md:flex-col items-center justify-between gap-4 z-20">
            <div className="text-slate-400 text-xs font-exo font-medium tracking-wider">
-             <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-[var(--gold)] font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021–2026
+             <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-(--gold) font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021–2026
            </div>
            
            <div className="flex items-center gap-4">
               <span className="text-slate-400 text-xs font-exo font-medium tracking-wider">Admin Panel v2.0.0</span>
-              <div className="px-3 py-1 rounded bg-[var(--green)]/10 border border-[var(--green)]/30 text-[var(--green)] text-[10px] font-bold font-exo tracking-widest uppercase">
+              <div className="px-3 py-1 rounded bg-(--green)/10 border border-(--green)/30 text-(--green) text-[10px] font-bold font-exo tracking-widest uppercase">
                 SECURE BUILD
               </div>
            </div>

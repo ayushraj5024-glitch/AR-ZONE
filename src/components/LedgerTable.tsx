@@ -34,20 +34,20 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
         {title === 'Agent' ? (
           <div className="p-4 bg-[#020503]/50 border-b border-[#00ff88]/20 flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <input type="date" defaultValue="2026-06-03" className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a]" />
-              <input type="date" defaultValue="2026-06-05" className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a]" />
+              <input type="date" defaultValue="2026-06-03" className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] text-slate-300 scheme-dark [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer" />
+              <input type="date" defaultValue="2026-06-05" className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] text-slate-300 scheme-dark [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer" />
             </div>
-            <button onClick={handleSearch} disabled={isSearching} className="bg-[#60999b] hover:bg-[#4d7a7c] text-white px-4 py-1.5 rounded text-sm font-medium transition-colors min-w-[80px] flex justify-center items-center">
+            <button onClick={handleSearch} disabled={isSearching} className="bg-[#60999b] hover:bg-[#4d7a7c] text-white px-4 py-1.5 rounded text-sm font-medium transition-colors min-w-20 flex justify-center items-center">
               {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
             </button>
           </div>
         ) : (
           <div className="p-4 bg-[#020503]/50 border-b border-[#00ff88]/20 flex items-center space-x-4">
              <div className="relative">
-              <input type="text" placeholder="Search..." className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] w-48" />
+              <input type="text" placeholder="Search..." className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] w-48 text-slate-300" />
              </div>
-             <input type="date" className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a]" />
-            <button onClick={handleSearch} disabled={isSearching} className="bg-[#60999b] hover:bg-[#4d7a7c] text-white px-4 py-1.5 rounded text-sm font-medium transition-colors min-w-[80px] flex justify-center items-center">
+             <input type="date" className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] text-slate-300 scheme-dark [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer" />
+            <button onClick={handleSearch} disabled={isSearching} className="bg-[#60999b] hover:bg-[#4d7a7c] text-white px-4 py-1.5 rounded text-sm font-medium transition-colors min-w-20 flex justify-center items-center">
               {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
             </button>
           </div>
@@ -58,7 +58,7 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
           <Wrench size={14} className="text-white/70" />
         </div>
         
-        <div className="overflow-x-auto min-h-[200px]">
+        <div className="overflow-x-auto min-h-50">
           <table className="w-full text-sm text-left text-slate-200">
             <thead className="text-xs text-slate-200 uppercase bg-[#00ff88]/5/50 border-b border-[#00ff88]/20">
               {title === 'Agent' ? (

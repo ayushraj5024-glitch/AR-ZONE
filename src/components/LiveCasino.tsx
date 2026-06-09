@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Gamepad2, ChevronRight, PlayCircle, Star } from "lucide-react";
+import { Gamepad2, ChevronRight, PlayCircle, Star, Ban, Loader2 } from "lucide-react";
+import { useMarketStatus } from "../hooks/useMarketStatus";
 
 interface Game {
   id: string;
@@ -71,9 +72,30 @@ export default function LiveCasino({
   onSelectGame: (id: string, name: string) => void;
 }) {
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
+  const { status, loading } = useMarketStatus();
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-125">
+        <Loader2 className="w-8 h-8 animate-spin text-[#00ff88]" />
+      </div>
+    );
+  }
+
+  if (!status.liveCasino) {
+    return (
+      <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans pb-16">
+        <div className="flex flex-col items-center justify-center p-12 bg-[#05100a] border border-red-500/20 rounded-2xl text-center space-y-4">
+          <Ban className="w-16 h-16 text-red-500" />
+          <h2 className="text-2xl font-bold text-white">Live Casino is Currently Suspended</h2>
+          <p className="text-slate-400">This market has been blocked by the administrator. Please check back later.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 lg:p-8 max-w-[1400px] mx-auto space-y-6 font-sans pb-16">
+    <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans pb-16">
       {/* Header & Breadcrumbs */}
       <div>
         <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
@@ -99,13 +121,13 @@ export default function LiveCasino({
             onClick={() => onSelectGame(game.id, game.title)}
           >
             {/* Image container with gradient overlay */}
-            <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-900 border-b border-[#00ff88]/20">
+            <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-900 border-b border-[#00ff88]/20">
               <img
                 src={game.image}
                 alt={game.title}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#05100a] via-transparent to-transparent"></div>
+              <div className="absolute inset-0 bg-linear-to-t from-[#05100a] via-transparent to-transparent"></div>
 
               {/* Play button overlay */}
               <div

@@ -68,7 +68,7 @@ export default function CreateStockist({ onCancel, onSave }: CreateStockistProps
             </FormRow>
             
             <FormRow label="Fix Limit" note="Fix Limit can be set from 0 to 1000.00">
-              <input type="number" defaultValue="0" className="form-input" value={fixLimit} onChange={e => setFixLimit(e.target.value)} />
+              <input type="number" className="form-input" value={fixLimit} onChange={e => setFixLimit(e.target.value)} />
             </FormRow>
             
             <FormRow label="My Match Share" note="My Match Share can be set from 0 to 50.0">
@@ -76,7 +76,7 @@ export default function CreateStockist({ onCancel, onSave }: CreateStockistProps
             </FormRow>
             
             <FormRow label="Stockist Match Share" note="Stockist Match Share can be set from 0 to 50.0">
-              <input type="number" defaultValue="0" className="form-input" value={maxShare} onChange={e => setMaxShare(e.target.value)} />
+              <input type="number" className="form-input" value={maxShare} onChange={e => setMaxShare(e.target.value)} />
             </FormRow>
             
             <FormRow label="Stockist Match Commission" note="Match Commission can be set from 0 to 3">
@@ -107,7 +107,7 @@ export default function CreateStockist({ onCancel, onSave }: CreateStockistProps
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-[#60999b] text-white rounded hover:bg-[#4d7a7c] transition-colors text-sm font-medium flex items-center justify-center min-w-[120px] gap-2"
+                className="px-4 py-2 bg-[#60999b] text-white rounded hover:bg-[#4d7a7c] transition-colors text-sm font-medium flex items-center justify-center min-w-30 gap-2"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
               </button>

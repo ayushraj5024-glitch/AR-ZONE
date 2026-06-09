@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Ban, Loader2 } from 'lucide-react';
+import { useMarketStatus } from '../hooks/useMarketStatus';
 
 type MatchType = 'inplay' | 'upcoming';
 type SportType = 'cricket' | 'tennis' | 'soccer';
@@ -27,8 +29,9 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
   const [matchType, setMatchType] = useState<MatchType>('inplay');
   const [sportType, setSportType] = useState<SportType>('cricket');
   const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [localLoading, setLocalLoading] = useState<boolean>(true);
   const [apiError, setApiError] = useState<string | null>(null);
+  const { status, loading: marketLoading } = useMarketStatus();
 
   // Initial Mock data based on the full list provided
   const initialMockMatches: Match[] = [
@@ -90,7 +93,7 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
   // Fetch from the backend proxy
   React.useEffect(() => {
     const fetchLiveMatches = async () => {
-      setLoading(true);
+      setLocalLoading(true);
       try {
         const response = await fetch('/api/live-matches');
         const data = await response.json();
@@ -129,7 +132,7 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
         setApiError("Network error. Falling back to mock data.");
         setMatches(initialMockMatches);
       } finally {
-        setLoading(false);
+        setLocalLoading(false);
       }
     };
     
@@ -148,6 +151,9 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
         return !m.liveReportUrl && m.status !== 'Live' && !m.status?.toLowerCase().includes('started');
       }
     });
+
+  const isCurrentMarketBlocked = !status[sportType];
+
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -228,64 +234,80 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
 
           {/* Data Table */}
           <div className="overflow-x-auto border border-[#00ff88]/20 rounded mt-4">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-[#020503] text-slate-300 text-xs uppercase border-b border-[#00ff88]/20">
-                <tr>
-                  <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">ID</th>
-                  <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">PID</th>
-                  <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">Title</th>
-                  <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">Sport</th>
-                  <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">DATE</th>
-                  <th className="px-4 py-3 font-semibold text-center">Profit / Loss</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#00ff88]/20">
-                {loading ? (
+            {marketLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[#00ff88]" />
+              </div>
+            ) : isCurrentMarketBlocked ? (
+              <div className="flex flex-col items-center justify-center p-12 bg-[#05100a] text-center space-y-4">
+                <Ban className="w-16 h-16 text-red-500" />
+                <h2 className="text-2xl font-bold text-white tracking-wide">
+                  {sportType.charAt(0).toUpperCase() + sportType.slice(1)} Market is Suspended
+                </h2>
+                <p className="text-slate-400">
+                  This market has been blocked by the administrator. Matches are not available right now.
+                </p>
+              </div>
+            ) : (
+              <table className="w-full text-sm text-left">
+                <thead className="bg-[#020503] text-slate-300 text-xs uppercase border-b border-[#00ff88]/20">
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
-                      <div className="flex flex-col items-center justify-center">
-                        <svg className="animate-spin h-6 w-6 text-[#00ff88] mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Connecting to Live Score API...</span>
-                      </div>
-                    </td>
+                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">ID</th>
+                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">PID</th>
+                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">Title</th>
+                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">Sport</th>
+                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">DATE</th>
+                    <th className="px-4 py-3 font-semibold text-center">Profit / Loss</th>
                   </tr>
-                ) : filteredMatches.length > 0 ? (
-                  filteredMatches.map((match, idx) => (
-                    <tr key={idx} className="hover:bg-[#020503]/50 transition-colors">
-                      <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.id}</td>
-                      <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.pid}</td>
-                      <td className="px-4 py-3 font-medium text-[#00ff88] hover:text-blue-700 cursor-pointer border-r border-[#00ff88]/20">
-                        {match.title}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20">{match.sport}</td>
-                      <td className="px-4 py-3 text-slate-300 flex items-center space-x-1 border-r border-[#00ff88]/20">
-                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>{match.date}</span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {match.liveReportUrl && (
-                          <button
-                            onClick={() => onViewReport?.(match)}
-                            className="inline-block px-3 py-1.5 bg-[#62a2a3] text-white text-xs font-semibold rounded hover:bg-[#4d8687] transition-colors shadow-sm cursor-pointer border-none"
-                          >
-                            LiveReport
-                          </button>
-                        )}
+                </thead>
+                <tbody className="divide-y divide-[#00ff88]/20">
+                  {localLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center">
+                          <svg className="animate-spin h-6 w-6 text-[#00ff88] mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Connecting to Live Score API...</span>
+                        </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                      No matches found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ) : filteredMatches.length > 0 ? (
+                    filteredMatches.map((match, idx) => (
+                      <tr key={idx} className="hover:bg-[#020503]/50 transition-colors">
+                        <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.id}</td>
+                        <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.pid}</td>
+                        <td className="px-4 py-3 font-medium text-[#00ff88] hover:text-blue-700 cursor-pointer border-r border-[#00ff88]/20">
+                          {match.title}
+                        </td>
+                        <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20">{match.sport}</td>
+                        <td className="px-4 py-3 text-slate-300 flex items-center space-x-1 border-r border-[#00ff88]/20">
+                          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          <span>{match.date}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {match.liveReportUrl && (
+                            <button
+                              onClick={() => onViewReport?.(match)}
+                              className="inline-block px-3 py-1.5 bg-[#62a2a3] text-white text-xs font-semibold rounded hover:bg-[#4d8687] transition-colors shadow-sm cursor-pointer border-none"
+                            >
+                              LiveReport
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                        No matches found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
