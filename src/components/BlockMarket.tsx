@@ -90,12 +90,15 @@ export default function BlockMarket() {
                     {sport.name} is {sport.isOn ? 'ON' : 'OFF'}
                   </td>
                   <td className="px-4 py-3">
-                    <input 
-                      type="checkbox"
-                      checked={sport.isOn}
-                      onChange={() => toggleStatus(sport.key, sport.isOn)}
-                      className="w-4 h-4 rounded border-gray-600 text-[#1e90ff] focus:ring-[#1e90ff] focus:ring-offset-[#05100a] bg-[#05100a] cursor-pointer accent-[#1e90ff]"
-                    />
+                    <button
+                      onClick={() => toggleStatus(sport.key, sport.isOn)}
+                      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${sport.isOn ? 'bg-[#00ff88]' : 'bg-gray-600'}`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${sport.isOn ? 'translate-x-5.5' : 'translate-x-1'}`}
+                        style={{ transform: sport.isOn ? 'translateX(22px)' : 'translateX(4px)' }}
+                      />
+                    </button>
                   </td>
                 </tr>
               ))}
