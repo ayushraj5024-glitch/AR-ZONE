@@ -29,7 +29,8 @@ import {
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import AgentsTable from './components/AgentsTable';
 import CreateAgent from './components/CreateAgent';
 import CreateStockist from './components/CreateStockist';
@@ -65,6 +66,7 @@ export type AgentData = {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'client'>('client');
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -78,6 +80,8 @@ export default function App() {
 
   const [stockists, setStockists] = useState<AgentData[]>([]);
 
+  const isAdminPath = window.location.pathname === '/admin5024';
+
   const handleNavClick = (view?: ViewType) => {
     if (view) setCurrentView(view);
     if (window.innerWidth < 768) {
@@ -86,11 +90,39 @@ export default function App() {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsAuthenticated(true);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          let resolvedRole = 'client';
+          if (userDoc.exists()) {
+             resolvedRole = userDoc.data().role || 'client';
+          } else {
+             // Default to admin if no user document exists (e.g. initial super admin)
+             // Consider removing this in production or securing it properly
+             resolvedRole = 'admin';
+          }
+          
+          if (isAdminPath && resolvedRole === 'client') {
+            alert("Unauthorized: Clients cannot access the admin portal.");
+            await signOut(auth);
+            return; // Exit early, will trigger auth state change again
+          }
+          
+          setUserRole(resolvedRole as any);
+
+        } catch (e: any) {
+          if (e.code === 'permission-denied') {
+            console.warn("Permission denied fetching user role. Ensure Firestore rules allow reading users collection.");
+          } else {
+            console.error("Error fetching role:", e);
+          }
+          setUserRole('client');
+        }
       } else {
         setIsAuthenticated(false);
+        setUserRole('client');
       }
       setIsLoadingAuth(false);
     });
@@ -136,7 +168,7 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
+    return <Login onLogin={() => setIsAuthenticated(true)} isAdminPath={isAdminPath} />;
   }
 
   return (
@@ -162,8 +194,12 @@ export default function App() {
           )}
           {isSidebarOpen && (
             <div className="flex flex-col justify-center w-full pr-2 relative z-10">
-              <span className="font-bobbaluna text-white text-[20px] uppercase tracking-wider whitespace-nowrap leading-none py-1 drop-shadow-[0_2px_4px_rgba(0,255,136,0.3)] mt-1">SYSTEM ADMIN</span>
-              <span className="text-[11px] text-[#00ff88] font-medium tracking-wide drop-shadow-md">Master Account</span>
+              <span className="font-bobbaluna text-white text-[20px] uppercase tracking-wider whitespace-nowrap leading-none py-1 drop-shadow-[0_2px_4px_rgba(0,255,136,0.3)] mt-1">
+                {userRole === 'admin' ? 'SYSTEM ADMIN' : 'CLIENT PORTAL'}
+              </span>
+              <span className="text-[11px] text-[#00ff88] font-medium tracking-wide drop-shadow-md">
+                {userRole === 'admin' ? 'Master Account' : 'Welcome'}
+              </span>
             </div>
           )}
           <button
@@ -184,52 +220,56 @@ export default function App() {
           />
           
           <div className="space-y-1">
-            <div 
-              onClick={() => {
-                setIsManageExpanded(!isManageExpanded);
-                if (!isSidebarOpen) setSidebarOpen(true);
-              }}
-              className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
-                (currentView === 'stockists' || currentView === 'agent' || currentView === 'create_agent' || currentView === 'create_stockist') 
-                  ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
-                  : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`${(currentView === 'stockists' || currentView === 'agent' || currentView === 'create_agent' || currentView === 'create_stockist') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
-                  <Users size={20} />
-                </div>
-                {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage</span>}
-              </div>
-              {isSidebarOpen && (
-                isManageExpanded ? 
-                  <ChevronDown size={16} className="text-[#00ff88]" /> : 
-                  <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
-              )}
-            </div>
-            
-            {/* Manage Dropdown Items */}
-            {isSidebarOpen && isManageExpanded && (
-              <div className="pl-9 pr-2 space-y-1 py-1">
+            {userRole === 'admin' && (
+              <>
                 <div 
-                  onClick={() => handleNavClick('stockists')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    (currentView === 'stockists' || currentView === 'create_stockist') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                  onClick={() => {
+                    setIsManageExpanded(!isManageExpanded);
+                    if (!isSidebarOpen) setSidebarOpen(true);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
+                    (currentView === 'stockists' || currentView === 'agent' || currentView === 'create_agent' || currentView === 'create_stockist') 
+                      ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
+                      : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
                   }`}
                 >
-                  <Users size={16} />
-                  <span>Stockists</span>
+                  <div className="flex items-center space-x-3">
+                    <div className={`${(currentView === 'stockists' || currentView === 'agent' || currentView === 'create_agent' || currentView === 'create_stockist') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
+                      <Users size={20} />
+                    </div>
+                    {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage</span>}
+                  </div>
+                  {isSidebarOpen && (
+                    isManageExpanded ? 
+                      <ChevronDown size={16} className="text-[#00ff88]" /> : 
+                      <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
+                  )}
                 </div>
-                <div 
-                  onClick={() => handleNavClick('agent')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    (currentView === 'agent' || currentView === 'create_agent') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
-                  }`}
-                >
-                  <Users size={16} />
-                  <span>Agent</span>
-                </div>
-              </div>
+                
+                {/* Manage Dropdown Items */}
+                {isSidebarOpen && isManageExpanded && (
+                  <div className="pl-9 pr-2 space-y-1 py-1">
+                    <div 
+                      onClick={() => handleNavClick('stockists')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        (currentView === 'stockists' || currentView === 'create_stockist') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <Users size={16} />
+                      <span>Stockists</span>
+                    </div>
+                    <div 
+                      onClick={() => handleNavClick('agent')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        (currentView === 'agent' || currentView === 'create_agent') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <Users size={16} />
+                      <span>Agent</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
           
@@ -238,65 +278,71 @@ export default function App() {
           <NavItem icon={<Gamepad2 size={20} />} label="Live Casino" isOpen={isSidebarOpen} active={currentView === 'live_casino' || currentView === 'casino_game'} onClick={() => handleNavClick('live_casino')} />
           <NavItem icon={<Crown size={20} />} label="Royal Casino" isOpen={isSidebarOpen} active={currentView === 'royal_casino' || currentView === 'royal_casino_report'} onClick={() => handleNavClick('royal_casino')} />
           <NavItem icon={<ClipboardList size={20} />} label="Check Casino Result" isOpen={isSidebarOpen} active={currentView === 'check_casino_result'} onClick={() => handleNavClick('check_casino_result')} />
-          <NavItem icon={<Ban size={20} />} label="Block Market" isOpen={isSidebarOpen} active={currentView === 'block_market'} onClick={() => handleNavClick('block_market')} />
+          {userRole === 'admin' && (
+            <NavItem icon={<Ban size={20} />} label="Block Market" isOpen={isSidebarOpen} active={currentView === 'block_market'} onClick={() => handleNavClick('block_market')} />
+          )}
           
           {/* Manage Clients Dropdown */}
           <div className="space-y-1">
-            <div 
-              onClick={() => {
-                setIsManageClientsExpanded(!isManageClientsExpanded);
-                if (!isSidebarOpen) setSidebarOpen(true);
-              }}
-              className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
-                (currentView === 'my_clients' || currentView === 'blocked_clients' || currentView === 'commission_limits') 
-                  ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
-                  : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`${(currentView === 'my_clients' || currentView === 'blocked_clients' || currentView === 'commission_limits') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
-                  <UserCog size={20} />
-                </div>
-                {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage Clients</span>}
-              </div>
-              {isSidebarOpen && (
-                isManageClientsExpanded ? 
-                  <ChevronDown size={16} className="text-[#00ff88]" /> : 
-                  <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
-              )}
-            </div>
-            
-            {/* Manage Clients Dropdown Items */}
-            {isSidebarOpen && isManageClientsExpanded && (
-              <div className="pl-9 pr-2 space-y-1 py-1">
+            {userRole === 'admin' && (
+              <>
                 <div 
-                  onClick={() => handleNavClick('my_clients')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    currentView === 'my_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                  onClick={() => {
+                    setIsManageClientsExpanded(!isManageClientsExpanded);
+                    if (!isSidebarOpen) setSidebarOpen(true);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
+                    (currentView === 'my_clients' || currentView === 'blocked_clients' || currentView === 'commission_limits') 
+                      ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
+                      : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
                   }`}
                 >
-                  <Users size={16} />
-                  <span>My Clients</span>
+                  <div className="flex items-center space-x-3">
+                    <div className={`${(currentView === 'my_clients' || currentView === 'blocked_clients' || currentView === 'commission_limits') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
+                      <UserCog size={20} />
+                    </div>
+                    {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage Clients</span>}
+                  </div>
+                  {isSidebarOpen && (
+                    isManageClientsExpanded ? 
+                      <ChevronDown size={16} className="text-[#00ff88]" /> : 
+                      <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
+                  )}
                 </div>
-                <div 
-                  onClick={() => handleNavClick('blocked_clients')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    currentView === 'blocked_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
-                  }`}
-                >
-                  <Users size={16} />
-                  <span>Blocked Clients</span>
-                </div>
-                <div 
-                  onClick={() => handleNavClick('commission_limits')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    currentView === 'commission_limits' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
-                  }`}
-                >
-                  <IndianRupee size={16} />
-                  <span>Commission & Limits</span>
-                </div>
-              </div>
+                
+                {/* Manage Clients Dropdown Items */}
+                {isSidebarOpen && isManageClientsExpanded && (
+                  <div className="pl-9 pr-2 space-y-1 py-1">
+                    <div 
+                      onClick={() => handleNavClick('my_clients')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        currentView === 'my_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <Users size={16} />
+                      <span>My Clients</span>
+                    </div>
+                    <div 
+                      onClick={() => handleNavClick('blocked_clients')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        currentView === 'blocked_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <Users size={16} />
+                      <span>Blocked Clients</span>
+                    </div>
+                    <div 
+                      onClick={() => handleNavClick('commission_limits')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        currentView === 'commission_limits' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <IndianRupee size={16} />
+                      <span>Commission & Limits</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
           
@@ -305,70 +351,74 @@ export default function App() {
           
           {/* Manage Ledgers Dropdown */}
           <div className="space-y-1">
-            <div 
-              onClick={() => {
-                setIsManageLedgersExpanded(!isManageLedgersExpanded);
-                if (!isSidebarOpen) setSidebarOpen(true);
-              }}
-              className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
-                (currentView === 'collection_report' || currentView === 'company_ledgers' || currentView === 'my_stmt' || currentView === 'profit_loss') 
-                  ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
-                  : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`${(currentView === 'collection_report' || currentView === 'company_ledgers' || currentView === 'my_stmt' || currentView === 'profit_loss') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
-                  <BookOpen size={20} />
-                </div>
-                {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage Ledgers</span>}
-              </div>
-              {isSidebarOpen && (
-                isManageLedgersExpanded ? 
-                  <ChevronDown size={16} className="text-[#00ff88]" /> : 
-                  <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
-              )}
-            </div>
-            
-            {/* Manage Ledgers Dropdown Items */}
-            {isSidebarOpen && isManageLedgersExpanded && (
-              <div className="pl-9 pr-2 space-y-1 py-1">
+            {userRole === 'admin' && (
+              <>
                 <div 
-                  onClick={() => handleNavClick('collection_report')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    currentView === 'collection_report' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                  onClick={() => {
+                    setIsManageLedgersExpanded(!isManageLedgersExpanded);
+                    if (!isSidebarOpen) setSidebarOpen(true);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
+                    (currentView === 'collection_report' || currentView === 'company_ledgers' || currentView === 'my_stmt' || currentView === 'profit_loss') 
+                      ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
+                      : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
                   }`}
                 >
-                  <BarChart3 size={16} />
-                  <span>Collection Report</span>
+                  <div className="flex items-center space-x-3">
+                    <div className={`${(currentView === 'collection_report' || currentView === 'company_ledgers' || currentView === 'my_stmt' || currentView === 'profit_loss') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
+                      <BookOpen size={20} />
+                    </div>
+                    {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage Ledgers</span>}
+                  </div>
+                  {isSidebarOpen && (
+                    isManageLedgersExpanded ? 
+                      <ChevronDown size={16} className="text-[#00ff88]" /> : 
+                      <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
+                  )}
                 </div>
-                <div 
-                  onClick={() => handleNavClick('company_ledgers')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    currentView === 'company_ledgers' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
-                  }`}
-                >
-                  <BookOpen size={16} />
-                  <span>Company Ledgers</span>
-                </div>
-                <div 
-                  onClick={() => handleNavClick('my_stmt')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    currentView === 'my_stmt' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
-                  }`}
-                >
-                  <BarChart3 size={16} />
-                  <span>My Stmt.</span>
-                </div>
-                <div 
-                  onClick={() => handleNavClick('profit_loss')}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                    currentView === 'profit_loss' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
-                  }`}
-                >
-                  <IndianRupee size={16} />
-                  <span>Profit & Loss</span>
-                </div>
-              </div>
+                
+                {/* Manage Ledgers Dropdown Items */}
+                {isSidebarOpen && isManageLedgersExpanded && (
+                  <div className="pl-9 pr-2 space-y-1 py-1">
+                    <div 
+                      onClick={() => handleNavClick('collection_report')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        currentView === 'collection_report' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <BarChart3 size={16} />
+                      <span>Collection Report</span>
+                    </div>
+                    <div 
+                      onClick={() => handleNavClick('company_ledgers')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        currentView === 'company_ledgers' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <BookOpen size={16} />
+                      <span>Company Ledgers</span>
+                    </div>
+                    <div 
+                      onClick={() => handleNavClick('my_stmt')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        currentView === 'my_stmt' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <BarChart3 size={16} />
+                      <span>My Stmt.</span>
+                    </div>
+                    <div 
+                      onClick={() => handleNavClick('profit_loss')}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
+                        currentView === 'profit_loss' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                      }`}
+                    >
+                      <IndianRupee size={16} />
+                      <span>Profit & Loss</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </nav>

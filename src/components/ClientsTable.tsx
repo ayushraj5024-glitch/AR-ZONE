@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { ChevronUp, ChevronDown, MoreVertical, ShieldAlert, X, ShieldCheck, Lock, Unlock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronUp, ChevronDown, MoreVertical, ShieldAlert, X, ShieldCheck, Lock, Unlock, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { collection, query, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { db, firebaseConfig } from '../firebase';
 
 interface ClientsTableProps {
   title: string;
@@ -11,27 +15,100 @@ interface ClientsTableProps {
 
 export default function ClientsTable({ title, subTitle, breadcrumb, hideActions = false, hideCreate = false }: ClientsTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [selectedUserForManage, setSelectedUserForManage] = useState<any | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [selectedStatement, setSelectedStatement] = useState<any | null>(null);
+  
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [newUser, setNewUser] = useState({ email: '', password: '', name: '', mComm: '2.0%', sComm: '1.5%', share: '10%' });
+  const [showPasswordCreate, setShowPasswordCreate] = useState(false);
+  const [showPasswordProfile, setShowPasswordProfile] = useState(false);
 
-  const [mockData, setMockData] = useState([
-    { id: 101, username: 'user_john', name: 'John Doe', mComm: '2.5%', sComm: '1.0%', share: '10%', status: 'active', autoBlock: true },
-    { id: 102, username: 'alex_trader', name: 'Alex M', mComm: '2.0%', sComm: '1.5%', share: '15%', status: 'suspended', autoBlock: true },
-    { id: 103, username: 'evil_hacker', name: 'Bad Actor', mComm: '0%', sComm: '0%', share: '0%', status: 'blocked', autoBlock: false },
-  ]);
+  const [usersData, setUsersData] = useState<any[]>([]);
 
-  const filteredData = mockData.filter(d => 
-    d.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  useEffect(() => {
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const users: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.role === 'client') {
+          users.push({ id: doc.id, username: data.email, ...data });
+        }
+      });
+      setUsersData(users);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const filteredData = usersData.filter(d => 
+    (d.username && d.username.toLowerCase().includes(searchTerm.toLowerCase())) || 
     (d.name && d.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const toggleMenu = (id: number) => {
+  const toggleMenu = (id: string) => {
     if (activeMenuId === id) setActiveMenuId(null);
     else setActiveMenuId(id);
   };
 
-  const updateStatus = (id: number, field: string, value: any) => {
-    setMockData(data => data.map(u => u.id === id ? { ...u, [field]: value } : u));
+  const updateStatus = async (id: string, field: string, value: any) => {
+    // Optimistic update
+    setUsersData(data => data.map(u => u.id === id ? { ...u, [field]: value } : u));
+    if (selectedUserForManage && selectedUserForManage.id === id) {
+       setSelectedUserForManage({...selectedUserForManage, [field]: value});
+    }
+
+    try {
+      const userRef = doc(db, 'users', id);
+      await updateDoc(userRef, { [field]: value });
+    } catch (error: any) {
+      alert("Error updating user: " + error.message);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    try {
+      const apps = getApps();
+      const secondaryApp = apps.find(app => app.name === 'Secondary') ? getApp('Secondary') : initializeApp(firebaseConfig, "Secondary");
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      const baseId = (newUser.email || '').trim();
+      let formattedEmail = baseId;
+      if (!baseId.includes('@') || !baseId.includes('.')) {
+        const safeLocalPart = baseId.replace(/@/g, '_at_').replace(/[^a-zA-Z0-9_.-]/g, '');
+        formattedEmail = safeLocalPart ? `${safeLocalPart}@ar-zone-app.local` : `invalid@ar-zone-app.local`;
+      }
+      
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formattedEmail, newUser.password);
+      await updateProfile(userCredential.user, { displayName: newUser.name });
+
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: newUser.email,
+        name: newUser.name,
+        password: newUser.password, // Storing password securely for agent access as requested
+        role: 'client',
+        mComm: newUser.mComm,
+        sComm: newUser.sComm,
+        share: newUser.share,
+        status: 'active',
+        autoBlock: true,
+        createdAt: new Date().toISOString()
+      });
+
+      await signOut(secondaryAuth);
+      
+      setIsCreateModalOpen(false);
+      setNewUser({email: '', password: '', name: '', mComm: '2.0%', sComm: '1.5%', share: '10%'});
+    } catch (error: any) {
+      console.error("Create User Error:", error);
+      alert("Error creating user: " + error.message);
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   return (
@@ -49,7 +126,10 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between rounded-t-lg">
           <h3 className="font-semibold">{subTitle}</h3>
           {!hideCreate && (
-            <button className="bg-[#182130] hover:bg-[#111823] text-white text-sm px-4 py-1.5 border border-[#1e293b] rounded shadow-sm flex items-center space-x-1 transition-colors">
+            <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-[#182130] hover:bg-[#111823] text-white text-sm px-4 py-1.5 border border-[#1e293b] rounded shadow-sm flex items-center space-x-1 transition-colors">
+              <UserPlus size={16} />
               <span>Create new User</span>
             </button>
           )}
@@ -99,7 +179,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               ) : (
                 filteredData.map((row) => (
                   <tr key={row.id} className="hover:bg-[#020503]/50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-400">{row.id}</td>
+                    <td className="px-4 py-3 font-medium text-slate-400">{row.id.substring(0, 6)}</td>
                     <td className="px-4 py-3 text-[#00ff88] font-medium cursor-pointer hover:underline">{row.username}</td>
                     {!hideActions && <td className="px-4 py-3">{row.name}</td>}
                     <td className="px-4 py-3">
@@ -110,7 +190,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     <td className="px-4 py-3">{row.mComm}</td>
                     <td className="px-4 py-3">{row.sComm}</td>
                     <td className="px-4 py-3">{row.share}</td>
-                    <td className="px-4 py-3 relative">
+                    <td className={`px-4 py-3 relative ${activeMenuId === row.id ? 'z-50' : ''}`}>
                       <button 
                         onClick={() => toggleMenu(row.id)}
                         className="bg-[#00ff88]/10 border border-[#00ff88]/50 hover:bg-[#00ff88]/20 text-[#00ff88] p-1.5 rounded transition-colors focus:outline-none"
@@ -120,13 +200,13 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                       
                       {activeMenuId === row.id && (
                         <>
-                          <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
-                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-[#00ff88]/30 py-1 z-20 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
-                            <button className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Profile</button>
-                            <button className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Statement</button>
+                          <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }}></div>
+                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-[#00ff88]/30 py-1 z-50 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedProfile(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Profile</button>
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedStatement(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Statement</button>
                             <div className="h-px w-full bg-[#00ff88]/20 my-1"></div>
                             <button 
-                              onClick={() => { setSelectedUserForManage(row); setActiveMenuId(null); }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedUserForManage(row); setActiveMenuId(null); }}
                               className="w-full text-left px-4 py-2 text-sm text-[#f0b429] font-medium hover:bg-[#f0b429]/10"
                             >
                               Manage Access
@@ -234,6 +314,239 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 </p>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !createLoading && setIsCreateModalOpen(false)}></div>
+          
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+              <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <UserPlus className="text-[#00ff88]" size={20} />
+                Create Client Account
+              </h3>
+              <button 
+                disabled={createLoading}
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-slate-400 hover:text-white disabled:opacity-50 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+               <div>
+                 <label className="block text-xs font-semibold text-slate-400 mb-1">User ID</label>
+                 <input 
+                    required 
+                    type="text" 
+                    value={newUser.email} 
+                    onChange={e => setNewUser({...newUser, email: e.target.value})}
+                    className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-3 py-2 text-white focus:outline-none focus:border-[#00ff88]"
+                 />
+               </div>
+               <div>
+                 <label className="block text-xs font-semibold text-slate-400 mb-1">Full Name</label>
+                 <input 
+                    required 
+                    type="text" 
+                    value={newUser.name} 
+                    onChange={e => setNewUser({...newUser, name: e.target.value})}
+                    className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-3 py-2 text-white focus:outline-none focus:border-[#00ff88]"
+                 />
+               </div>
+               <div>
+                 <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+                 <div className="relative">
+                   <input 
+                      required 
+                      type={showPasswordCreate ? "text" : "password"}
+                      minLength={6}
+                      value={newUser.password} 
+                      onChange={e => setNewUser({...newUser, password: e.target.value})}
+                      className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-3 py-2 text-white focus:outline-none focus:border-[#00ff88] pr-10"
+                   />
+                   <button 
+                     type="button" 
+                     onClick={() => setShowPasswordCreate(!showPasswordCreate)}
+                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#00ff88] transition-colors"
+                   >
+                     {showPasswordCreate ? <EyeOff size={16} /> : <Eye size={16} />}
+                   </button>
+                 </div>
+               </div>
+               <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">Match Comm.</label>
+                    <input 
+                        type="text" 
+                        value={newUser.mComm} 
+                        onChange={e => setNewUser({...newUser, mComm: e.target.value})}
+                        className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#00ff88]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">Session Comm.</label>
+                    <input 
+                        type="text" 
+                        value={newUser.sComm} 
+                        onChange={e => setNewUser({...newUser, sComm: e.target.value})}
+                        className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#00ff88]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">Share %</label>
+                    <input 
+                        type="text" 
+                        value={newUser.share} 
+                        onChange={e => setNewUser({...newUser, share: e.target.value})}
+                        className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#00ff88]"
+                    />
+                  </div>
+               </div>
+               
+               <button 
+                 type="submit" 
+                 disabled={createLoading}
+                 className="w-full bg-[#00ff88] text-black font-bold py-2.5 rounded mt-4 hover:bg-[#00cc6a] disabled:opacity-50 transition-colors flex justify-center items-center"
+               >
+                 {createLoading ? 'Creating User...' : 'Create Client'}
+               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {selectedProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}></div>
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-sm relative z-10 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+              <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                Client Profile
+              </h3>
+              <button onClick={() => setSelectedProfile(null)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 text-slate-300">
+               <div>
+                  <label className="text-xs text-slate-500 font-semibold block">User ID / Username</label>
+                  <div className="text-white font-medium text-lg">{selectedProfile.username}</div>
+               </div>
+               <div>
+                  <label className="text-xs text-slate-500 font-semibold block">Full Name</label>
+                  <div className="text-white font-medium">{selectedProfile.name}</div>
+               </div>
+               <div>
+                  <label className="text-xs text-slate-500 font-semibold block">Password</label>
+                  <div className="flex items-center gap-3">
+                    <div className="text-white font-medium font-mono text-lg">
+                      {showPasswordProfile ? (selectedProfile.password || 'No password set') : '••••••••'}
+                    </div>
+                    {selectedProfile.password && (
+                      <button 
+                        onClick={() => setShowPasswordProfile(!showPasswordProfile)}
+                        className="text-slate-400 hover:text-[#00ff88] transition-colors"
+                      >
+                        {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1">This is the access password for the user.</div>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Statement Modal */}
+      {selectedStatement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedStatement(null)}></div>
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-4xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+              <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                Statement - {selectedStatement.username}
+              </h3>
+              <div className="flex items-center gap-2">
+                 <button onClick={() => {
+                   // Mock PDF Download
+                   const link = document.createElement("a");
+                   link.href = "data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQpHaB... (mock)"; 
+                   link.download = `Statement_${selectedStatement.username}.pdf`;
+                   document.body.appendChild(link);
+                   link.click();
+                   document.body.removeChild(link);
+                   alert('PDF Download generated (Mock)');
+                 }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">PDF</button>
+                 <button onClick={() => {
+                   // Mock CSV Download
+                   const csvContent = "data:text/csv;charset=utf-8,Date,Event,Type,WinLoss,Balance\n2026-06-10 14:30,IND vs AUS - Test Match,Match Odds,+5000,120500\n2026-06-09 18:15,ENG vs SA - T20,Fancy Bet,-2500,115500\n2026-06-08 10:00,Deposit,Transfer,+10000,118000";
+                   const encodedUri = encodeURI(csvContent);
+                   const link = document.createElement("a");
+                   link.setAttribute("href", encodedUri);
+                   link.setAttribute("download", `Statement_${selectedStatement.username}.csv`);
+                   document.body.appendChild(link);
+                   link.click();
+                   document.body.removeChild(link);
+                 }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">CSV</button>
+                 <button onClick={() => setSelectedStatement(null)} className="text-slate-400 hover:text-rose-500 transition-colors ml-2">
+                   <X size={20} />
+                 </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto hidden-scrollbar">
+                <table className="w-full text-sm text-left text-slate-200">
+                    <thead className="text-xs text-slate-400 bg-[#020503] border-b border-[#00ff88]/20 uppercase">
+                        <tr>
+                            <th className="px-4 py-3">Date</th>
+                            <th className="px-4 py-3">Event / Game</th>
+                            <th className="px-4 py-3">Type</th>
+                            <th className="px-4 py-3 text-right">Win/Loss</th>
+                            <th className="px-4 py-3 text-right">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#00ff88]/10 text-slate-300">
+                        {/* Mock Statement Data */}
+                        <tr className="hover:bg-[#020503]/50">
+                            <td className="px-4 py-3 whitespace-nowrap">{(new Date()).toISOString().substring(0, 10)} 14:30</td>
+                            <td className="px-4 py-3 text-white font-medium">IND vs AUS - Test Match</td>
+                            <td className="px-4 py-3">Match Odds</td>
+                            <td className="px-4 py-3 text-right text-[#00ff88] font-mono">+5,000</td>
+                            <td className="px-4 py-3 text-right font-medium">120,500</td>
+                        </tr>
+                        <tr className="hover:bg-[#020503]/50">
+                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 86400000)).toISOString().substring(0, 10)} 18:15</td>
+                            <td className="px-4 py-3 text-white font-medium">ENG vs SA - T20</td>
+                            <td className="px-4 py-3">Fancy Bet</td>
+                            <td className="px-4 py-3 text-right text-[#ff3355] font-mono">-2,500</td>
+                            <td className="px-4 py-3 text-right font-medium">115,500</td>
+                        </tr>
+                        <tr className="hover:bg-[#020503]/50">
+                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 172800000)).toISOString().substring(0, 10)} 10:00</td>
+                            <td className="px-4 py-3 text-white font-medium">Deposit</td>
+                            <td className="px-4 py-3">Transfer</td>
+                            <td className="px-4 py-3 text-right text-[#00ff88] font-mono">+10,000</td>
+                            <td className="px-4 py-3 text-right font-medium">118,000</td>
+                        </tr>
+                        <tr className="hover:bg-[#020503]/50">
+                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 259200000)).toISOString().substring(0, 10)} 20:45</td>
+                            <td className="px-4 py-3 text-white font-medium">Roulette - Casino</td>
+                            <td className="px-4 py-3">Casino</td>
+                            <td className="px-4 py-3 text-right text-[#ff3355] font-mono">-1,000</td>
+                            <td className="px-4 py-3 text-right font-medium">108,000</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { auth } from '../firebase';
 
 interface LoginProps {
   onLogin: () => void;
+  isAdminPath?: boolean;
 }
 
 const LoginStyles = `
@@ -31,7 +32,7 @@ const LoginStyles = `
   }
 `;
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, isAdminPath = false }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -171,7 +172,12 @@ export default function Login({ onLogin }: LoginProps) {
     setIsLoggingIn(true);
     setError('');
     try {
-      const formattedEmail = username.includes('@') ? username : `${username}@ar-zone-app.com`;
+      const baseId = username.trim();
+      let formattedEmail = baseId;
+      if (!baseId.includes('@') || !baseId.includes('.')) {
+        const safeLocalPart = baseId.replace(/@/g, '_at_').replace(/[^a-zA-Z0-9_.-]/g, '');
+        formattedEmail = safeLocalPart ? `${safeLocalPart}@ar-zone-app.local` : `invalid@ar-zone-app.local`;
+      }
       await signInWithEmailAndPassword(auth, formattedEmail, password);
       onLogin();
     } catch (err: any) {
@@ -232,15 +238,15 @@ export default function Login({ onLogin }: LoginProps) {
         {/* Left Column (Brand & Info) */}
         <div className="hidden lg:block flex-1 w-full text-white space-y-4 max-w-none">
           <div>
-            <h1 className="ar-zone-logo text-4xl sm:text-5xl lg:text-6xl mb-2">AR ZONE</h1>
+            <h1 className="ar-zone-logo text-4xl sm:text-5xl lg:text-6xl mb-2">AR {isAdminPath ? 'ZONE' : 'GAMING'}</h1>
             <p className="text-lg sm:text-xl text-slate-300 font-light border-b border-[#00ff88]/30 pb-4 inline-block font-orbitron tracking-wider">
-              System Administration Portal
+              {isAdminPath ? 'System Administration Portal' : 'Client Gaming Portal'}
             </p>
           </div>
           
           <div className="space-y-1">
-            <h3 className="text-lg font-orbitron font-semibold text-[#00ff88] tracking-widest">SECURE. SMART. SEAMLESS.</h3>
-            <p className="text-slate-400 text-base">Manage your system with precision and power.</p>
+            <h3 className="text-lg font-orbitron font-semibold text-[#00ff88] tracking-widest">{isAdminPath ? 'SECURE. SMART. SEAMLESS.' : 'PLAY SECURELY.'}</h3>
+            <p className="text-slate-400 text-base">{isAdminPath ? 'Manage your system with precision and power.' : 'Experience premium gaming.'}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
@@ -274,7 +280,7 @@ export default function Login({ onLogin }: LoginProps) {
             <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
             
             <div className="flex flex-col items-center mb-5 mt-1 text-center">
-              <h1 className="ar-zone-logo text-3xl sm:text-4xl mb-3">AR ZONE</h1>
+              <h1 className="ar-zone-logo text-3xl sm:text-4xl mb-3">AR {isAdminPath ? 'ZONE' : 'GAMING'}</h1>
               <h2 className="text-xl sm:text-2xl font-orbitron font-bold text-white tracking-widest">{showForgotPassword ? "Reset Key" : "Welcome Back"}</h2>
               <p className="text-slate-400 text-xs sm:text-sm mt-1 sm:mt-2 font-exo">{showForgotPassword ? "Enter your User ID to receive reset instructions" : "Authenticate identity to continue"}</p>
             </div>

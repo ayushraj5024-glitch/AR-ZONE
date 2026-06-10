@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronUp, ChevronDown, MoreVertical, ShieldAlert, X, ShieldCheck, Lock, Unlock } from 'lucide-react';
+import { ChevronUp, ChevronDown, MoreVertical, ShieldAlert, X, ShieldCheck, Lock, Unlock, Eye, EyeOff } from 'lucide-react';
 
 interface ClientsTableProps {
   title: string;
@@ -13,6 +13,9 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [selectedUserForManage, setSelectedUserForManage] = useState<any | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [selectedStatement, setSelectedStatement] = useState<any | null>(null);
+  const [showPasswordProfile, setShowPasswordProfile] = useState(false);
 
   const [mockData, setMockData] = useState([
     { id: 101, username: 'user_john', name: 'John Doe', mComm: '2.5%', sComm: '1.0%', share: '10%', status: 'active', autoBlock: true },
@@ -110,7 +113,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     <td className="px-4 py-3">{row.mComm}</td>
                     <td className="px-4 py-3">{row.sComm}</td>
                     <td className="px-4 py-3">{row.share}</td>
-                    <td className="px-4 py-3 relative">
+                    <td className={`px-4 py-3 relative ${activeMenuId === row.id ? 'z-50' : ''}`}>
                       <button 
                         onClick={() => toggleMenu(row.id)}
                         className="bg-[#00ff88]/10 border border-[#00ff88]/50 hover:bg-[#00ff88]/20 text-[#00ff88] p-1.5 rounded transition-colors focus:outline-none"
@@ -120,13 +123,13 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                       
                       {activeMenuId === row.id && (
                         <>
-                          <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
-                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-[#00ff88]/30 py-1 z-20 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
-                            <button className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Profile</button>
-                            <button className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Statement</button>
+                          <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }}></div>
+                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-[#00ff88]/30 py-1 z-50 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedProfile(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Profile</button>
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedStatement(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Statement</button>
                             <div className="h-px w-full bg-[#00ff88]/20 my-1"></div>
                             <button 
-                              onClick={() => { setSelectedUserForManage(row); setActiveMenuId(null); }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedUserForManage(row); setActiveMenuId(null); }}
                               className="w-full text-left px-4 py-2 text-sm text-[#f0b429] font-medium hover:bg-[#f0b429]/10"
                             >
                               Manage Access
@@ -234,6 +237,119 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 </p>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {selectedProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}></div>
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-sm relative z-10 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+              <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                Client Profile
+              </h3>
+              <button onClick={() => setSelectedProfile(null)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 text-slate-300">
+               <div>
+                  <label className="text-xs text-slate-500 font-semibold block">User ID / Username</label>
+                  <div className="text-white font-medium text-lg">{selectedProfile.username}</div>
+               </div>
+               <div>
+                  <label className="text-xs text-slate-500 font-semibold block">Full Name</label>
+                  <div className="text-white font-medium">{selectedProfile.name}</div>
+               </div>
+               <div>
+                  <label className="text-xs text-slate-500 font-semibold block">Password</label>
+                  <div className="flex items-center gap-3">
+                    <div className="text-white font-medium font-mono text-lg">
+                      {showPasswordProfile ? (selectedProfile.password || 'No password set') : '••••••••'}
+                    </div>
+                    {selectedProfile.password && (
+                      <button 
+                        onClick={() => setShowPasswordProfile(!showPasswordProfile)}
+                        className="text-slate-400 hover:text-[#00ff88] transition-colors"
+                      >
+                        {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1">This is the access password for the user.</div>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Statement Modal */}
+      {selectedStatement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedStatement(null)}></div>
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-4xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+              <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                Statement - {selectedStatement.username}
+              </h3>
+              <div className="flex items-center gap-2">
+                 <button onClick={() => {
+                   const link = document.createElement("a");
+                   link.href = "data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQpHaB... (mock)"; 
+                   link.download = `Statement_${selectedStatement.username}.pdf`;
+                   document.body.appendChild(link);
+                   link.click();
+                   document.body.removeChild(link);
+                   alert('PDF Download generated (Mock)');
+                 }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">PDF</button>
+                 <button onClick={() => {
+                   const csvContent = "data:text/csv;charset=utf-8,Date,Event,Type,WinLoss,Balance\n2026-06-10 14:30,IND vs AUS - Test Match,Match Odds,+5000,120500\n2026-06-09 18:15,ENG vs SA - T20,Fancy Bet,-2500,115500\n2026-06-08 10:00,Deposit,Transfer,+10000,118000";
+                   const encodedUri = encodeURI(csvContent);
+                   const link = document.createElement("a");
+                   link.setAttribute("href", encodedUri);
+                   link.setAttribute("download", `Statement_${selectedStatement.username}.csv`);
+                   document.body.appendChild(link);
+                   link.click();
+                   document.body.removeChild(link);
+                 }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">CSV</button>
+                 <button onClick={() => setSelectedStatement(null)} className="text-slate-400 hover:text-rose-500 transition-colors ml-2">
+                   <X size={20} />
+                 </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto hidden-scrollbar">
+                <table className="w-full text-sm text-left text-slate-200">
+                    <thead className="text-xs text-slate-400 bg-[#020503] border-b border-[#00ff88]/20 uppercase">
+                        <tr>
+                            <th className="px-4 py-3">Date</th>
+                            <th className="px-4 py-3">Event / Game</th>
+                            <th className="px-4 py-3">Type</th>
+                            <th className="px-4 py-3 text-right">Win/Loss</th>
+                            <th className="px-4 py-3 text-right">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#00ff88]/10 text-slate-300">
+                        <tr className="hover:bg-[#020503]/50">
+                            <td className="px-4 py-3 whitespace-nowrap">{(new Date()).toISOString().substring(0, 10)} 14:30</td>
+                            <td className="px-4 py-3 text-white font-medium">IND vs AUS - Test Match</td>
+                            <td className="px-4 py-3">Match Odds</td>
+                            <td className="px-4 py-3 text-right text-[#00ff88] font-mono">+5,000</td>
+                            <td className="px-4 py-3 text-right font-medium">120,500</td>
+                        </tr>
+                        <tr className="hover:bg-[#020503]/50">
+                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 86400000)).toISOString().substring(0, 10)} 18:15</td>
+                            <td className="px-4 py-3 text-white font-medium">ENG vs SA - T20</td>
+                            <td className="px-4 py-3">Fancy Bet</td>
+                            <td className="px-4 py-3 text-right text-[#ff3355] font-mono">-2,500</td>
+                            <td className="px-4 py-3 text-right font-medium">115,500</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
           </div>
         </div>

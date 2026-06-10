@@ -1,4 +1,4 @@
-import { ChevronUp, ChevronDown, Download, Search, Plus, MoreVertical, X, ShieldAlert, Lock, ShieldCheck, User, FileText } from 'lucide-react';
+import { ChevronUp, ChevronDown, Download, Search, Plus, MoreVertical, X, ShieldAlert, Lock, ShieldCheck, User, FileText, Eye, EyeOff } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 type Agent = {
@@ -29,6 +29,7 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
   const [selectedProfile, setSelectedProfile] = useState<Agent | null>(null);
   const [selectedStatement, setSelectedStatement] = useState<Agent | null>(null);
   const [selectedManage, setSelectedManage] = useState<Agent | null>(null);
+  const [showPasswordProfile, setShowPasswordProfile] = useState(false);
 
   // Setup local data mirroring so we can update statuses if the parent doesn't provide onUpdateAgent
   const [localData, setLocalData] = useState<Agent[]>([]);
@@ -130,7 +131,7 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                     <td className="px-4 py-3">{row.fixLimit}</td>
                     <td className="px-4 py-3">{row.myShare}</td>
                     <td className="px-4 py-3">{row.maxShare}</td>
-                    <td className="px-4 py-3 relative">
+                    <td className={`px-4 py-3 relative ${activeMenuId === row.id ? 'z-50' : ''}`}>
                       <button 
                         onClick={() => toggleMenu(row.id)}
                         className="bg-[#00ff88]/10 border border-[#00ff88]/50 hover:bg-[#00ff88]/20 text-[#00ff88] p-1.5 rounded transition-colors focus:outline-none"
@@ -140,12 +141,12 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                       
                       {activeMenuId === row.id && (
                         <>
-                          <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
-                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-[#00ff88]/30 py-1 z-20 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
-                            <button onClick={() => { setSelectedProfile(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Profile</button>
-                            <button onClick={() => { setSelectedStatement(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Statement</button>
+                          <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }}></div>
+                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-[#00ff88]/30 py-1 z-50 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedProfile(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Profile</button>
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedStatement(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Statement</button>
                             <div className="h-px w-full bg-[#00ff88]/20 my-1"></div>
-                            <button onClick={() => { setSelectedManage(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-[#f0b429] hover:bg-[#f0b429]/10 font-medium">Manage Agent</button>
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedManage(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-[#f0b429] hover:bg-[#f0b429]/10 font-medium">Manage Agent</button>
                           </div>
                         </>
                       )}
@@ -222,9 +223,19 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                   <span className="text-white font-medium">{selectedProfile.maxShare}</span>
                 </div>
                 {selectedProfile.password && (
-                  <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                     <span className="text-slate-400">Password</span>
-                    <span className="text-[#f0b429] font-medium font-mono bg-[#f0b429]/10 px-2 rounded">{selectedProfile.password}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#f0b429] font-medium font-mono bg-[#f0b429]/10 px-2 rounded">
+                        {showPasswordProfile ? selectedProfile.password : '••••••••'}
+                      </span>
+                      <button 
+                        onClick={() => setShowPasswordProfile(!showPasswordProfile)}
+                        className="text-slate-400 hover:text-[#00ff88] transition-colors"
+                      >
+                        {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
