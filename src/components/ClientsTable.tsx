@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown, MoreVertical, ShieldAlert, X, ShieldCheck, Lock, Unlock, UserPlus, Eye, EyeOff } from 'lucide-react';
-import { collection, query, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, setDoc, updateDoc, where } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { db, firebaseConfig } from '../firebase';
@@ -27,6 +27,31 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
   const [showPasswordProfile, setShowPasswordProfile] = useState(false);
 
   const [usersData, setUsersData] = useState<any[]>([]);
+  const [statementData, setStatementData] = useState<any[]>([]);
+  const [statementLoading, setStatementLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedStatement?.id) {
+      setStatementLoading(true);
+      const q = query(collection(db, 'statements'), where('userId', '==', selectedStatement.id));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const smts: any[] = [];
+        snapshot.forEach((doc) => {
+          smts.push({ id: doc.id, ...doc.data() });
+        });
+        // Sort descending by date
+        smts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setStatementData(smts);
+        setStatementLoading(false);
+      }, (error) => {
+        console.error("Error fetching statements:", error);
+        setStatementLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      setStatementData([]);
+    }
+  }, [selectedStatement]);
 
   useEffect(() => {
     const q = query(collection(db, 'users'));
@@ -65,6 +90,18 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
       await updateDoc(userRef, { [field]: value });
     } catch (error: any) {
       alert("Error updating user: " + error.message);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    // Optimistic update
+    setUsersData(data => data.map(u => u.id === id ? { ...u, status: 'deleted' } : u));
+    
+    try {
+      const userRef = doc(db, 'users', id);
+      await updateDoc(userRef, { status: 'deleted' });
+    } catch (error: any) {
+      alert("Error deleting user: " + error.message);
     }
   };
 
@@ -210,6 +247,19 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                               className="w-full text-left px-4 py-2 text-sm text-[#f0b429] font-medium hover:bg-[#f0b429]/10"
                             >
                               Manage Access
+                            </button>
+                            <div className="h-px w-full bg-[#00ff88]/20 my-1"></div>
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (window.confirm("Are you sure you want to delete this user? They will no longer be able to log in.")) {
+                                  handleDeleteUser(row.id);
+                                }
+                                setActiveMenuId(null); 
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-[#ff3355] font-medium hover:bg-[#ff3355]/10"
+                            >
+                              Delete Client
                             </button>
                           </div>
                         </>
@@ -451,14 +501,12 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     <div className="text-white font-medium font-mono text-lg">
                       {showPasswordProfile ? (selectedProfile.password || 'No password set') : '••••••••'}
                     </div>
-                    {selectedProfile.password && (
-                      <button 
-                        onClick={() => setShowPasswordProfile(!showPasswordProfile)}
-                        className="text-slate-400 hover:text-[#00ff88] transition-colors"
-                      >
-                        {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => setShowPasswordProfile(!showPasswordProfile)}
+                      className="text-slate-400 hover:text-[#00ff88] transition-colors"
+                    >
+                      {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                   <div className="text-xs text-slate-600 mt-1">This is the access password for the user.</div>
                </div>
@@ -478,18 +526,19 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               </h3>
               <div className="flex items-center gap-2">
                  <button onClick={() => {
-                   // Mock PDF Download
-                   const link = document.createElement("a");
-                   link.href = "data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQpHaB... (mock)"; 
-                   link.download = `Statement_${selectedStatement.username}.pdf`;
-                   document.body.appendChild(link);
-                   link.click();
-                   document.body.removeChild(link);
-                   alert('PDF Download generated (Mock)');
+                   alert("Real PDF Generation requires a backend service (currently not implemented). Defaulting to browser print.");
+                   window.print();
                  }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">PDF</button>
                  <button onClick={() => {
-                   // Mock CSV Download
-                   const csvContent = "data:text/csv;charset=utf-8,Date,Event,Type,WinLoss,Balance\n2026-06-10 14:30,IND vs AUS - Test Match,Match Odds,+5000,120500\n2026-06-09 18:15,ENG vs SA - T20,Fancy Bet,-2500,115500\n2026-06-08 10:00,Deposit,Transfer,+10000,118000";
+                   if (statementData.length === 0) {
+                     alert("No statement data available to download.");
+                     return;
+                   }
+                   const headers = "Date,Event,Type,WinLoss,Balance\n";
+                   const csvRows = statementData.map(stmt => {
+                     return `${stmt.date},${stmt.event},${stmt.type},${stmt.winLoss},${stmt.balance}`;
+                   });
+                   const csvContent = `data:text/csv;charset=utf-8,${headers}${csvRows.join("\n")}`;
                    const encodedUri = encodeURI(csvContent);
                    const link = document.createElement("a");
                    link.setAttribute("href", encodedUri);
@@ -516,35 +565,27 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#00ff88]/10 text-slate-300">
-                        {/* Mock Statement Data */}
-                        <tr className="hover:bg-[#020503]/50">
-                            <td className="px-4 py-3 whitespace-nowrap">{(new Date()).toISOString().substring(0, 10)} 14:30</td>
-                            <td className="px-4 py-3 text-white font-medium">IND vs AUS - Test Match</td>
-                            <td className="px-4 py-3">Match Odds</td>
-                            <td className="px-4 py-3 text-right text-[#00ff88] font-mono">+5,000</td>
-                            <td className="px-4 py-3 text-right font-medium">120,500</td>
-                        </tr>
-                        <tr className="hover:bg-[#020503]/50">
-                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 86400000)).toISOString().substring(0, 10)} 18:15</td>
-                            <td className="px-4 py-3 text-white font-medium">ENG vs SA - T20</td>
-                            <td className="px-4 py-3">Fancy Bet</td>
-                            <td className="px-4 py-3 text-right text-[#ff3355] font-mono">-2,500</td>
-                            <td className="px-4 py-3 text-right font-medium">115,500</td>
-                        </tr>
-                        <tr className="hover:bg-[#020503]/50">
-                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 172800000)).toISOString().substring(0, 10)} 10:00</td>
-                            <td className="px-4 py-3 text-white font-medium">Deposit</td>
-                            <td className="px-4 py-3">Transfer</td>
-                            <td className="px-4 py-3 text-right text-[#00ff88] font-mono">+10,000</td>
-                            <td className="px-4 py-3 text-right font-medium">118,000</td>
-                        </tr>
-                        <tr className="hover:bg-[#020503]/50">
-                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 259200000)).toISOString().substring(0, 10)} 20:45</td>
-                            <td className="px-4 py-3 text-white font-medium">Roulette - Casino</td>
-                            <td className="px-4 py-3">Casino</td>
-                            <td className="px-4 py-3 text-right text-[#ff3355] font-mono">-1,000</td>
-                            <td className="px-4 py-3 text-right font-medium">108,000</td>
-                        </tr>
+                        {statementLoading ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading statements...</td>
+                          </tr>
+                        ) : statementData.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No transactions found for this user.</td>
+                          </tr>
+                        ) : (
+                          statementData.map((stmt) => (
+                            <tr key={stmt.id} className="hover:bg-[#020503]/50">
+                                <td className="px-4 py-3 whitespace-nowrap">{stmt.date}</td>
+                                <td className="px-4 py-3 text-white font-medium">{stmt.event}</td>
+                                <td className="px-4 py-3">{stmt.type}</td>
+                                <td className={`px-4 py-3 text-right font-mono ${parseFloat(stmt.winLoss) >= 0 ? 'text-[#00ff88]' : 'text-[#ff3355]'}`}>
+                                  {parseFloat(stmt.winLoss) > 0 ? '+' : ''}{stmt.winLoss}
+                                </td>
+                                <td className="px-4 py-3 text-right font-medium">{stmt.balance}</td>
+                            </tr>
+                          ))
+                        )}
                     </tbody>
                 </table>
             </div>

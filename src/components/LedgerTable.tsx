@@ -83,28 +83,11 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
               )}
             </thead>
             <tbody className="divide-y divide-[#00ff88]/20">
-              {title === 'Agent' ? (
-                <tr className="border-b border-[#00ff88]/20 hover:bg-[#020503]/50 transition-colors">
-                  <td className="px-4 py-3">Thu, 04 Jun 2026 21:03:18</td>
-                  <td className="px-4 py-3">Opening Balance By System to Admin</td>
-                  <td className="px-4 py-3 text-emerald-600 font-medium">1000</td>
-                  <td className="px-4 py-3">0</td>
-                  <td className="px-4 py-3">0</td>
-                  <td className="px-4 py-3">0</td>
-                  <td className="px-4 py-3 font-bold">1000</td>
-                </tr>
-              ) : (
-                mockLedgers.map((l, i) => (
-                  <tr key={i} className="hover:bg-[#020503]/50 transition-colors">
-                    <td className="px-4 py-3">{l.date}</td>
-                    <td className="px-4 py-3 font-medium text-center">{l.entry}</td>
-                    <td className="px-4 py-3 text-rose-500 font-medium">{l.debit}</td>
-                    <td className="px-4 py-3 text-emerald-600 font-medium">{l.credit}</td>
-                    <td className="px-4 py-3 font-bold">{l.balance}</td>
-                    <td className="px-4 py-3 text-slate-400 italic">{l.note}</td>
-                  </tr>
-                ))
-              )}
+              <tr>
+                <td colSpan={title === 'Agent' ? 7 : 6} className="px-4 py-8 text-center text-slate-500">
+                  No records found in current ledger.
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

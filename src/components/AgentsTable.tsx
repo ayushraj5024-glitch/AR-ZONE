@@ -222,12 +222,11 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                   <span className="text-slate-400">Max Share</span>
                   <span className="text-white font-medium">{selectedProfile.maxShare}</span>
                 </div>
-                {selectedProfile.password && (
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                     <span className="text-slate-400">Password</span>
                     <div className="flex items-center gap-2">
                       <span className="text-[#f0b429] font-medium font-mono bg-[#f0b429]/10 px-2 rounded">
-                        {showPasswordProfile ? selectedProfile.password : '••••••••'}
+                        {showPasswordProfile ? (selectedProfile.password || 'No password set') : '••••••••'}
                       </span>
                       <button 
                         onClick={() => setShowPasswordProfile(!showPasswordProfile)}
@@ -237,7 +236,6 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                       </button>
                     </div>
                   </div>
-                )}
               </div>
             </div>
           </div>
@@ -270,18 +268,9 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                       <th className="px-4 py-2 text-right">Balance</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#00ff88]/10">
-                    <tr className="bg-[#05100a]">
-                      <td className="px-4 py-2">07 Jun 2026</td>
-                      <td className="px-4 py-2">Commission Add</td>
-                      <td className="px-4 py-2 text-[#00ff88] text-right">+ 15,000</td>
-                      <td className="px-4 py-2 font-medium text-right">65,000</td>
-                    </tr>
-                    <tr className="bg-[#020503]/50">
-                      <td className="px-4 py-2">05 Jun 2026</td>
-                      <td className="px-4 py-2">Settlement</td>
-                      <td className="px-4 py-2 text-rose-500 text-right">- 20,000</td>
-                      <td className="px-4 py-2 font-medium text-right">50,000</td>
+                  <tbody className="divide-y divide-[#00ff88]/10 text-slate-300">
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-slate-500">No transactions found for this agent.</td>
                     </tr>
                   </tbody>
                 </table>

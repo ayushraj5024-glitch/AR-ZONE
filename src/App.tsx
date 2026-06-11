@@ -30,7 +30,7 @@ import {
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import AgentsTable from './components/AgentsTable';
 import CreateAgent from './components/CreateAgent';
 import CreateStockist from './components/CreateStockist';
@@ -90,44 +90,64 @@ export default function App() {
   };
 
   useEffect(() => {
+    let roleUnsubscribe: (() => void) | null = null;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsAuthenticated(true);
+        // Set up real-time listener for the user's document
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          let resolvedRole = 'client';
-          if (userDoc.exists()) {
-             resolvedRole = userDoc.data().role || 'client';
-          } else {
-             // Default to admin if no user document exists (e.g. initial super admin)
-             // Consider removing this in production or securing it properly
-             resolvedRole = 'admin';
-          }
-          
-          if (isAdminPath && resolvedRole === 'client') {
-            alert("Unauthorized: Clients cannot access the admin portal.");
-            await signOut(auth);
-            return; // Exit early, will trigger auth state change again
-          }
-          
-          setUserRole(resolvedRole as any);
-
-        } catch (e: any) {
-          if (e.code === 'permission-denied') {
-            console.warn("Permission denied fetching user role. Ensure Firestore rules allow reading users collection.");
-          } else {
-            console.error("Error fetching role:", e);
-          }
-          setUserRole('client');
+          // Keep the initial getDoc as the fallback or wait for snapshot
+          roleUnsubscribe = onSnapshot(doc(db, 'users', user.uid), async (userDoc) => {
+            let resolvedRole = 'client';
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              if (userData.status === 'deleted') {
+                alert("Your account has been deleted or disabled.");
+                await signOut(auth);
+                return;
+              }
+              resolvedRole = userData.role || 'client';
+            } else {
+               if (user.email === 'ayushraj5024@gmail.com') {
+                 resolvedRole = 'admin';
+               } else {
+                 alert("Your account has been deleted or does not exist.");
+                 await signOut(auth);
+                 return;
+               }
+            }
+            
+            if (isAdminPath && resolvedRole === 'client') {
+              alert("Unauthorized: Clients cannot access the admin portal.");
+              await signOut(auth);
+              return;
+            }
+            setUserRole(resolvedRole as any);
+            setIsLoadingAuth(false);
+          }, (error) => {
+            console.error("Error fetching user role:", error);
+            setUserRole('client');
+            setIsLoadingAuth(false);
+          });
+        } catch(e) {
+           console.error("Error setting up snapshot:", e);
+           setIsLoadingAuth(false);
         }
       } else {
+        if (roleUnsubscribe) {
+          roleUnsubscribe();
+          roleUnsubscribe = null;
+        }
         setIsAuthenticated(false);
         setUserRole('client');
+        setIsLoadingAuth(false);
       }
-      setIsLoadingAuth(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (roleUnsubscribe) roleUnsubscribe();
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

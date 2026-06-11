@@ -271,14 +271,12 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     <div className="text-white font-medium font-mono text-lg">
                       {showPasswordProfile ? (selectedProfile.password || 'No password set') : '••••••••'}
                     </div>
-                    {selectedProfile.password && (
-                      <button 
-                        onClick={() => setShowPasswordProfile(!showPasswordProfile)}
-                        className="text-slate-400 hover:text-[#00ff88] transition-colors"
-                      >
-                        {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => setShowPasswordProfile(!showPasswordProfile)}
+                      className="text-slate-400 hover:text-[#00ff88] transition-colors"
+                    >
+                      {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                   <div className="text-xs text-slate-600 mt-1">This is the access password for the user.</div>
                </div>
@@ -298,23 +296,11 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               </h3>
               <div className="flex items-center gap-2">
                  <button onClick={() => {
-                   const link = document.createElement("a");
-                   link.href = "data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQpHaB... (mock)"; 
-                   link.download = `Statement_${selectedStatement.username}.pdf`;
-                   document.body.appendChild(link);
-                   link.click();
-                   document.body.removeChild(link);
-                   alert('PDF Download generated (Mock)');
+                   alert("Real PDF Generation requires a backend service (currently not implemented). Defaulting to browser print.");
+                   window.print();
                  }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">PDF</button>
                  <button onClick={() => {
-                   const csvContent = "data:text/csv;charset=utf-8,Date,Event,Type,WinLoss,Balance\n2026-06-10 14:30,IND vs AUS - Test Match,Match Odds,+5000,120500\n2026-06-09 18:15,ENG vs SA - T20,Fancy Bet,-2500,115500\n2026-06-08 10:00,Deposit,Transfer,+10000,118000";
-                   const encodedUri = encodeURI(csvContent);
-                   const link = document.createElement("a");
-                   link.setAttribute("href", encodedUri);
-                   link.setAttribute("download", `Statement_${selectedStatement.username}.csv`);
-                   document.body.appendChild(link);
-                   link.click();
-                   document.body.removeChild(link);
+                   alert("No statement data available to download.");
                  }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">CSV</button>
                  <button onClick={() => setSelectedStatement(null)} className="text-slate-400 hover:text-rose-500 transition-colors ml-2">
                    <X size={20} />
@@ -334,19 +320,8 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#00ff88]/10 text-slate-300">
-                        <tr className="hover:bg-[#020503]/50">
-                            <td className="px-4 py-3 whitespace-nowrap">{(new Date()).toISOString().substring(0, 10)} 14:30</td>
-                            <td className="px-4 py-3 text-white font-medium">IND vs AUS - Test Match</td>
-                            <td className="px-4 py-3">Match Odds</td>
-                            <td className="px-4 py-3 text-right text-[#00ff88] font-mono">+5,000</td>
-                            <td className="px-4 py-3 text-right font-medium">120,500</td>
-                        </tr>
-                        <tr className="hover:bg-[#020503]/50">
-                            <td className="px-4 py-3 whitespace-nowrap">{(new Date(Date.now() - 86400000)).toISOString().substring(0, 10)} 18:15</td>
-                            <td className="px-4 py-3 text-white font-medium">ENG vs SA - T20</td>
-                            <td className="px-4 py-3">Fancy Bet</td>
-                            <td className="px-4 py-3 text-right text-[#ff3355] font-mono">-2,500</td>
-                            <td className="px-4 py-3 text-right font-medium">115,500</td>
+                        <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No transactions found for this user.</td>
                         </tr>
                     </tbody>
                 </table>

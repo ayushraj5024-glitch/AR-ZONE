@@ -178,7 +178,27 @@ export default function Login({ onLogin, isAdminPath = false }: LoginProps) {
         const safeLocalPart = baseId.replace(/@/g, '_at_').replace(/[^a-zA-Z0-9_.-]/g, '');
         formattedEmail = safeLocalPart ? `${safeLocalPart}@ar-zone-app.local` : `invalid@ar-zone-app.local`;
       }
-      await signInWithEmailAndPassword(auth, formattedEmail, password);
+      
+      const userCredential = await signInWithEmailAndPassword(auth, formattedEmail, password);
+      
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      
+      if (!userDoc.exists() && userCredential.user.email !== 'ayushraj5024@gmail.com') {
+         await import('firebase/auth').then(m => m.signOut(auth));
+         setError('Your account has been deleted or does not exist.');
+         setIsLoggingIn(false);
+         return;
+      }
+      
+      if (userDoc.exists() && userDoc.data()?.status === 'deleted') {
+         await import('firebase/auth').then(m => m.signOut(auth));
+         setError('Your account has been deleted.');
+         setIsLoggingIn(false);
+         return;
+      }
+      
       onLogin();
     } catch (err: any) {
       console.error(err);
