@@ -89,22 +89,6 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
 
   return (
     <div className="w-full space-y-4 max-w-5xl mx-auto pb-8 font-sans">
-      {/* Header */}
-      <div className="bg-[#18212e] px-4 py-2 sm:px-6 sm:py-3 rounded-2xl border border-slate-700/50 flex justify-between items-center shadow-lg">
-        <div className="text-xl sm:text-2xl font-black italic tracking-widest uppercase flex items-center">
-          <span className="text-white">AVIA</span>
-          <span className="text-rose-500">TOR</span>
-        </div>
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="text-slate-400 text-[10px] sm:text-xs font-medium text-right leading-tight">
-            Round<br />#5143
-          </div>
-          <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 font-bold px-4 py-1.5 sm:px-6 sm:py-2 rounded-full text-sm sm:text-base shadow-[0_0_15px_rgba(234,179,8,0.15)] flex items-center gap-2">
-            ₹ {balance.toLocaleString()}
-          </div>
-        </div>
-      </div>
-
       {/* Main Display Area */}
       <div className="bg-[#0b1016] h-50 sm:h-70 md:h-80 rounded-2xl border border-slate-700/50 relative overflow-hidden flex flex-col justify-end shadow-inner">
         {/* Starry background effect */}

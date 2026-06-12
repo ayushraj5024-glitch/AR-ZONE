@@ -343,7 +343,38 @@ export default function CasinoGame({
 
   const [isMessagesExpanded, setIsMessagesExpanded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [balance, setBalance] = useState(10000);
+  const [balance, setBalance] = useState(0);
+
+  useEffect(() => {
+    import('firebase/auth').then(({ getAuth }) => {
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+      import('firebase/firestore').then(({ getFirestore, doc, onSnapshot }) => {
+        const db = getFirestore();
+        const unsub = onSnapshot(doc(db, 'users', auth.currentUser!.uid), (docSn) => {
+          if (docSn.exists()) {
+             setBalance(Number(docSn.data()?.balance || 0));
+          }
+        });
+        return () => unsub();
+      });
+    });
+  }, []);
+
+  const updateBalanceDB = async (amount: number) => {
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const { getFirestore, doc, updateDoc, increment } = await import('firebase/firestore');
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+      const db = getFirestore();
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        balance: increment(amount)
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Betting states
   const [selectedBet, setSelectedBet] = useState<{
@@ -379,13 +410,13 @@ export default function CasinoGame({
     return `${values[Math.floor(Math.random() * values.length)]}${suits[Math.floor(Math.random() * suits.length)]}`;
   };
 
-  const handleSlotResult = (
+  const handleSlotResult = async (
     amount: number,
     profit: number,
     isWin: boolean,
     details: string,
   ) => {
-    setBalance((prev) => prev + profit);
+    await updateBalanceDB(profit);
     const newBet: BetRecord = {
       id: Math.random().toString(36).substr(2, 9),
       selection: details,
@@ -418,12 +449,12 @@ export default function CasinoGame({
     setRevealedCards({}); // Clear cards while placing bet
 
     // Simulate API call for bet result
-    setTimeout(() => {
+    setTimeout(async () => {
       const isWin = Math.random() < 0.49;
       const oddsNum = parseFloat(selectedBet.odds);
       const profit = isWin ? amountNum * (oddsNum - 1) : -amountNum;
 
-      setBalance((prev) => prev + profit);
+      await updateBalanceDB(profit);
 
       const newBet: BetRecord = {
         id: Math.random().toString(36).substr(2, 9),
@@ -479,13 +510,53 @@ export default function CasinoGame({
 
   if (gameId === "aviator") {
     return (
-      <div className="p-4 lg:p-8 max-w-350 mx-auto pb-16 relative">
+      <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans text-sm pb-16 relative">
         <button
           onClick={onBack}
           className="absolute top-6 right-6 lg:top-10 lg:right-10 z-50 text-slate-400 hover:text-white transition-colors"
         >
           <X className="w-6 h-6" />
         </button>
+        
+        {/* Top Bar with Balance */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#05100a] p-4 rounded-xl shadow-sm border border-[#00ff88]/20">
+          <div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              {gameName}
+            </h2>
+            <div className="text-sm text-slate-400 mt-1 flex items-center space-x-2 font-medium">
+              <span className="hover:text-slate-200 cursor-pointer transition-colors">
+                Dashboard
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+              <span
+                onClick={onBack}
+                className="hover:text-slate-200 cursor-pointer transition-colors"
+              >
+                Live Casino
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+              <span className="text-indigo-500">{gameName}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-[#020503] px-4 py-2 rounded-lg border border-slate-700 shadow-sm cursor-default">
+            <Wallet className="w-5 h-5 text-indigo-500" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Balance
+              </span>
+              <span className="text-lg font-bold text-white leading-none">
+                ₹
+                {balance.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <AviatorGame 
           balance={balance} 
           onResult={(profit) => setBalance(prev => prev + profit)} 
@@ -514,11 +585,11 @@ export default function CasinoGame({
               Live Casino
             </span>
             <ChevronRight className="w-4 h-4 text-slate-400" />
-            <span className="text-indigo-600">{gameName}</span>
+            <span className="text-indigo-500">{gameName}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 bg-[#020503] px-5 py-2.5 rounded-lg border border-[#00ff88]/20">
+        <div className="flex items-center gap-3 bg-[#020503] px-4 py-2 rounded-lg border border-slate-700 shadow-sm cursor-default">
           <Wallet className="w-5 h-5 text-indigo-500" />
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">

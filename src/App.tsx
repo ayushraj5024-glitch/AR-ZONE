@@ -506,18 +506,38 @@ export default function App() {
               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
             </div>
             <div className="text-sm font-medium overflow-hidden text-ellipsis whitespace-nowrap animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
-              <span>🏏 <span className="font-bold text-white">Somerset</span> <span className="text-[#f0b429]">145/3 (14.3 ov)</span> vs <span className="font-bold text-white">Glamorgan</span></span>
-              <span className="text-[#00ff88]/50 font-bold">•</span>
-              <span>🏏 <span className="font-bold text-white">India</span> <span className="text-[#f0b429]">210/4 (20.0 ov)</span> vs <span className="font-bold text-white">Australia</span> <span className="text-[#f0b429]">185/8 (20.0 ov)</span></span>
-              <span className="text-[#00ff88]/50 font-bold">•</span>
-              <span>🏏 <span className="font-bold text-white">CSK</span> <span className="text-[#f0b429]">165/2 (15.0 ov)</span> vs <span className="font-bold text-white">MI</span></span>
-              <span className="text-[#00ff88]/50 font-bold">•</span>
-              <span>⚽ <span className="font-bold text-white">Real Madrid</span> <span className="text-[#f0b429]">2 - 1</span> <span className="font-bold text-white">Barcelona</span></span>
+              {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
+                <>
+                  <span>🎰 <span className="font-bold text-white">Lucky 7</span> <span className="text-[#f0b429]">JACKPOT ALERT!</span> ₹2,50,000 Won by user ****42</span>
+                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span>🃏 <span className="font-bold text-white">TeenPatti T20</span> <span className="text-[#f0b429]">High Stakes</span> Tables Now Open!</span>
+                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span>🛩️ <span className="font-bold text-white">Aviator</span> <span className="text-[#f0b429]">New Flight</span> taking off in 10s...</span>
+                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span>🎲 <span className="font-bold text-white">Royal Casino</span> <span className="text-[#f0b429]">Live Dealers</span> 24/7 Availability</span>
+                </>
+              ) : (
+                <>
+                  <span>🏏 <span className="font-bold text-white">Somerset</span> <span className="text-[#f0b429]">145/3 (14.3 ov)</span> vs <span className="font-bold text-white">Glamorgan</span></span>
+                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span>🏏 <span className="font-bold text-white">India</span> <span className="text-[#f0b429]">210/4 (20.0 ov)</span> vs <span className="font-bold text-white">Australia</span> <span className="text-[#f0b429]">185/8 (20.0 ov)</span></span>
+                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span>🏏 <span className="font-bold text-white">CSK</span> <span className="text-[#f0b429]">165/2 (15.0 ov)</span> vs <span className="font-bold text-white">MI</span></span>
+                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span>⚽ <span className="font-bold text-white">Real Madrid</span> <span className="text-[#f0b429]">2 - 1</span> <span className="font-bold text-white">Barcelona</span></span>
+                </>
+              )}
             </div>
             <div className="ml-auto pl-4 hidden sm:block">
-              <button onClick={() => setCurrentView('live_matches')} className="bg-[#00ff88]/10 border border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88] hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
-                Live View
-              </button>
+              {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
+                <button onClick={() => setCurrentView('live_casino')} className="bg-[#00ff88]/10 border border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88] hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
+                  Play Now
+                </button>
+              ) : (
+                <button onClick={() => setCurrentView('live_matches')} className="bg-[#00ff88]/10 border border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88] hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
+                  Live View
+                </button>
+              )}
             </div>
           </div>
 

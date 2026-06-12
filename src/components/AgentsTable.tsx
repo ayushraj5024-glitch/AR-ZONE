@@ -180,8 +180,8 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
       {selectedProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}></div>
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <User className="text-[#00ff88]" size={20} />
                 Agent Profile
@@ -190,7 +190,7 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto">
               <div className="space-y-4">
                 <div className="flex justify-between border-b border-slate-800 pb-2">
                   <span className="text-slate-400">ID</span>
@@ -246,8 +246,8 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
       {selectedStatement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedStatement(null)}></div>
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-2xl relative z-10 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-2xl relative z-10 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <FileText className="text-[#00ff88]" size={20} />
                 Agent Statement
@@ -256,7 +256,7 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto">
               <p className="text-slate-400 mb-4">Showing recent statement for <span className="text-[#00ff88]">@{selectedStatement.userName}</span></p>
               <div className="overflow-x-auto border border-[#00ff88]/20 rounded">
                 <table className="w-full text-sm text-left text-slate-200">
@@ -285,10 +285,10 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedManage(null)}></div>
           
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 overflow-hidden">
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
             <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
             
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="text-[#00ff88]" size={20} />
                 Manage Access
@@ -301,7 +301,7 @@ export default function AgentsTable({ title, breadcrumb, buttonLabel, data = [],
               </button>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(0,255,136,0.15)]">
                   <Lock className="text-[#00ff88]" size={28} />

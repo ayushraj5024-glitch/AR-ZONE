@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCcw, Monitor, TrendingUp, AlertCircle, ChevronRight, Activity, ShieldCheck, ChevronDown, Plus } from 'lucide-react';
 
 const matchOdds = [
@@ -31,7 +31,39 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMessagesExpanded, setIsMessagesExpanded] = useState(false);
 
-  const [balance, setBalance] = useState(10000);
+  const [balance, setBalance] = useState(0);
+
+  useEffect(() => {
+    import('firebase/auth').then(({ getAuth }) => {
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+      import('firebase/firestore').then(({ getFirestore, doc, onSnapshot }) => {
+        const db = getFirestore();
+        const unsub = onSnapshot(doc(db, 'users', auth.currentUser!.uid), (docSn) => {
+          if (docSn.exists()) {
+             setBalance(Number(docSn.data()?.balance || 0));
+          }
+        });
+        return () => unsub();
+      });
+    });
+  }, []);
+
+  const updateBalanceDB = async (amount: number) => {
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const { getFirestore, doc, updateDoc, increment } = await import('firebase/firestore');
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+      const db = getFirestore();
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        balance: increment(amount)
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const [selectedBet, setSelectedBet] = useState<{selection: string, odds: string, type: 'back'|'lay'} | null>(null);
   const [betAmount, setBetAmount] = useState('100');
   const [isPlacingBet, setIsPlacingBet] = useState(false);
@@ -51,12 +83,12 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
     setIsPlacingBet(true);
     
     // Simulate API call for bet result
-    setTimeout(() => {
+    setTimeout(async () => {
       const isWin = Math.random() < 0.49;
       const oddsNum = parseFloat(selectedBet.odds);
       const profit = isWin ? amountNum * (oddsNum - 1) : -amountNum;
       
-      setBalance((prev: number) => prev + profit);
+      await updateBalanceDB(profit);
       
       const newBet = {
         id: Math.random().toString(36).substr(2, 9),

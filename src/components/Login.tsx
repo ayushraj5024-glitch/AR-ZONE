@@ -201,7 +201,6 @@ export default function Login({ onLogin, isAdminPath = false }: LoginProps) {
       
       onLogin();
     } catch (err: any) {
-      console.error(err);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
          setError('Invalid email or password.');
       } else {
@@ -226,7 +225,6 @@ export default function Login({ onLogin, isAdminPath = false }: LoginProps) {
       setResetMessage("Reset link has been sent to " + resetEmail);
       setResetEmail('');
     } catch (err: any) {
-       console.error(err);
        setError(err.message || 'Failed to send reset link.');
     } finally {
        setIsSendingReset(false);

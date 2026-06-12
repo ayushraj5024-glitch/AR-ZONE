@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Lock, Save } from 'lucide-react';
+import { Lock, Save, Eye, EyeOff } from 'lucide-react';
+import { getAuth, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { getFirestore, doc, updateDoc, setDoc } from 'firebase/firestore';
 
 export default function ManagePassword() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -7,8 +9,13 @@ export default function ManagePassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
       setMessage('Please fill in all fields.');
@@ -26,12 +33,46 @@ export default function ManagePassword() {
       return;
     }
 
-    // Simulate password change success
-    setMessage('Password successfully changed!');
-    setIsError(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const db = getFirestore();
+
+    if (!user || (!user.email && !user.phoneNumber)) {
+      setMessage('User not authenticated properly.');
+      setIsError(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (user.email) {
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+        await reauthenticateWithCredential(user, credential);
+      }
+      
+      await updatePassword(user, newPassword);
+      
+      await setDoc(doc(db, 'users', user.uid), {
+        password: newPassword
+      }, { merge: true });
+
+      setMessage('Password successfully changed in authentication and user record!');
+      setIsError(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      if (error.code === 'auth/invalid-credential') {
+        setMessage('Incorrect current password.');
+      } else if (error.code === 'auth/too-many-requests') {
+        setMessage('Too many failed attempts. Please try again later.');
+      } else {
+        setMessage(error.message || 'Error updating password.');
+      }
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,44 +92,75 @@ export default function ManagePassword() {
         <form onSubmit={handleSubmit} className="space-y-5 flex flex-col">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-300 font-orbitron uppercase tracking-widest">Current Password</label>
-            <input 
-              type="password" 
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm"
-              placeholder="Enter your current password"
-            />
+            <div className="relative">
+              <input 
+                type={showCurrentPassword ? "text" : "password"} 
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-4 py-2 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm pr-10"
+                placeholder="Enter your current password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00ff88] transition-colors focus:outline-none"
+                tabIndex={-1}
+              >
+                {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-300 font-orbitron uppercase tracking-widest">New Password</label>
-            <input 
-              type="password" 
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm"
-              placeholder="Enter your new password"
-            />
+            <div className="relative">
+              <input 
+                type={showNewPassword ? "text" : "password"} 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm pr-10"
+                placeholder="Enter your new password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00ff88] transition-colors focus:outline-none"
+                tabIndex={-1}
+              >
+                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             <p className="text-xs text-slate-500">Note: Use a strong password to stop the browser from showing compromised password warnings.</p>
           </div>
 
           <div className="space-y-2 mb-4">
             <label className="text-xs font-bold text-slate-300 font-orbitron uppercase tracking-widest">Confirm New Password</label>
-            <input 
-              type="password" 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm"
-              placeholder="Confirm your new password"
-            />
+            <div className="relative">
+              <input 
+                type={showConfirmPassword ? "text" : "password"} 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] transition-all text-white text-sm pr-10"
+                placeholder="Confirm your new password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00ff88] transition-colors focus:outline-none"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <button 
             type="submit"
-            className="self-start flex items-center space-x-2 bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88] px-6 py-2 rounded text-sm font-semibold transition-all mt-4"
+            disabled={isLoading}
+            className="self-start flex items-center space-x-2 bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88] px-6 py-2 rounded text-sm font-semibold transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save size={16} />
-            <span>Save Password</span>
+            <span>{isLoading ? 'Saving...' : 'Save Password'}</span>
           </button>
         </form>
       </div>

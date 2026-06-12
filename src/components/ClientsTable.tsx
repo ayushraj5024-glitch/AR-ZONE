@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronUp, ChevronDown, MoreVertical, ShieldAlert, X, ShieldCheck, Lock, Unlock, UserPlus, Eye, EyeOff } from 'lucide-react';
-import { collection, query, onSnapshot, doc, setDoc, updateDoc, where } from 'firebase/firestore';
+import { ChevronUp, ChevronDown, MoreVertical, ShieldAlert, X, ShieldCheck, Lock, Unlock, UserPlus, Eye, EyeOff, IndianRupee } from 'lucide-react';
+import { collection, query, onSnapshot, doc, setDoc, updateDoc, where, getDoc, deleteDoc } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { db, firebaseConfig } from '../firebase';
@@ -29,6 +29,28 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
   const [usersData, setUsersData] = useState<any[]>([]);
   const [statementData, setStatementData] = useState<any[]>([]);
   const [statementLoading, setStatementLoading] = useState(false);
+  const [balanceInput, setBalanceInput] = useState('');
+  
+  const [isTopupModalOpen, setIsTopupModalOpen] = useState(false);
+  const [topupAmount, setTopupAmount] = useState('');
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [adminBalance, setAdminBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribeAuth = getAuth().onAuthStateChanged((user) => {
+      let unsubscribeDoc: any = null;
+      if (user && user.email === 'ayushraj5024@gmail.com') {
+        unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (docSn) => {
+           if (docSn.exists()) {
+             setAdminBalance(docSn.data().balance || 0);
+           }
+        });
+      }
+      return () => { if (unsubscribeDoc) unsubscribeDoc(); };
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     if (selectedStatement?.id) {
@@ -54,18 +76,36 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
   }, [selectedStatement]);
 
   useEffect(() => {
-    const q = query(collection(db, 'users'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const users: any[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.role === 'client') {
-          users.push({ id: doc.id, username: data.email, ...data });
+    let unsubscribeSnapshot: (() => void) | null = null;
+    const auth = getAuth();
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      if (user) {
+        const q = query(collection(db, 'users'));
+        unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+          const users: any[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.role === 'client' && data.status !== 'deleted') {
+              users.push({ id: doc.id, username: data.email, ...data });
+            }
+          });
+          setUsersData(users);
+        }, (error) => {
+          console.error("Error fetching users:", error);
+        });
+      } else {
+        setUsersData([]);
+        if (unsubscribeSnapshot) {
+          unsubscribeSnapshot();
+          unsubscribeSnapshot = null;
         }
-      });
-      setUsersData(users);
+      }
     });
-    return () => unsubscribe();
+
+    return () => {
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      unsubscribeAuth();
+    };
   }, []);
 
   const filteredData = usersData.filter(d => 
@@ -95,13 +135,73 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
 
   const handleDeleteUser = async (id: string) => {
     // Optimistic update
-    setUsersData(data => data.map(u => u.id === id ? { ...u, status: 'deleted' } : u));
+    setUsersData(data => data.filter(u => u.id !== id));
     
     try {
       const userRef = doc(db, 'users', id);
-      await updateDoc(userRef, { status: 'deleted' });
+      await deleteDoc(userRef);
     } catch (error: any) {
       alert("Error deleting user: " + error.message);
+      // Optional: restore data if failed
+    }
+  };
+
+  const handleUpdateBalance = async (operation: 'add' | 'subtract') => {
+    if (!selectedUserForManage) return;
+    const amount = Number(balanceInput);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount greater than 0");
+      return;
+    }
+
+    const auth = getAuth();
+    if (!auth.currentUser) {
+      alert("You must be logged in to perform this action.");
+      return;
+    }
+    const adminId = auth.currentUser.uid;
+
+    try {
+      const adminRef = doc(db, 'users', adminId);
+      const adminSnap = await getDoc(adminRef);
+      
+      if (!adminSnap.exists()) {
+        alert("Admin account not found.");
+        return;
+      }
+
+      const adminData = adminSnap.data();
+      const currentAdminBalance = Number(adminData.balance) || 0;
+
+      const currentBalance = Number(selectedUserForManage.balance) || 0;
+      let newBalance = currentBalance;
+      let newAdminBalance = currentAdminBalance;
+
+      if (operation === 'add') {
+        if (currentAdminBalance < amount) {
+          alert("Insufficient coins in admin account.");
+          return;
+        }
+        newBalance = currentBalance + amount;
+        newAdminBalance = currentAdminBalance - amount;
+      } else {
+        if (currentBalance < amount) {
+          alert("Balance cannot be less than 0");
+          return;
+        }
+        newBalance = currentBalance - amount;
+        newAdminBalance = currentAdminBalance + amount;
+      }
+
+      // Update admin balance
+      await updateDoc(adminRef, { balance: newAdminBalance });
+      // Update user balance
+      await updateStatus(selectedUserForManage.id, 'balance', newBalance);
+      
+      setBalanceInput('');
+      alert(`Successfully ${operation === 'add' ? 'added' : 'subtracted'} coins.`);
+    } catch (error: any) {
+      alert("Error updating balance: " + error.message);
     }
   };
 
@@ -133,6 +233,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         share: newUser.share,
         status: 'active',
         autoBlock: true,
+        balance: 0,
         createdAt: new Date().toISOString()
       });
 
@@ -148,10 +249,53 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
     }
   };
 
+  const handleAdminTopup = async () => {
+    const amount = Number(topupAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount greater than 0");
+      return;
+    }
+    
+    setTopupLoading(true);
+    try {
+      const auth = getAuth();
+      if (!auth.currentUser || auth.currentUser.email !== 'ayushraj5024@gmail.com') {
+        alert("Unauthorized access");
+        return;
+      }
+      
+      const adminRef = doc(db, 'users', auth.currentUser.uid);
+      const adminSnap = await getDoc(adminRef);
+      const adminData = adminSnap.data();
+      const currentBalance = adminData?.balance || 0;
+      
+      await updateDoc(adminRef, {
+        balance: currentBalance + amount
+      });
+      
+      alert(`Successfully added ₹${amount.toLocaleString()} to Master Account.`);
+      setIsTopupModalOpen(false);
+      setTopupAmount('');
+    } catch (error: any) {
+      console.error("Topup error:", error);
+      alert("Error adding coins: " + error.message);
+    } finally {
+      setTopupLoading(false);
+    }
+  };
+
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-white">{title}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-white">{title}</h2>
+          {adminBalance !== null && (
+            <div className="bg-[#00ff88]/10 border border-[#00ff88]/30 px-3 py-1.5 rounded flex items-center space-x-2">
+               <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Master Balance</span>
+               <span className="text-[#00ff88] font-mono font-bold">₹{adminBalance.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
         <div className="text-sm font-medium text-slate-400 mt-1 flex items-center space-x-2">
           <span>Dashboard</span>
           <span className="text-slate-300">/</span>
@@ -163,12 +307,22 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between rounded-t-lg">
           <h3 className="font-semibold">{subTitle}</h3>
           {!hideCreate && (
-            <button 
-              onClick={() => setIsCreateModalOpen(true)}
-              className="bg-[#182130] hover:bg-[#111823] text-white text-sm px-4 py-1.5 border border-[#1e293b] rounded shadow-sm flex items-center space-x-1 transition-colors">
-              <UserPlus size={16} />
-              <span>Create new User</span>
-            </button>
+            <div className="flex space-x-2">
+              {getAuth().currentUser?.email === 'ayushraj5024@gmail.com' && (
+                <button 
+                  onClick={() => setIsTopupModalOpen(true)}
+                  className="bg-[#00ff88] hover:bg-[#00cc6a] text-[#020503] font-bold text-sm px-4 py-1.5 border border-[#00ff88] rounded shadow-sm flex items-center space-x-1 transition-colors">
+                  <IndianRupee size={16} />
+                  <span>Top Up Master Account</span>
+                </button>
+              )}
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-[#182130] hover:bg-[#111823] text-white text-sm px-4 py-1.5 border border-[#1e293b] rounded shadow-sm flex items-center space-x-1 transition-colors">
+                <UserPlus size={16} />
+                <span>Create new User</span>
+              </button>
+            </div>
           )}
         </div>
         
@@ -200,6 +354,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 <SortableHeader label="User Name" />
                 {!hideActions && <SortableHeader label="Name" />}
                 <SortableHeader label="Status" />
+                <SortableHeader label="Balance" />
                 <SortableHeader label="Match Comm." />
                 <SortableHeader label="Ssn Comm." />
                 <SortableHeader label="Share" />
@@ -209,7 +364,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
             <tbody className="divide-y divide-[#00ff88]/20">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={hideActions ? 7 : 8} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-[#00ff88]/20">
+                  <td colSpan={hideActions ? 8 : 9} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-[#00ff88]/20">
                     No data available in table
                   </td>
                 </tr>
@@ -224,9 +379,10 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                         {row.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{row.mComm}</td>
-                    <td className="px-4 py-3">{row.sComm}</td>
-                    <td className="px-4 py-3">{row.share}</td>
+                    <td className="px-4 py-3 font-medium text-white text-right">₹{Number(row.balance || 0).toLocaleString()}</td>
+                    <td className="px-4 py-3">{String(row.mComm || 0)}</td>
+                    <td className="px-4 py-3">{String(row.sComm || 0)}</td>
+                    <td className="px-4 py-3">{String(row.share || 0)}</td>
                     <td className={`px-4 py-3 relative ${activeMenuId === row.id ? 'z-50' : ''}`}>
                       <button 
                         onClick={() => toggleMenu(row.id)}
@@ -289,10 +445,10 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedUserForManage(null)}></div>
           
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 overflow-hidden">
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
             <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
             
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="text-[#00ff88]" size={20} />
                 Manage Access
@@ -305,7 +461,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               </button>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(0,255,136,0.15)]">
                   <Lock className="text-[#00ff88]" size={28} />
@@ -364,6 +520,40 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 </p>
               </div>
 
+              {/* Balance Management */}
+              <div className="bg-[#00ff88]/5 border border-[#00ff88]/20 rounded p-4">
+                <h5 className="text-xs font-bold font-orbitron tracking-widest text-[#00ff88] uppercase mb-3">Balance Management</h5>
+                <div className="flex items-center justify-between mb-3 text-sm text-slate-300">
+                  <span>Current Balance:</span>
+                  <span className="font-bold text-white text-lg">₹{Number(selectedUserForManage.balance || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex bg-[#020503] border border-slate-800 rounded mb-3 overflow-hidden">
+                   <div className="px-3 flex items-center justify-center text-slate-400 border-r border-slate-800 font-bold bg-slate-900/50">₹</div>
+                   <input
+                     type="number"
+                     placeholder="Amount"
+                     value={balanceInput}
+                     onChange={(e) => setBalanceInput(e.target.value)}
+                     className="bg-transparent border-none w-full px-3 py-2 text-white focus:outline-none text-sm"
+                     min="0"
+                   />
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleUpdateBalance('add')}
+                    className="flex-1 bg-[#00ff88] text-black font-bold py-2 rounded text-sm hover:bg-[#00cc6a] transition-colors"
+                  >
+                    Add Balance
+                  </button>
+                  <button 
+                    onClick={() => handleUpdateBalance('subtract')}
+                    className="flex-1 bg-[#ff3355] text-white font-bold py-2 rounded text-sm hover:bg-[#ff3355]/80 transition-colors"
+                  >
+                    Subtract Balance
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -374,8 +564,8 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !createLoading && setIsCreateModalOpen(false)}></div>
           
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <UserPlus className="text-[#00ff88]" size={20} />
                 Create Client Account
@@ -389,7 +579,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               </button>
             </div>
             
-            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+            <form onSubmit={handleCreateUser} className="p-6 space-y-4 overflow-y-auto">
                <div>
                  <label className="block text-xs font-semibold text-slate-400 mb-1">User ID</label>
                  <input 
@@ -476,9 +666,9 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
       {selectedProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}></div>
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-sm relative z-10 overflow-hidden">
+          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-sm relative z-10 flex flex-col max-h-[90vh]">
             <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 Client Profile
               </h3>
@@ -486,7 +676,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4 text-slate-300">
+            <div className="p-6 space-y-4 text-slate-300 overflow-y-auto">
                <div>
                   <label className="text-xs text-slate-500 font-semibold block">User ID / Username</label>
                   <div className="text-white font-medium text-lg">{selectedProfile.username}</div>
@@ -588,6 +778,47 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                         )}
                     </tbody>
                 </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isTopupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#05100a] w-full max-w-sm rounded border border-[#00ff88]/30 shadow-2xl flex flex-col font-exo overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b border-[#00ff88]/20 bg-[#00ff88]/5">
+              <div className="flex items-center space-x-2">
+                 <IndianRupee className="text-[#00ff88]" size={20} />
+                 <h2 className="text-xl font-bold text-white font-orbitron">Master Topup</h2>
+              </div>
+              <button onClick={() => setIsTopupModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+               <div>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 block">Amount to Add (Coins)</label>
+                  <div className="flex bg-[#020503] border border-[#00ff88]/30 rounded overflow-hidden shadow-[0_0_10px_rgba(0,255,136,0.05)_inset]">
+                    <div className="px-4 flex items-center justify-center text-[#00ff88] border-r border-[#00ff88]/30 font-bold bg-[#00ff88]/10">₹</div>
+                    <input
+                      type="number"
+                      placeholder="Enter Coins..."
+                      value={topupAmount}
+                      onChange={(e) => setTopupAmount(e.target.value)}
+                      className="bg-transparent border-none w-full px-4 py-3 text-white focus:outline-none placeholder-slate-600 font-bold font-mono"
+                      min="0"
+                    />
+                  </div>
+               </div>
+               
+               <button 
+                 onClick={handleAdminTopup}
+                 disabled={topupLoading}
+                 className="w-full bg-[#00ff88] hover:bg-[#00cc6a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 rounded text-sm transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] mt-2 font-orbitron tracking-widest hover:shadow-[0_0_25px_rgba(0,255,136,0.5)]"
+               >
+                 {topupLoading ? 'PROCESSING...' : 'ADD COINS'}
+               </button>
             </div>
           </div>
         </div>
