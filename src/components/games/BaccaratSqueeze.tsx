@@ -82,7 +82,7 @@ const PlayingCard = ({
   return (
     <div className="relative w-16 h-24 md:w-24 md:h-36 perspective-1000">
       <motion.div
-        className="w-full h-full preserve-3d absolute top-0 left-0"
+        className="w-full h-full absolute top-0 left-0"
         initial={{ rotateY: 180, scale: 0.8, opacity: 0 }}
         animate={{
           rotateY: revealed ? 0 : 180,
@@ -98,7 +98,7 @@ const PlayingCard = ({
       >
         {/* Card Back */}
         <div
-          className="absolute w-full h-full backface-hidden rounded-lg bg-linear-to-br from-red-800 to-red-950 border-2 border-red-400/30 flex items-center justify-center overflow-hidden shadow-xl"
+          className="absolute w-full h-full rounded-lg bg-linear-to-br from-red-800 to-red-950 border-2 border-red-400/30 flex items-center justify-center overflow-hidden shadow-xl"
           style={{ transform: "rotateY(180deg)", backfaceVisibility: "hidden" }}
         >
           <div className="w-[80%] h-[80%] rounded border border-red-500/20 bg-[url('https://www.transparenttextures.com/patterns/argyle.png')] opacity-30"></div>
@@ -107,7 +107,7 @@ const PlayingCard = ({
 
         {/* Card Front */}
         <div
-          className="absolute w-full h-full backface-hidden rounded-lg bg-white border border-slate-200 shadow-xl flex flex-col justify-between p-1.5 md:p-2"
+          className="absolute w-full h-full rounded-lg bg-white border border-slate-200 shadow-xl flex flex-col justify-between p-1.5 md:p-2"
           style={{ backfaceVisibility: "hidden" }}
         >
           <div
@@ -218,17 +218,34 @@ export default function BaccaratSqueeze({
         let finalPScore = currentPScore;
         let finalBScore = currentBScore;
 
-        // Simplified Baccarat rules for UI demo purposes
-        if (currentPScore < 6) {
-          const p3 = generateRandomCard();
-          finalPCards.push(p3);
-          finalPScore = (finalPScore + p3.numValue) % 10;
-        }
+        let p3Value = -1;
 
-        if (currentBScore < 6 && currentPScore < 8 && currentBScore < 8) {
-          const b3 = generateRandomCard();
-          finalBCards.push(b3);
-          finalBScore = (finalBScore + b3.numValue) % 10;
+        if (currentPScore < 8 && currentBScore < 8) {
+          if (currentPScore <= 5) {
+            const p3 = generateRandomCard();
+            finalPCards.push(p3);
+            p3Value = p3.numValue;
+            finalPScore = (finalPScore + p3.numValue) % 10;
+          }
+
+          let bankerDraws = false;
+          if (p3Value === -1) {
+            // Player stood
+            if (currentBScore <= 5) bankerDraws = true;
+          } else {
+            // Player drew
+            if (currentBScore <= 2) bankerDraws = true;
+            else if (currentBScore === 3 && p3Value !== 8) bankerDraws = true;
+            else if (currentBScore === 4 && p3Value >= 2 && p3Value <= 7) bankerDraws = true;
+            else if (currentBScore === 5 && p3Value >= 4 && p3Value <= 7) bankerDraws = true;
+            else if (currentBScore === 6 && (p3Value === 6 || p3Value === 7)) bankerDraws = true;
+          }
+
+          if (bankerDraws) {
+            const b3 = generateRandomCard();
+            finalBCards.push(b3);
+            finalBScore = (finalBScore + b3.numValue) % 10;
+          }
         }
 
         setPlayerCards(finalPCards);
@@ -245,19 +262,20 @@ export default function BaccaratSqueeze({
 
         setTimeout(() => {
           let isWin = false;
+          let isPush = false;
           let multiplier = 0;
 
           if (selectedBet === "PLAYER" && winner === "P") {
             isWin = true;
             multiplier = 2;
-          }
-          if (selectedBet === "BANKER" && winner === "B") {
+          } else if (selectedBet === "BANKER" && winner === "B") {
             isWin = true;
             multiplier = 1.95;
-          }
-          if (selectedBet === "TIE" && winner === "T") {
+          } else if (selectedBet === "TIE" && winner === "T") {
             isWin = true;
             multiplier = 9;
+          } else if ((selectedBet === "PLAYER" || selectedBet === "BANKER") && winner === "T") {
+            isPush = true;
           }
 
           if (isWin) {
@@ -267,9 +285,18 @@ export default function BaccaratSqueeze({
               true,
               `Won on ${selectedBet}`,
             );
+          } else if (isPush) {
+            onPlay(
+              betAmount,
+              0,
+              true,
+              `Push on ${selectedBet} (Tie)`,
+            );
           } else {
             onPlay(betAmount, -betAmount, false, `Lost on ${selectedBet}`);
           }
+          
+          setGameState("IDLE"); // Reset state to allow next game immediately
         }, 1500);
       }, 4000); // 4 seconds of squeezing
       }, 5000); // 5 seconds of waiting

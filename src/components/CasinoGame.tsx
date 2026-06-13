@@ -311,8 +311,6 @@ export default function CasinoGame({
       ];
       break;
     case "teenpattit20":
-    case "teenpatti1day":
-    case "testteenpatti":
       oddsData = [
         { name: "Player A", amount: "0.00", back1: "1.96" },
         { name: "Player B", amount: "0.00", back1: "1.96" },
@@ -349,17 +347,48 @@ export default function CasinoGame({
     import('firebase/auth').then(({ getAuth }) => {
       const auth = getAuth();
       if (!auth.currentUser) return;
-      import('firebase/firestore').then(({ getFirestore, doc, onSnapshot }) => {
+      import('firebase/firestore').then(({ getFirestore, doc, onSnapshot, collection, query, where, orderBy }) => {
         const db = getFirestore();
         const unsub = onSnapshot(doc(db, 'users', auth.currentUser!.uid), (docSn) => {
           if (docSn.exists()) {
              setBalance(Number(docSn.data()?.balance || 0));
           }
         });
-        return () => unsub();
+        
+        let unsubBets = () => {};
+        if (gameId !== "aviator") {
+          const q = query(
+            collection(db, `users/${auth.currentUser!.uid}/bets`),
+            where("gameId", "==", gameId)
+          );
+          unsubBets = onSnapshot(q, (snapshot) => {
+            const rawBets: any[] = [];
+            snapshot.forEach(doc => rawBets.push({ id: doc.id, ...doc.data() }));
+            
+            rawBets.sort((a, b) => {
+              const t1 = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+              const t2 = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+              return t2 - t1;
+            });
+
+            const bets: BetRecord[] = rawBets.map(data => ({
+              id: data.id,
+              selection: data.selection,
+              amount: data.amount,
+              odds: data.odds || (data.status === 'won' ? 'WIN' : 'LOSE'),
+              status: data.status,
+              profit: data.profit,
+              time: data.time || new Date().toLocaleTimeString()
+            }));
+            
+            setBetHistory(bets);
+          });
+        }
+        
+        return () => { unsub(); unsubBets(); };
       });
     });
-  }, []);
+  }, [gameId]);
 
   const updateBalanceDB = async (amount: number) => {
     try {
@@ -426,7 +455,24 @@ export default function CasinoGame({
       profit: profit,
       time: new Date().toLocaleTimeString(),
     };
+    
     setBetHistory((prev) => [newBet, ...prev]);
+
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const { getFirestore, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+      const auth = getAuth();
+      if (auth.currentUser) {
+        const db = getFirestore();
+        await addDoc(collection(db, `users/${auth.currentUser.uid}/bets`), {
+          ...newBet,
+          gameId: gameId,
+          createdAt: serverTimestamp()
+        });
+      }
+    } catch(e) {
+      console.error(e);
+    }
   };
 
   const handleRefresh = () => {
@@ -467,6 +513,22 @@ export default function CasinoGame({
       };
 
       setBetHistory((prev) => [newBet, ...prev]);
+
+      try {
+        const { getAuth } = await import('firebase/auth');
+        const { getFirestore, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+        const auth = getAuth();
+        if (auth.currentUser) {
+          const db = getFirestore();
+          await addDoc(collection(db, `users/${auth.currentUser.uid}/bets`), {
+            ...newBet,
+            gameId: gameId,
+            createdAt: serverTimestamp()
+          });
+        }
+      } catch(e) {
+        console.error(e);
+      }
 
       // Reveal new cards
       const newRevealed: { [slotIndex: number]: string[] } = {};
@@ -629,9 +691,7 @@ export default function CasinoGame({
         <div className="xl:col-span-2 space-y-6">
           {gameId === "lucky7" ? (
             <Lucky7Slot balance={balance} onPlay={handleSlotResult} />
-          ) : gameId === "teenpattit20" ||
-            gameId === "teenpatti1day" ||
-            gameId === "testteenpatti" ? (
+          ) : gameId === "teenpattit20" ? (
             <TeenPattiT20
               balance={balance}
               onPlay={handleSlotResult}
@@ -824,8 +884,6 @@ export default function CasinoGame({
           {selectedBet &&
           gameId !== "lucky7" &&
           gameId !== "teenpattit20" &&
-          gameId !== "teenpatti1day" &&
-          gameId !== "testteenpatti" &&
           gameId !== "headandtail" &&
           gameId !== "baccarat" ? (
             <div className="bg-[#05100a] rounded-xl shadow-lg border-2 border-indigo-500 overflow-hidden transform transition-all animate-in slide-in-from-right-4">

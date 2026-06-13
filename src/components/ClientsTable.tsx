@@ -165,12 +165,14 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
       const adminRef = doc(db, 'users', adminId);
       const adminSnap = await getDoc(adminRef);
       
-      if (!adminSnap.exists()) {
+      const isMasterAdmin = auth.currentUser.email === 'ayushraj5024@gmail.com';
+      
+      if (!adminSnap.exists() && !isMasterAdmin) {
         alert("Admin account not found.");
         return;
       }
 
-      const adminData = adminSnap.data();
+      const adminData = adminSnap.exists() ? adminSnap.data() : { balance: 0 };
       const currentAdminBalance = Number(adminData.balance) || 0;
 
       const currentBalance = Number(selectedUserForManage.balance) || 0;
@@ -178,7 +180,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
       let newAdminBalance = currentAdminBalance;
 
       if (operation === 'add') {
-        if (currentAdminBalance < amount) {
+        if (!isMasterAdmin && currentAdminBalance < amount) {
           alert("Insufficient coins in admin account.");
           return;
         }
@@ -193,8 +195,11 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         newAdminBalance = currentAdminBalance + amount;
       }
 
-      // Update admin balance
-      await updateDoc(adminRef, { balance: newAdminBalance });
+      // Update admin balance only if it's not the master admin
+      if (!isMasterAdmin) {
+        await updateDoc(adminRef, { balance: newAdminBalance });
+      }
+      
       // Update user balance
       await updateStatus(selectedUserForManage.id, 'balance', newBalance);
       

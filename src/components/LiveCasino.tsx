@@ -35,18 +35,6 @@ const games: Game[] = [
     image: "https://placehold.co/800x600/15231b/00ff88?text=TeenPatti+T20",
   },
   {
-    id: "teenpatti1day",
-    title: "TeenPatti 1Day",
-    provider: "Ezugi",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=TeenPatti+1Day",
-  },
-  {
-    id: "testteenpatti",
-    title: "Test TeenPatti",
-    provider: "Virtual",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=Test+TeenPatti",
-  },
-  {
     id: "32cards",
     title: "32 Cards",
     provider: "Ezugi",

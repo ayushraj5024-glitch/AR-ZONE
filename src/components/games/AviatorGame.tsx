@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plane } from "lucide-react";
+import { getAuth } from "firebase/auth";
+import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot } from "firebase/firestore";
 
 export default function AviatorGame({ balance, onResult }: { balance: number, onResult?: (amount: number) => void }) {
   const [multiplier, setMultiplier] = useState(1.0);
@@ -12,7 +14,49 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
   const [cashedOutAmount, setCashedOutAmount] = useState<number | null>(null);
   const [crashPoint, setCrashPoint] = useState(2.50);
   
-  const [myBetsHistory, setMyBetsHistory] = useState<{ date: string, amount: number, multiplier?: number, payout?: number, status: 'won' | 'lost'}[]>([]);
+  const [myBetsHistory, setMyBetsHistory] = useState<{ id?: string, date: string, amount: number, multiplier?: number, payout?: number, status: 'won' | 'lost'}[]>([]);
+
+  useEffect(() => {
+    try {
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+      const db = getFirestore();
+      const q = query(
+        collection(db, `users/${auth.currentUser.uid}/bets`),
+        where("gameId", "==", "aviator")
+      );
+      const unsub = onSnapshot(q, (snapshot) => {
+        const bets: any[] = [];
+        snapshot.forEach(doc => {
+          bets.push({ id: doc.id, ...doc.data() });
+        });
+        bets.sort((a, b) => {
+          const t1 = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const t2 = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return t2 - t1;
+        });
+        setMyBetsHistory(bets);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const saveBetToFirestore = async (betData: any) => {
+    try {
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+      const db = getFirestore();
+      await addDoc(collection(db, `users/${auth.currentUser.uid}/bets`), {
+        ...betData,
+        gameId: 'aviator',
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.error("Failed to save bet", e);
+    }
+  };
 
   const adjustBet = (type: string) => {
     let current = Number(betAmount) || 0;
@@ -59,11 +103,13 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
         setGameState('crashed');
         setMultiplier(crashPoint);
         if (activeBetAmount > 0) {
-           setMyBetsHistory(curr => [{ 
+           const betData = { 
              date: new Date().toLocaleTimeString(), 
              amount: activeBetAmount, 
              status: 'lost' 
-           }, ...curr]);
+           };
+           setMyBetsHistory(curr => [betData as any, ...curr]);
+           saveBetToFirestore(betData);
            setActiveBetAmount(0);
         }
       } else if (autoCashoutEnabled && activeBetAmount > 0 && multiplier >= Number(autoCashout)) {
@@ -75,13 +121,15 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
         if (onResult) {
           onResult(payout);
         }
-        setMyBetsHistory(curr => [{ 
+        const betData = { 
           date: new Date().toLocaleTimeString(), 
           amount: activeBetAmount, 
           multiplier: Number(autoCashout), 
           payout: payout, 
           status: 'won' 
-        }, ...curr]);
+        };
+        setMyBetsHistory(curr => [betData as any, ...curr]);
+        saveBetToFirestore(betData);
         setActiveBetAmount(0);
       }
     }
@@ -253,13 +301,15 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
                 if (onResult) {
                   onResult(payout);
                 }
-                setMyBetsHistory(curr => [{ 
+                const betData = { 
                   date: new Date().toLocaleTimeString(), 
                   amount: activeBetAmount, 
                   multiplier: multiplier, 
                   payout: payout, 
                   status: 'won' 
-                }, ...curr]);
+                };
+                setMyBetsHistory(curr => [betData as any, ...curr]);
+                saveBetToFirestore(betData);
                 setActiveBetAmount(0);
               }
             }}
@@ -280,78 +330,74 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
           </button>
         </div>
 
-        {/* LIVE PLAYERS Column */}
-        <div className="bg-[#18212e] p-2 sm:p-4 rounded-xl border border-slate-700/50 lg:col-span-7 shadow-lg">
+        {/* My Bets History Column (Moved up) */}
+        <div className="bg-[#18212e] p-2 sm:p-4 rounded-xl border border-slate-700/50 lg:col-span-7 shadow-lg flex flex-col h-full">
           <h3 className="text-slate-400 font-bold uppercase tracking-widest mb-2 sm:mb-3 text-[10px] sm:text-xs">
-            Live Players
+            My Bets History
           </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 h-35 overflow-y-auto pr-2 custom-scrollbar">
-            {players.map((p, i) => (
-              <div
-                key={i}
-                className="flex justify-between items-center py-1.5 sm:py-2 border-b border-slate-700/50"
-              >
-                <div className="text-slate-300 text-xs sm:text-sm font-medium w-3/5 truncate">
-                  {p.name}
-                </div>
-                <div className="flex items-center gap-4 justify-end w-2/5">
-                  <span className="text-yellow-500 font-bold text-xs sm:text-sm">
-                    ₹{p.bet}
-                  </span>
-                  <span className="text-slate-500 font-bold text-xs sm:text-sm">...</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {myBetsHistory.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center py-6 text-slate-500 text-sm font-medium border border-slate-700/30 rounded-lg border-dashed">
+              No bets placed yet.
+            </div>
+          ) : (
+            <div className="overflow-y-auto overflow-x-auto custom-scrollbar h-35">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-slate-700/50">
+                    <th className="pb-2 px-3 font-semibold text-slate-400 text-xs">Date</th>
+                    <th className="pb-2 px-3 font-semibold text-slate-400 text-xs text-center">Multiplier</th>
+                    <th className="pb-2 px-3 font-semibold text-slate-400 text-xs text-right">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myBetsHistory.map((bet, idx) => (
+                    <tr key={idx} className="border-b border-slate-700/20 last:border-0 hover:bg-[#212b3a]/50 transition-colors">
+                      <td className="py-2 px-3 text-slate-300 text-xs">{bet.date}</td>
+                      <td className="py-2 px-3 text-center">
+                        {bet.status === 'won' ? (
+                          <span className="text-[#00ff88] bg-[#00ff88]/10 px-2 py-0.5 rounded-full text-[10px] font-bold border border-[#00ff88]/20">{bet.multiplier?.toFixed(2)}x</span>
+                        ) : (
+                          <span className="text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full text-[10px] font-bold border border-rose-500/20">Crashed</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        {bet.status === 'won' ? (
+                           <span className="text-[#00ff88] font-bold text-xs">+₹{bet.payout?.toFixed(2)}</span>
+                         ) : (
+                           <span className="text-rose-500 font-bold text-xs">-₹{bet.amount.toFixed(2)}</span>
+                         )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* My Bets History Section */}
+      {/* LIVE PLAYERS Section (Moved down) */}
       <div className="bg-[#18212e] p-4 sm:p-5 rounded-xl border border-slate-700/50 shadow-lg mt-6!">
         <h3 className="text-slate-400 font-bold uppercase tracking-widest mb-3 text-xs sm:text-sm">
-          My Bets History
+          Live Players
         </h3>
-        {myBetsHistory.length === 0 ? (
-          <div className="text-center py-6 text-slate-500 text-sm font-medium border border-slate-700/30 rounded-lg border-dashed">
-            No bets placed yet.
-          </div>
-        ) : (
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-slate-700/50">
-                  <th className="pb-3 px-4 font-semibold text-slate-400">Date</th>
-                  <th className="pb-3 px-4 font-semibold text-slate-400">Bet Amount</th>
-                  <th className="pb-3 px-4 font-semibold text-slate-400 text-center">Multiplier</th>
-                  <th className="pb-3 px-4 font-semibold text-slate-400 text-right">Payout</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myBetsHistory.map((bet, idx) => (
-                  <tr key={idx} className="border-b border-slate-700/20 last:border-0 hover:bg-[#212b3a]/50 transition-colors">
-                    <td className="py-3 px-4 text-slate-300 text-xs">{bet.date}</td>
-                    <td className="py-3 px-4 text-white font-medium">₹{bet.amount.toFixed(2)}</td>
-                    <td className="py-3 px-4 text-center">
-                      {bet.status === 'won' ? (
-                        <span className="text-[#00ff88] bg-[#00ff88]/10 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border border-[#00ff88]/20">{bet.multiplier?.toFixed(2)}x</span>
-                      ) : (
-                        <span className="text-rose-500 bg-rose-500/10 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border border-rose-500/20">Crashed</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {bet.status === 'won' ? (
-                         <span className="text-[#00ff88] font-bold">+₹{bet.payout?.toFixed(2)}</span>
-                       ) : (
-                         <span className="text-rose-500 font-bold">-₹{bet.amount.toFixed(2)}</span>
-                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 px-2">
+          {players.map((p, i) => (
+            <div
+              key={i}
+              className="flex justify-between items-center py-2 px-3 bg-[#212b3a]/50 border border-slate-700/30 rounded-lg hover:bg-[#212b3a] transition-colors"
+            >
+              <div className="text-slate-300 text-xs sm:text-sm font-medium truncate">
+                {p.name}
+              </div>
+              <div className="flex items-center gap-2 justify-end">
+                <span className="text-yellow-500 font-bold text-xs sm:text-sm">
+                  ₹{p.bet}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

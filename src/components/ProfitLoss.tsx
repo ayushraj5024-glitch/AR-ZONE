@@ -26,14 +26,14 @@ export default function ProfitLoss() {
       </div>
 
       <div className="flex flex-col space-y-4">
-        <div className="flex items-center space-x-4 bg-[#05100a] p-3 rounded border border-[#00ff88]/20">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 bg-[#05100a] p-3 rounded border border-[#00ff88]/20">
           <div className="flex-1 flex items-center border border-[#00ff88]/30 rounded px-2 py-1.5 focus-within:border-[#00ff88] bg-[#05100a] flex-wrap gap-1">
             {tags.map((tag) => (
               <span key={tag} className="bg-[#60999b] text-white text-xs px-2 py-1 rounded flex items-center">
                 <span onClick={() => removeTag(tag)} className="mr-1 opacity-70 cursor-pointer hover:opacity-100">×</span>{tag}
               </span>
             ))}
-            <input type="text" className="outline-none flex-1 min-w-[50px] text-sm ml-1" placeholder={tags.length === 0 ? "Add sport..." : ""} />
+            <input type="text" className="outline-none flex-1 min-w-12.5 text-sm ml-1" placeholder={tags.length === 0 ? "Add sport..." : ""} />
             {tags.length > 0 && <span onClick={() => setTags([])} className="text-slate-400 text-xs ml-auto cursor-pointer hover:text-slate-200">×</span>}
           </div>
           <div className="flex items-center border border-[#00ff88]/30 rounded bg-[#05100a]">
