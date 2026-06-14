@@ -39,6 +39,7 @@ interface BetRecord {
 const Lucky7Slot = ({
   balance,
   onPlay,
+  onDeductBet
 }: {
   balance: number;
   onPlay: (
@@ -47,6 +48,7 @@ const Lucky7Slot = ({
     win: boolean,
     details: string,
   ) => void;
+  onDeductBet?: (amount: number) => Promise<void>;
 }) => {
   const SYMBOLS = ["7", "🍒", "🔔", "BAR", "💎", "🍉"];
   const [reels, setReels] = useState(["7", "7", "7"]);
@@ -60,6 +62,9 @@ const Lucky7Slot = ({
       alert("Insufficient balance");
       return;
     }
+    
+    if (onDeductBet) onDeductBet(-betAmount).catch(console.error);
+    
     setIsSpinning(true);
     setLastWin(null);
 
@@ -129,13 +134,13 @@ const Lucky7Slot = ({
         multiplier = 0.5; // Single cherry
       }
 
-      const netProfit = betAmount * multiplier - betAmount;
+      const netProfit = betAmount * multiplier; // Changed to gross because we deducted bet
       if (multiplier > 0) setLastWin(betAmount * multiplier);
 
       onPlay(
         betAmount,
         netProfit,
-        netProfit > 0,
+        multiplier > 0,
         `Slot Spin [${r1} ${r2} ${r3}]`,
       );
       setIsSpinning(false);
@@ -493,14 +498,21 @@ export default function CasinoGame({
 
     setIsPlacingBet(true);
     setRevealedCards({}); // Clear cards while placing bet
+    
+    // Deduct bet immediately
+    updateBalanceDB(-amountNum).catch(console.error);
 
     // Simulate API call for bet result
     setTimeout(async () => {
       const isWin = Math.random() < 0.49;
       const oddsNum = parseFloat(selectedBet.odds);
-      const profit = isWin ? amountNum * (oddsNum - 1) : -amountNum;
+      
+      if (isWin) {
+         // Return original bet + profit
+         await updateBalanceDB(amountNum * oddsNum);
+      }
 
-      await updateBalanceDB(profit);
+      const profit = isWin ? amountNum * (oddsNum - 1) : -amountNum;
 
       const newBet: BetRecord = {
         id: Math.random().toString(36).substr(2, 9),
@@ -621,7 +633,7 @@ export default function CasinoGame({
 
         <AviatorGame 
           balance={balance} 
-          onResult={(profit) => setBalance(prev => prev + profit)} 
+          onResult={(profit) => { updateBalanceDB(profit).catch(console.error); setBalance(prev => prev + profit); }} 
         />
       </div>
     );
@@ -690,23 +702,26 @@ export default function CasinoGame({
         {/* Left Column - Game Area (Takes up 2 cols on xl) */}
         <div className="xl:col-span-2 space-y-6">
           {gameId === "lucky7" ? (
-            <Lucky7Slot balance={balance} onPlay={handleSlotResult} />
+            <Lucky7Slot balance={balance} onPlay={handleSlotResult} onDeductBet={updateBalanceDB} />
           ) : gameId === "teenpattit20" ? (
             <TeenPattiT20
               balance={balance}
               onPlay={handleSlotResult}
+              onDeductBet={updateBalanceDB}
               gameName={gameName}
             />
           ) : gameId === "headandtail" ? (
             <HeadAndTail
               balance={balance}
               onPlay={handleSlotResult}
+              onDeductBet={updateBalanceDB}
               gameName={gameName}
             />
           ) : gameId === "baccarat" ? (
             <BaccaratSqueeze
               balance={balance}
               onPlay={handleSlotResult}
+              onDeductBet={updateBalanceDB}
               gameName={gameName}
             />
           ) : (

@@ -18,32 +18,59 @@ async function startServer() {
     res.json({ status: "ok", message: "API is high-performance ready" });
   });
 
+  // Simple in-memory cache
+  let cachedMatches: any = null;
+  let cacheTime = 0;
+  const CACHE_TTL = 60000; // 60 seconds to save API requests limit
+
   // Proxy route for your Live Matches API
-  // Ye route frontend call karega, aur backend aage actual Live API ko call karega
   apiRouter.get("/live-matches", async (req, res) => {
     try {
-      // 1. Apne environment variables se API Key aur URL get karein
-      const apiUrl = "https://api.cricapi.com/v1/cricScore?apikey=55deec14-d2da-412e-a0ba-e98090b4cce8";
-      const apiKey = "55deec14-d2da-412e-a0ba-e98090b4cce8";
-
-      // Fetch from actual API
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      
-      // console.log("CricAPI Response Status:", data.status, "Info:", data.info?.hitsToday);
-      if (data.status === 'failure' || data.apikey === false) {
-        // Silently handle error
+      if (cachedMatches && Date.now() - cacheTime < CACHE_TTL) {
+         return res.json(cachedMatches);
       }
+
+      // 1. Apne environment variables se API Key aur URL get karein
+      const apiKey = process.env.CRIC_API_KEY || "55deec14-d2da-412e-a0ba-e98090b4cce8";
+      const apiUrl = `https://api.cricapi.com/v1/cricScore?apikey=${apiKey}`;
       
-      // Send the data formatted back or raw
-      return res.json({
-        success: data.status !== 'failure',
-        error: data.reason,
-        matches: data.data || [] // Assuming data.data holds the matches based on CricAPI format
-      });
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+           return res.json(cachedMatches || { success: false, error: 'API Error: ' + response.status, matches: [] });
+        }
+        
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+           return res.json(cachedMatches || { success: false, error: 'API Error: non-json response', matches: [] });
+        }
+        
+        const data = await response.json();
+        
+        const result = {
+          success: data.status !== 'failure',
+          error: data.reason || (data.status === 'failure' ? 'API Limit Reached or Invalid Key' : null),
+          matches: data.data || [] 
+        };
+
+        // Cache the successful data OR specifically if limit reached so we don't spam their disabled key
+        if (result.success && result.matches.length > 0) {
+           cachedMatches = result;
+           cacheTime = Date.now();
+        } else if (!result.success) {
+           // Temporarily cache the error too for 30s to avoid spamming an exhausted endpoint
+           cachedMatches = result;
+           cacheTime = Date.now();
+        }
+
+        return res.json(result);
+      } catch (e) {
+        console.error("CricAPI Fetch Error:", e);
+        return res.json(cachedMatches || { success: false, error: "Network error with upstream API", matches: [] });
+      }
     } catch (error) {
       // Silently handle API failures
-      res.status(500).json({ success: false, error: "Failed to fetch live matches" });
+      res.status(500).json(cachedMatches || { success: false, error: "Failed to fetch live matches" });
     }
   });
 

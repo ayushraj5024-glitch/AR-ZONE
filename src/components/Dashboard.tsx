@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Shield, LogOut, AlertTriangle, ChevronRight } from 'lucide-react';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, onSnapshot, collection, getDocs } from 'firebase/firestore';
 
 // Custom CSS added locally within component for specific complex effects
 const DashboardStyles = `
@@ -46,9 +48,6 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
   // State variables for dynamic values
   const [sessionTime, setSessionTime] = useState(14 * 60 + 32); // 14:32 in seconds
-  const [sessions, setSessions] = useState(247);
-  const [transactions, setTransactions] = useState(1843);
-  const [blocked, setBlocked] = useState(16);
 
   // Parse time
   const formatTime = (totalSeconds: number) => {
@@ -57,22 +56,67 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const [adminData, setAdminData] = useState<any>({ balance: 1000, mComm: '3', sComm: '3', share: '50.0%' });
+  const [realStats, setRealStats] = useState({ totalUsers: 247, activeUsers: 247, suspended: 16, transactions: 1859 });
+  const [companyContact, setCompanyContact] = useState("SC211607");
+
+  useEffect(() => {
+    let unsub: any = null;
+    const fetchData = async () => {
+      try {
+        const auth = getAuth();
+        if (!auth.currentUser) return;
+        
+        const db = getFirestore();
+        
+        // Listen to admin data
+        unsub = onSnapshot(doc(db, 'users', auth.currentUser.uid), (docSn) => {
+          if (docSn.exists()) {
+            setAdminData((prev: any) => ({...prev, ...docSn.data()}));
+            setCompanyContact(docSn.id.substring(0, 8).toUpperCase());
+          }
+        });
+
+        // Get users stats
+        const usersSnap = await getDocs(collection(db, 'users'));
+        let active = 0;
+        let susp = 0;
+        let tx = 0;
+        
+        for (const u of usersSnap.docs) {
+          const data = u.data();
+          if (data.status === 'active') active++;
+          if (data.status === 'suspended') susp++;
+          
+          // Count statements as transactions
+          try {
+            const stmts = await getDocs(collection(db, `users/${u.id}/statements`));
+            tx += stmts.size;
+          } catch(e) {}
+          try {
+             const bets = await getDocs(collection(db, `users/${u.id}/betHistory`));
+             tx += bets.size;
+          } catch(e) {}
+        }
+        
+        setRealStats({ totalUsers: usersSnap.size, activeUsers: active, suspended: susp, transactions: tx });
+        
+      } catch(e) {
+        console.error("Dashboard fetch error", e);
+      }
+    };
+    fetchData();
+    return () => { if (unsub) unsub(); }
+  }, []);
+
   useEffect(() => {
     // Session timer
     const timerInterval = setInterval(() => {
       setSessionTime(prev => Math.max(0, prev - 1));
     }, 1000);
 
-    // Live Stats Flicker
-    const statsInterval = setInterval(() => {
-      setSessions(prev => prev + Math.floor(Math.random() * 21) - 10); // ±10
-      setTransactions(prev => prev + Math.floor(Math.random() * 61) - 30); // ±30
-      setBlocked(prev => prev + Math.floor(Math.random() * 9) - 4); // ±4
-    }, 4000);
-
     return () => {
       clearInterval(timerInterval);
-      clearInterval(statsInterval);
     };
   }, []);
 
@@ -327,42 +371,42 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.5s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Fix Limit</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">1,000</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{Number(adminData.balance).toLocaleString()}</div>
                  <div className="text-(--green) text-sm font-exo mt-3">Active Limit</div>
               </div>
 
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.6s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Company Contact</h3>
-                 <div className="text-white font-orbitron text-2xl font-bold tracking-wider mb-3 mt-1">SC211607</div>
+                 <div className="text-white font-orbitron text-2xl font-bold tracking-wider mb-3 mt-1">{companyContact}</div>
                  <div className="inline-block px-2.5 py-1 rounded border border-(--green)/40 bg-(--green)/10 text-(--green) text-xs font-bold font-exo tracking-widest mt-1">VERIFIED</div>
               </div>
 
               {/* Row 2 */}
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3 leading-relaxed">Maximum My<br/>Share</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">50.0%</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">{adminData.share || '50.0%'}</div>
                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-linear-to-r from-(--blue) to-(--green) w-1/2"></div>
+                    <div className="h-full bg-linear-to-r from-(--blue) to-(--green)" style={{ width: adminData.share ? adminData.share : '50%' }}></div>
                  </div>
               </div>
 
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3 leading-relaxed">Minimum Company<br/>Share</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">50%</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">{adminData.share || '50%'}</div>
                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-(--gold) w-1/2 shadow-[0_0_10px_var(--gold)]"></div>
+                    <div className="h-full bg-(--gold) shadow-[0_0_10px_var(--gold)]" style={{ width: adminData.share ? adminData.share : '50%' }}></div>
                  </div>
               </div>
 
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-4 leading-relaxed">Match<br/>Commission</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">3</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{adminData.mComm || '3'}</div>
                  <div className="text-(--green) text-sm font-exo mt-3">Per Transaction</div>
               </div>
 
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-4 leading-relaxed">Session<br/>Commission</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">3</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{adminData.sComm || '3'}</div>
                  <div className="text-(--green) text-sm font-exo mt-3">Per Session</div>
               </div>
            </div>
@@ -372,19 +416,19 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
               
               <div className="bg-(--card-bg) border-x border-t border-(--card-border) live-stat-card rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Active Sessions</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{sessions.toLocaleString()}</div>
-                 <div className="text-(--green) text-sm font-exo font-semibold flex items-center gap-1">↑ +12 live</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{realStats.activeUsers.toLocaleString()}</div>
+                 <div className="text-(--green) text-sm font-exo font-semibold flex items-center gap-1">↑ Live Connected</div>
               </div>
 
               <div className="bg-(--card-bg) border-x border-t border-(--card-border) live-stat-card rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Today's Transactions</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{transactions.toLocaleString()}</div>
-                 <div className="text-(--green) text-sm font-exo font-semibold flex items-center gap-1">↑ +8.4%</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{realStats.transactions.toLocaleString()}</div>
+                 <div className="text-(--green) text-sm font-exo font-semibold flex items-center gap-1">↑ Processed</div>
               </div>
 
               <div className="bg-(--card-bg) border-x border-t border-[rgba(255,51,85,0.3)] border-b-2 border-b-(--red) shadow-[0_4px_15px_rgba(255,51,85,0.1)] rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(255,51,85,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Blocked Attempts</h3>
-                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{blocked.toLocaleString()}</div>
+                 <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{realStats.suspended.toLocaleString()}</div>
                  <div className="text-(--red) text-sm font-exo font-semibold flex items-center gap-1">
                    <AlertTriangle size={14} className="mb-0.5" />
                    Monitored

@@ -623,7 +623,13 @@ export default function App() {
           {currentView === 'live_report' && (
             <LiveMatchReport 
               matchData={selectedMatch}
-              onNavigateBack={() => setCurrentView('live_matches')}
+              onNavigateBack={() => {
+                if (selectedMatch?.status?.toLowerCase().includes('ended') || selectedMatch?.status?.toLowerCase().includes('result') || selectedMatch?.status?.toLowerCase().includes('won') || selectedMatch?.status?.toLowerCase().includes('abandoned')) {
+                  setCurrentView('completed_matches');
+                } else {
+                  setCurrentView('live_matches');
+                }
+              }}
               onGoToDashboard={() => setCurrentView('dashboard')}
             />
           )}
@@ -635,6 +641,10 @@ export default function App() {
               breadcrumb="Matches" 
               hideCreate={true}
               hideActions={true}
+              onViewReport={(match: Match) => {
+                setSelectedMatch(match);
+                setCurrentView('live_report');
+              }}
             />
           )}
 

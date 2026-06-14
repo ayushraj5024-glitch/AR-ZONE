@@ -4,6 +4,7 @@ interface TeenPattiProps {
   balance: number;
   gameName?: string;
   onPlay: (amount: number, profit: number, win: boolean, details: string) => void;
+  onDeductBet?: (amount: number) => Promise<void>;
 }
 
 const suits = {
@@ -86,7 +87,7 @@ const Card: React.FC<CardProps> = ({ value, suit, faceDown }) => {
   );
 };
 
-export default function TeenPattiT20({ balance, onPlay, gameName = "Teen Patti T20" }: TeenPattiProps) {
+export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = "Teen Patti T20" }: TeenPattiProps) {
   const [betAmount, setBetAmount] = useState<number>(50);
   const [selectedPlayer, setSelectedPlayer] = useState<'A' | 'B'>('A');
   const [round, setRound] = useState(1);
@@ -103,6 +104,8 @@ export default function TeenPattiT20({ balance, onPlay, gameName = "Teen Patti T
       alert('Insufficient balance.');
       return;
     }
+    
+    if (onDeductBet) onDeductBet(-betAmount).catch(console.error);
     
     setIsWaiting(true);
     setCountdown(5);
@@ -158,7 +161,7 @@ export default function TeenPattiT20({ balance, onPlay, gameName = "Teen Patti T
            if (userWins) {
               onPlay(betAmount, betAmount * 1.9, true, `Bet on Player ${selectedPlayer}`);
            } else {
-              onPlay(betAmount, -betAmount, false, `Bet on Player ${selectedPlayer}`);
+              onPlay(betAmount, 0, false, `Bet on Player ${selectedPlayer}`);
            }
            
            setTimeout(() => {
@@ -171,7 +174,7 @@ export default function TeenPattiT20({ balance, onPlay, gameName = "Teen Patti T
   };
 
   return (
-    <div className="w-full max-w-[500px] mx-auto bg-[#0A2613] rounded-3xl font-sans relative shadow-2xl text-white pb-6">
+    <div className="w-full max-w-125 mx-auto bg-[#0A2613] rounded-3xl font-sans relative shadow-2xl text-white pb-6">
        
        {/* Top Header */}
        <div className="flex justify-between items-center px-6 pt-6 pb-6">

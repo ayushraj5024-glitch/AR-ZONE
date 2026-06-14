@@ -40,53 +40,64 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
       pid: '10000696',
       title: 'Somerset v Glamorgan',
       sport: 'CRICKET',
-      date: '04 Jun 11:30 PM',
+      date: '14 Jun 2026 11:30 PM',
       liveReportUrl: 'https://ss.365bsf.live/liveGameAnalysis/4/35661353',
+      status: 'Live',
+      t1s: '185/4 (18.2)',
+      t2s: ''
     },
     {
       id: '10000307',
       pid: '10000697',
       title: 'Eagle Thane Strikers v Arcs Andheri',
       sport: 'CRICKET',
-      date: '05 Jun 02:00 PM',
+      date: '14 Jun 2026 02:00 PM',
       liveReportUrl: 'true',
+      status: 'Inplay',
+      t1s: '142/6 (20.0)',
+      t2s: '89/3 (12.1)'
     },
     {
       id: '10000308',
       pid: '10000698',
       title: 'England v New Zealand',
       sport: 'CRICKET',
-      date: '06 Jun 03:30 PM',
+      date: '16 Jun 2026 03:30 PM',
+      status: 'Upcoming'
     },
     {
       id: '10000309',
       pid: '10000699',
       title: 'Alcaraz, C v Djokovic, N',
       sport: 'TENNIS',
-      date: '04 Jun 06:30 PM',
+      date: '14 Jun 2026 06:30 PM',
       liveReportUrl: 'true',
+      status: 'Live'
     },
     {
       id: '10000310',
       pid: '10000700',
       title: 'Swiatek, I v Sabalenka, A',
       sport: 'TENNIS',
-      date: '05 Jun 07:00 PM',
+      date: '15 Jun 2026 07:00 PM',
+      status: 'Upcoming'
     },
     {
       id: '10000311',
       pid: '10000701',
       title: 'Real Madrid v Barcelona',
       sport: 'SOCCER',
-      date: '04 Jun 11:00 PM',
+      date: '14 Jun 2026 11:00 PM',
       liveReportUrl: 'true',
+      status: 'Inplay'
     },
     {
       id: '10000312',
       pid: '10000702',
       title: 'Manchester City v Arsenal',
       sport: 'SOCCER',
-      date: '06 Jun 09:30 AM',
+      date: '16 Jun 2026 09:30 AM',
+      status: 'Upcoming'
     }
   ];
 
@@ -112,8 +123,8 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
               title: title,
               sport: 'CRICKET',
               date: dt,
-              liveReportUrl: m.matchStarted || m.ms === "live" || m.ms === "fixture" ? 'true' : undefined,
-              status: m.status,
+              liveReportUrl: m.matchStarted || m.ms === "live" || m.status?.toLowerCase() === "live" ? 'true' : undefined,
+              status: m.status || m.ms,
               t1s: m.t1s || '',
               t2s: m.t2s || '',
               t1: m.t1 || '',
@@ -144,11 +155,42 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
   const filteredMatches = matches
     .filter(m => m.sport.toLowerCase() === sportType)
     .filter(m => {
-      // If we are using real API, we can either trust status or just show all
+      let isToday = false;
+      let isPast = false;
+      let isFuture = false;
+
+      if (m.date) {
+        const matchDate = new Date(m.date);
+        if (!isNaN(matchDate.getTime())) {
+          const todayDate = new Date();
+          // We set both to midnight to compare days accurately
+          const matchDateMidnight = new Date(matchDate).setHours(0, 0, 0, 0);
+          const todayDateMidnight = new Date(todayDate).setHours(0, 0, 0, 0);
+
+          isToday = matchDateMidnight === todayDateMidnight;
+          isPast = matchDateMidnight < todayDateMidnight;
+          isFuture = matchDateMidnight > todayDateMidnight;
+        } else {
+          // Fallback if date is unparseable (e.g. 'Update Pending') -> consider it future for now
+          isFuture = true;
+        }
+      }
+
+      const isCompleted = m.status?.toLowerCase().includes('ended') || m.status?.toLowerCase().includes('complete') || m.status?.toLowerCase().includes('result') || m.status?.toLowerCase().includes('won') || m.status?.toLowerCase().includes('stumps') || m.status?.toLowerCase().includes('abandoned') || m.title?.toLowerCase().includes(' won ');
+      
+      const isLive = m.status?.toLowerCase() === 'live' || m.status?.toLowerCase() === 'inplay' || m.status?.toLowerCase().includes('started');
+      
+      // A match is actually completed if it meets the string condition OR if it was played strictly on a past day
+      const isActuallyCompleted = isCompleted || isPast;
+
       if (matchType === 'inplay') {
-        return m.liveReportUrl || m.status === 'Live' || m.status?.toLowerCase().includes('started');
+        // Show in "Inplay" if it's TODAY and not completed
+        // OR if it's explicitly Live/Inplay from status and not completed
+        return (isToday || isLive || m.liveReportUrl) && !isActuallyCompleted;
       } else {
-        return !m.liveReportUrl && m.status !== 'Live' && !m.status?.toLowerCase().includes('started');
+        // Show in "Upcoming" if it's FUTURE and not completed
+        // OR if it's today but not marked as Live/Inplay (but we can simplify: if it's not today/live and not completed)
+        return isFuture || (!isToday && !isLive && !isActuallyCompleted);
       }
     });
 
@@ -169,8 +211,13 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
 
       <div className="bg-[#05100a] rounded-xl border border-[#00ff88]/20 shadow-sm overflow-hidden">
         {/* Header Bar */}
-        <div className="bg-[#62a2a3] px-4 py-3 border-b border-[#00ff88]/20">
+        <div className="bg-[#62a2a3] px-4 py-3 border-b border-[#00ff88]/20 flex justify-between items-center">
           <h3 className="font-semibold text-white">All Matches</h3>
+          {apiError && (
+             <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded font-medium border border-red-500/30">
+               ⚠️ {apiError} (Showing Mock Data)
+             </span>
+          )}
         </div>
 
         <div className="p-4 space-y-4">
@@ -287,7 +334,7 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
                           <span>{match.date}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {match.liveReportUrl && (
+                          {matchType === 'inplay' && (
                             <button
                               onClick={() => onViewReport?.(match)}
                               className="inline-block px-3 py-1.5 bg-[#62a2a3] text-white text-xs font-semibold rounded hover:bg-[#4d8687] transition-colors shadow-sm cursor-pointer border-none"

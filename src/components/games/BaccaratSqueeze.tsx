@@ -10,6 +10,7 @@ interface BaccaratSqueezeProps {
     win: boolean,
     details: string,
   ) => void;
+  onDeductBet?: (amount: number) => Promise<void>;
   gameName?: string;
 }
 
@@ -142,6 +143,7 @@ const PlayingCard = ({
 export default function BaccaratSqueeze({
   balance,
   onPlay,
+  onDeductBet,
   gameName = "Baccarat Squeeze",
 }: BaccaratSqueezeProps) {
   const [betAmount, setBetAmount] = useState<number>(100);
@@ -176,6 +178,8 @@ export default function BaccaratSqueeze({
       alert("Insufficient balance");
       return;
     }
+    
+    if (onDeductBet) onDeductBet(-betAmount).catch(console.error);
 
     setGameState("DEALING");
     setPlayerCards([]);
@@ -281,19 +285,19 @@ export default function BaccaratSqueeze({
           if (isWin) {
             onPlay(
               betAmount,
-              betAmount * multiplier - betAmount,
+              betAmount * multiplier,
               true,
               `Won on ${selectedBet}`,
             );
           } else if (isPush) {
             onPlay(
               betAmount,
-              0,
+              betAmount,
               true,
               `Push on ${selectedBet} (Tie)`,
             );
           } else {
-            onPlay(betAmount, -betAmount, false, `Lost on ${selectedBet}`);
+            onPlay(betAmount, 0, false, `Lost on ${selectedBet}`);
           }
           
           setGameState("IDLE"); // Reset state to allow next game immediately

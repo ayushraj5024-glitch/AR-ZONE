@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
 
 interface SearchResult {
   id: string;
@@ -15,28 +16,73 @@ interface SearchResult {
 export default function CheckCasinoResult() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearched, setIsSearched] = useState(false);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Mock data for search results
-  const mockResults: SearchResult[] = [
-    { id: 'TXN-101', clientName: 'Akash (A01)', matchName: 'Super Roulette', betType: 'Red', betAmount: 5000, result: 'Win', totalProfitLoss: 5000, date: '2026-06-09 14:20' },
-    { id: 'TXN-102', clientName: 'Akash (A01)', matchName: 'Super Roulette', betType: 'Odd', betAmount: 2000, result: 'Loss', totalProfitLoss: -2000, date: '2026-06-09 14:25' },
-    { id: 'TXN-103', clientName: 'Rahul (R05)', matchName: 'Baccarat Pro', betType: 'Player', betAmount: 10000, result: 'Win', totalProfitLoss: 9500, date: '2026-06-09 15:10' },
-    { id: 'TXN-104', clientName: 'Vikram (V11)', matchName: 'Teen Patti', betType: 'Pair Plus', betAmount: 1000, result: 'Loss', totalProfitLoss: -1000, date: '2026-06-09 16:05' },
-    { id: 'TXN-105', clientName: 'Vikram (V11)', matchName: 'Teen Patti', betType: 'Ante', betAmount: 5000, result: 'Win', totalProfitLoss: 4800, date: '2026-06-09 16:10' },
-  ];
+  useEffect(() => {
+    const fetchResults = async () => {
+      setLoading(true);
+      try {
+        const db = getFirestore();
+        const usersSnap = await getDocs(collection(db, 'users'));
+        let allBets: SearchResult[] = [];
+        
+        for (const userDoc of usersSnap.docs) {
+           const userData = userDoc.data();
+           const clientName = userData.name || userData.email || userDoc.id;
+           
+           const betsSnap = await getDocs(collection(db, `users/${userDoc.id}/bets`));
+           betsSnap.forEach(betDoc => {
+             const betData = betDoc.data();
+              let profitLoss = 0;
+              let isWin = false;
+              
+              if (betData.profit !== undefined) {
+                profitLoss = Number(betData.profit);
+                isWin = profitLoss > 0;
+              } else if (betData.payout !== undefined) {
+                profitLoss = Number(betData.payout) - Number(betData.amount);
+                isWin = true; // if payout is set in aviator, it's a win
+              } else {
+                profitLoss = -Number(betData.amount); // lost bet
+                isWin = false;
+              }
+              
+              allBets.push({
+                id: betDoc.id,
+                clientName: clientName,
+                matchName: betData.gameId || 'Casino Game',
+                betType: betData.selection || (betData.multiplier ? `x${betData.multiplier}` : 'Auto'),
+                betAmount: Number(betData.amount) || 0,
+                result: isWin ? 'Win' : 'Loss',
+                totalProfitLoss: profitLoss,
+                date: betData.time || betData.date || new Date().toLocaleString()
+              });
+           });
+        }
+        
+        // Sort by date descending (rough approximation if time string is used, better to use createdAt if available but time is string)
+        allBets.reverse();
+        setResults(allBets);
+      } catch (e) {
+        console.error("Error fetching casino results:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchResults();
+  }, []);
 
   const handleSearch = () => {
-    if (searchTerm.trim()) {
-      setIsSearched(true);
-    } else {
-      setIsSearched(false);
-    }
+    setIsSearched(true);
   };
 
-  const filteredResults = mockResults.filter(
+  const filteredResults = results.filter(
     (item) => 
       item.matchName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      item.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+      item.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.betType.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -49,15 +95,18 @@ export default function CheckCasinoResult() {
       <div className="p-4 lg:p-6 space-y-6">
         <div>
           <h3 className="text-white text-sm mb-2">Show Casino Results</h3>
-          <div className="flex items-center gap-2 max-w-xl">
-            <input
-              type="text"
-              placeholder="Search....."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1 bg-[#1a3828] border border-gray-600 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-500 placeholder-gray-400"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search....."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full bg-[#1a3828] border border-gray-600 rounded pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-500 placeholder-gray-400"
+              />
+            </div>
             <button
               onClick={handleSearch}
               className="bg-[#0dcaf0] hover:bg-[#0bacce] text-black px-4 py-1.5 rounded text-sm font-medium transition-colors"
@@ -86,12 +135,14 @@ export default function CheckCasinoResult() {
                   </tr>
                 </thead>
                 <tbody className="text-gray-300 divide-y divide-gray-700/50">
-                  {filteredResults.length > 0 ? (
+                  {loading ? (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">Loading results...</td></tr>
+                  ) : filteredResults.length > 0 ? (
                     filteredResults.map((result) => (
                       <tr key={result.id} className="hover:bg-[#374151]/50 transition-colors">
                         <td className="px-4 py-3 whitespace-nowrap">{result.date}</td>
                         <td className="px-4 py-3 font-medium text-white">{result.clientName}</td>
-                        <td className="px-4 py-3">{result.matchName}</td>
+                        <td className="px-4 py-3 capitalize">{result.matchName}</td>
                         <td className="px-4 py-3">{result.betType}</td>
                         <td className="px-4 py-3 text-right">{result.betAmount.toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">
@@ -111,7 +162,7 @@ export default function CheckCasinoResult() {
                   ) : (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                        No results found for "{searchTerm}"
+                        No results found.
                       </td>
                     </tr>
                   )}

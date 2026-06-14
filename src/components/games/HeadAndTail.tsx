@@ -10,12 +10,14 @@ interface HeadAndTailProps {
     win: boolean,
     details: string,
   ) => void;
+  onDeductBet?: (amount: number) => Promise<void>;
   gameName?: string;
 }
 
 export default function HeadAndTail({
   balance,
   onPlay,
+  onDeductBet,
   gameName = "Head & Tail",
 }: HeadAndTailProps) {
   const [betAmount, setBetAmount] = useState<number>(50);
@@ -34,6 +36,8 @@ export default function HeadAndTail({
       alert("Insufficient balance.");
       return;
     }
+
+    if (onDeductBet) onDeductBet(-betAmount).catch(console.error);
 
     setIsWaiting(true);
     setCountdown(5);
@@ -73,7 +77,7 @@ export default function HeadAndTail({
           if (userWins) {
             onPlay(betAmount, betAmount * 1.9, true, `Bet on ${selectedSide}`);
           } else {
-            onPlay(betAmount, -betAmount, false, `Bet on ${selectedSide}`);
+            onPlay(betAmount, 0, false, `Bet on ${selectedSide}`);
           }
           setIsFlipping(false);
         }, 1000);
@@ -90,7 +94,7 @@ export default function HeadAndTail({
 
       <div className="flex flex-col md:flex-row h-full">
         {/* Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 relative min-h-[300px]">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 relative min-h-75">
           <h2 className="absolute top-4 left-4 text-lg font-bold text-slate-200 tracking-wider">
             {gameName}
           </h2>
@@ -205,7 +209,7 @@ export default function HeadAndTail({
             </div>
 
             <div className="mb-4 space-y-2">
-              <label className="text-slate-400 font-medium text-xs block min-w-[200px]">
+              <label className="text-slate-400 font-medium text-xs block min-w-50">
                 2. Enter Stake amount
               </label>
               <input
@@ -245,7 +249,7 @@ export default function HeadAndTail({
             className={`w-full py-3 rounded-lg font-bold tracking-wide uppercase text-sm transition-all ${
               isFlipping || isWaiting || betAmount <= 0
                 ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-                : "bg-gradient-to-r from-emerald-500 to-emerald-400 text-emerald-950 hover:from-emerald-400 hover:to-emerald-300 shadow-lg shadow-emerald-500/20"
+                : "bg-linear-to-r from-emerald-500 to-emerald-400 text-emerald-950 hover:from-emerald-400 hover:to-emerald-300 shadow-lg shadow-emerald-500/20"
             }`}
           >
             {isWaiting ? "Bets Locked..." : isFlipping ? "Flipping..." : "Place Bet"}

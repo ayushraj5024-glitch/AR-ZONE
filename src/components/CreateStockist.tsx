@@ -56,43 +56,43 @@ export default function CreateStockist({ onCancel, onSave }: CreateStockistProps
         <div className="p-6 max-w-4xl">
           <form className="space-y-4" onSubmit={handleSubmit}>
             <FormRow label="User Id">
-              <input type="text" value="SS291048" disabled className="form-input bg-[#020503]" />
+              <input type="text" value="SS291048" disabled className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[#020503] text-white shadow-sm border border-[#00ff88]/30" />
             </FormRow>
             
             <FormRow label="First Name">
-              <input type="text" placeholder="First Name" className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+              <input type="text" placeholder="First Name" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" value={firstName} onChange={e => setFirstName(e.target.value)} required />
             </FormRow>
             
             <FormRow label="Last Name">
-              <input type="text" placeholder="Last Name" className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} />
+              <input type="text" placeholder="Last Name" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" value={lastName} onChange={e => setLastName(e.target.value)} />
             </FormRow>
             
             <FormRow label="Fix Limit" note="Fix Limit can be set from 0 to 1000.00">
-              <input type="number" className="form-input" value={fixLimit} onChange={e => setFixLimit(e.target.value)} />
+              <input type="number" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" value={fixLimit} onChange={e => setFixLimit(e.target.value)} />
             </FormRow>
             
             <FormRow label="My Match Share" note="My Match Share can be set from 0 to 50.0">
-              <input type="number" placeholder="Enter Share" className="form-input" value={myShare} onChange={e => setMyShare(e.target.value)} />
+              <input type="number" placeholder="Enter Share" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" value={myShare} onChange={e => setMyShare(e.target.value)} />
             </FormRow>
             
             <FormRow label="Stockist Match Share" note="Stockist Match Share can be set from 0 to 50.0">
-              <input type="number" className="form-input" value={maxShare} onChange={e => setMaxShare(e.target.value)} />
+              <input type="number" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" value={maxShare} onChange={e => setMaxShare(e.target.value)} />
             </FormRow>
             
             <FormRow label="Stockist Match Commission" note="Match Commission can be set from 0 to 3">
-              <input type="number" defaultValue="0" className="form-input" />
+              <input type="number" defaultValue="0" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" />
             </FormRow>
             
             <FormRow label="Stockist Session Commission" note="Session Commission can be set from 0 to 3">
-              <input type="number" defaultValue="0" className="form-input" />
+              <input type="number" defaultValue="0" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" />
             </FormRow>
             
             <FormRow label="Password">
-              <input type="password" placeholder="Enter Password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <input type="password" placeholder="Enter Password" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" value={password} onChange={(e) => setPassword(e.target.value)} />
             </FormRow>
             
             <FormRow label="Confirm Password">
-              <input type="password" placeholder="Confirm Password" className="form-input" />
+              <input type="password" placeholder="Confirm Password" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" />
             </FormRow>
 
             <div className="pt-4 flex items-center space-x-3 pl-[30%]">

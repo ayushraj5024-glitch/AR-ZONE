@@ -1,30 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { Search } from 'lucide-react';
 
 export default function RoyalCasinoReport() {
   const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSearched, setIsSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState<any[]>([]);
 
-  const mockData = [
-    { title: 'Roulette - Table 1', date: '09-06-2026 14:32:10', declared: 'Yes', profitLoss: 4500.00 },
-    { title: 'Baccarat Pro - Table 3', date: '09-06-2026 13:15:45', declared: 'Yes', profitLoss: -1200.50 },
-    { title: 'Blackjack VIP - Table 5', date: '09-06-2026 12:45:00', declared: 'Yes', profitLoss: 8900.25 },
-    { title: 'Dragon Tiger - Main', date: '09-06-2026 11:30:20', declared: 'Yes', profitLoss: -500.00 },
-    { title: 'Andar Bahar', date: '09-06-2026 10:15:00', declared: 'Yes', profitLoss: 1250.75 },
-    { title: 'Teen Patti 20-20', date: '09-06-2026 09:00:30', declared: 'Yes', profitLoss: 300.00 },
-    { title: 'Speed Roulette', date: '08-06-2026 23:45:10', declared: 'Yes', profitLoss: -2100.00 },
-    { title: 'Casino Holdem', date: '08-06-2026 22:30:00', declared: 'Yes', profitLoss: 15400.00 },
-    { title: 'Crazy Time', date: '08-06-2026 21:15:45', declared: 'Yes', profitLoss: -800.25 },
-    { title: 'Lightning Roulette', date: '08-06-2026 20:00:00', declared: 'Yes', profitLoss: 420.00 },
-    { title: 'Super Sic Bo', date: '08-06-2026 19:10:00', declared: 'Yes', profitLoss: -150.00 },
-    { title: 'Mega Ball', date: '08-06-2026 18:05:00', declared: 'Yes', profitLoss: 3200.50 },
-  ];
+  useEffect(() => {
+    if (!isSearched) return;
+    const fetchReport = async () => {
+      setLoading(true);
+      try {
+         const db = getFirestore();
+         const usersSnap = await getDocs(collection(db, 'users'));
+         const gameStats: Record<string, { title: string, date: string, declared: string, profitLoss: number }> = {};
+         
+         for (const userDoc of usersSnap.docs) {
+           const betsSnap = await getDocs(collection(db, `users/${userDoc.id}/bets`));
+           betsSnap.forEach(betDoc => {
+             const betData = betDoc.data();
+             const gameId = betData.gameId || 'Unknown Casino Game';
+             
+             let profitLoss = 0;
+             if (betData.profit !== undefined) {
+               profitLoss = Number(betData.profit);
+             } else if (betData.payout !== undefined) {
+               profitLoss = Number(betData.payout) - Number(betData.amount);
+             } else {
+               profitLoss = -Number(betData.amount);
+             }
+             
+             // In casino report, if users profit > 0, admin loss is < 0 (house edge)
+             // But usually report shows total P/L of bets (like Total House Profit / Loss from bets, so we'll show -profitLoss to represent Admin earnings)
+             const adminEarnings = -profitLoss;
+             
+             if (!gameStats[gameId]) {
+               gameStats[gameId] = {
+                 title: gameId.charAt(0).toUpperCase() + gameId.slice(1),
+                 date: new Date().toLocaleDateString(),
+                 declared: 'Yes',
+                 profitLoss: 0
+               };
+             }
+             gameStats[gameId].profitLoss += adminEarnings;
+           });
+         }
+         
+         setReportData(Object.values(gameStats));
+      } catch (e) {
+        console.error("Error fetching report", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReport();
+  }, [isSearched]);
 
   const handleSearch = () => {
     setIsSearched(true);
   };
 
-  const total = isSearched ? mockData.reduce((acc, curr) => acc + curr.profitLoss, 0) : 0;
+  const total = isSearched ? reportData.reduce((acc, curr) => acc + curr.profitLoss, 0) : 0;
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-4">
@@ -55,26 +94,30 @@ export default function RoyalCasinoReport() {
       </div>
 
       {/* Filters and Total */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 border-t border-[#00ff88]/20 pt-4">
-        <div className="flex items-center gap-2">
-          <input 
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] text-slate-300 scheme-dark [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
-          />
-          <input 
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] text-slate-300 scheme-dark [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
-          />
-          <button onClick={handleSearch} className="bg-[#60999b] hover:bg-[#50888a] text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">
+      <div className="flex flex-wrap items-center justify-between gap-4 mt-6 border-t border-[#00ff88]/20 pt-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <input 
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] text-slate-300 scheme-dark hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+            />
+            <span className="text-slate-500 font-medium">to</span>
+            <input 
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#00ff88] bg-[#05100a] text-slate-300 scheme-dark hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+            />
+          </div>
+          <button onClick={handleSearch} className="bg-[#60999b] hover:bg-[#50888a] text-white px-5 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+            <Search className="w-4 h-4" />
             Search
           </button>
         </div>
         
-        <div className="text-base font-bold text-slate-200">
+        <div className="text-base font-bold text-slate-200 bg-[#05100a] border border-[#00ff88]/30 px-4 py-1.5 rounded-md">
           Total:- <span className={total >= 0 ? "text-[#00ff88]" : "text-red-500"}>{total.toFixed(2)}</span>
         </div>
       </div>
@@ -95,14 +138,20 @@ export default function RoyalCasinoReport() {
               </tr>
             </thead>
             <tbody>
-              {!isSearched ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400 border-b border-[#00ff88]/20">
+                    Loading report...
+                  </td>
+                </tr>
+              ) : !isSearched ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-slate-400 border-b border-[#00ff88]/20">
                     No data available in table
                   </td>
                 </tr>
-              ) : mockData.length > 0 ? (
-                mockData.map((row, idx) => (
+              ) : reportData.length > 0 ? (
+                reportData.map((row, idx) => (
                   <tr key={idx} className="border-b border-[#00ff88]/10 hover:bg-[#020503]">
                     <td className="px-4 py-3 text-slate-300">{row.title}</td>
                     <td className="px-4 py-3 text-slate-400">{row.date}</td>
