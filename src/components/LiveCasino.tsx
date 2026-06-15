@@ -2,6 +2,14 @@ import React, { useState } from "react";
 import { Gamepad2, ChevronRight, PlayCircle, Star, Ban, Loader2 } from "lucide-react";
 import { useMarketStatus } from "../hooks/useMarketStatus";
 
+import imgLucky7 from '../assets/images/lucky_seven_1781558885185.jpg';
+import imgAviator from '../assets/images/aviator_game_1781558900807.jpg';
+import imgHeadTail from '../assets/images/head_and_tail_1781558914657.jpg';
+import imgTeenPatti from '../assets/images/teen_patti_1781558928066.jpg';
+import img32Cards from '../assets/images/thirty_two_cards_1781558942556.jpg';
+import imgDragonTiger from '../assets/images/dragon_tiger_1781558955709.jpg';
+import imgBaccarat from '../assets/images/baccarat_game_1781558969074.jpg';
+
 interface Game {
   id: string;
   title: string;
@@ -14,43 +22,43 @@ const games: Game[] = [
     id: "lucky7",
     title: "Lucky 7A",
     provider: "Evolution",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=Lucky+7A",
+    image: imgLucky7,
   },
   {
     id: "aviator",
     title: "Aviator",
     provider: "Spribe",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=Aviator",
+    image: imgAviator,
   },
   {
     id: "headandtail",
     title: "Head & Tail",
     provider: "Virtual",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=Head+and+Tail",
+    image: imgHeadTail,
   },
   {
     id: "teenpattit20",
     title: "TeenPatti T20",
     provider: "Ezugi",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=TeenPatti+T20",
+    image: imgTeenPatti,
   },
   {
     id: "32cards",
     title: "32 Cards",
     provider: "Ezugi",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=32+Cards",
+    image: img32Cards,
   },
   {
     id: "dragontiger",
     title: "Dragon Tiger Live",
     provider: "Evolution",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=Dragon+Tiger",
+    image: imgDragonTiger,
   },
   {
     id: "baccarat",
     title: "Baccarat Squeeze",
     provider: "Evolution",
-    image: "https://placehold.co/800x600/15231b/00ff88?text=Baccarat",
+    image: imgBaccarat,
   },
 ];
 

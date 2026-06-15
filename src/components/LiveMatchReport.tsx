@@ -10,22 +10,92 @@ interface LiveMatchReportProps {
 export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashboard }: LiveMatchReportProps) {
   const [activeTab, setActiveTab] = useState<'match' | 'fancy'>('match');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isGeneratingSession, setIsGeneratingSession] = useState(false);
   const [balance, setBalance] = useState(0);
 
+  const handleAIGenerateSession = async () => {
+    try {
+      setIsGeneratingSession(true);
+      const res = await fetch('/api/generate-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchData: {
+            title: matchData?.title,
+            t1s: t1Summary.raw,
+            t2s: t2Summary.raw,
+            recentBalls
+          },
+          sessionType: 'auto'
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success && data.sessions && Array.isArray(data.sessions)) {
+         const newSessions = data.sessions.map((s: any) => ({
+            session: s.question || s.title,
+            no: "NO",
+            rate1: s.no_odds,
+            yes: "YES",
+            rate2: s.yes_odds,
+            posNo: 0,
+            posYes: 0,
+            aiGenerated: true
+         }));
+         setFancySessions(prev => [...newSessions, ...prev]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGeneratingSession(false);
+    }
+  };
+
   useEffect(() => {
+    let unsubUser = () => {};
+    let unsubBets = () => {};
     import('firebase/auth').then(({ getAuth }) => {
       const auth = getAuth();
       if (!auth.currentUser) return;
-      import('firebase/firestore').then(({ getFirestore, doc, onSnapshot }) => {
+      import('firebase/firestore').then(({ getFirestore, doc, onSnapshot, collection }) => {
         const db = getFirestore();
-        const unsub = onSnapshot(doc(db, 'users', auth.currentUser!.uid), (docSn) => {
+        unsubUser = onSnapshot(doc(db, 'users', auth.currentUser!.uid), (docSn) => {
           if (docSn.exists()) {
              setBalance(Number(docSn.data()?.balance || 0));
           }
         });
-        return () => unsub();
+        
+        unsubBets = onSnapshot(collection(db, `users/${auth.currentUser!.uid}/bets`), (snapshot) => {
+            const rawBets: any[] = [];
+            snapshot.forEach(d => rawBets.push({ id: d.id, ...d.data() }));
+            
+            rawBets.sort((a, b) => {
+              const t1 = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+              const t2 = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+              return t2 - t1;
+            });
+            
+            // Only show match related bets if desired, but we can show all for now or filter by 'exchange' / 'match'
+            // To be professional, it's fine to show all bets, or filter by a specific match type if we add it. 
+            // We'll show all live matches bets
+            const filteredBets = rawBets.filter(b => b.category === 'match' || b.type === 'back' || b.type === 'lay');
+
+            const bets = filteredBets.map(data => ({
+              id: data.id,
+              selection: data.selection,
+              amount: data.amount,
+              odds: data.odds,
+              type: data.type,
+              status: data.status,
+              profit: data.profit,
+              time: data.time || new Date().toLocaleTimeString()
+            }));
+            
+            setBetHistory(bets);
+        });
       });
     });
+    return () => { unsubUser(); unsubBets(); };
   }, []);
 
   const updateBalanceDB = async (amount: number) => {
@@ -108,12 +178,33 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
     { runner: team1, lagai: "1.92", khai: "1.94", position: "0.0", changeStatus: "" },
     { runner: team2, lagai: "2.04", khai: "2.06", position: "0.0", changeStatus: "" }
   ]);
+  let initialActiveTeam = team1.substring(0, 3).toUpperCase();
+  let initialActiveRun = parseInt(initialT1.run || "0");
+  let initialActiveOvers = parseFloat(initialT1.over || "0.0");
+  let initialActiveWkts = parseInt(initialT1.wkt || "0");
+
+  if (parseFloat(initialT2.over || "0.0") > 0 || parseInt(initialT2.run || "0") > 0) {
+     initialActiveTeam = team2.substring(0, 3).toUpperCase();
+     initialActiveRun = parseInt(initialT2.run || "0");
+     initialActiveOvers = parseFloat(initialT2.over || "0.0");
+     initialActiveWkts = parseInt(initialT2.wkt || "0");
+  }
+
+  let initialRunRate = initialActiveOvers > 0 ? (initialActiveRun / initialActiveOvers) : 8;
+  if (initialRunRate < 5) initialRunRate = 7;
+  if (initialRunRate > 12) initialRunRate = 10;
+
+  const initExp10 = Math.max(initialActiveRun + 10, Math.floor(initialRunRate * 10));
+  const initExp15 = Math.max(initialActiveRun + 30, Math.floor(initialRunRate * 15));
+  const initExp20 = Math.max(initialActiveRun + 50, Math.floor(initialRunRate * 20));
+  const initFallOfWkt = Math.max(initialActiveRun + 10, initialActiveRun + Math.floor(Math.random() * 15));
+
   const [fancySessions, setFancySessions] = useState([
-    { session: `10 over run ${team2Abbr}`, no: 88, rate1: 1.10, yes: 88, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
-    { session: `15 over run ${team2Abbr}`, no: 133, rate1: 1.00, yes: 135, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
-    { session: `20 over run ${team2Abbr}`, no: 181, rate1: 1.00, yes: 183, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
-    { session: `Fall of 1st wkt ${team2Abbr}`, no: 24, rate1: 1.10, yes: 24, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
-    { session: `Total Run`, no: 177, rate1: 1.10, yes: 178, rate2: 0.90, posNo: 0.00, posYes: 0.00 }
+    { session: `10 over run ${initialActiveTeam}`, no: initialActiveOvers < 10 ? initExp10 : null, rate1: 1.10, yes: initialActiveOvers < 10 ? initExp10 + 2 : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
+    { session: `15 over run ${initialActiveTeam}`, no: initialActiveOvers < 15 ? initExp15 : null, rate1: 1.00, yes: initialActiveOvers < 15 ? initExp15 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
+    { session: `20 over run ${initialActiveTeam}`, no: initialActiveOvers < 20 ? initExp20 : null, rate1: 1.00, yes: initialActiveOvers < 20 ? initExp20 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
+    { session: `Fall of ${initialActiveWkts + 1} wkt ${initialActiveTeam}`, no: initialActiveWkts < 10 ? initFallOfWkt : null, rate1: 1.10, yes: initialActiveWkts < 10 ? initFallOfWkt : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
+    { session: `Total Run`, no: initExp20 + 2, rate1: 1.10, yes: initExp20 + 4, rate2: 0.90, posNo: 0.00, posYes: 0.00 }
   ]);
   const [lastEvent, setLastEvent] = useState<string>("Match in play");
 
@@ -121,6 +212,96 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
     setT1Summary(parseScore(matchData?.t1s || "0/0 (0.0)"));
     setT2Summary(parseScore(matchData?.t2s || "0/0 (0.0)"));
   }, [matchData?.t1s, matchData?.t2s]);
+
+  const prevT1 = useRef(initialT1);
+  const prevT2 = useRef(initialT2);
+
+  useEffect(() => {
+     let addedBall: string | null = null;
+     
+     if (t1Summary.over !== prevT1.current.over || t1Summary.run !== prevT1.current.run || t1Summary.wkt !== prevT1.current.wkt) {
+         const runDiff = parseInt(t1Summary.run || "0") - parseInt(prevT1.current.run || "0");
+         const wktDiff = parseInt(t1Summary.wkt || "0") - parseInt(prevT1.current.wkt || "0");
+         
+         if (wktDiff > 0) {
+            addedBall = 'W';
+         } else if (runDiff > 0) {
+            addedBall = runDiff.toString();
+         } else if (t1Summary.over !== prevT1.current.over) {
+            addedBall = '.';
+         }
+         prevT1.current = t1Summary;
+     } else if (t2Summary.over !== prevT2.current.over || t2Summary.run !== prevT2.current.run || t2Summary.wkt !== prevT2.current.wkt) {
+         const runDiff = parseInt(t2Summary.run || "0") - parseInt(prevT2.current.run || "0");
+         const wktDiff = parseInt(t2Summary.wkt || "0") - parseInt(prevT2.current.wkt || "0");
+         
+         if (wktDiff > 0) {
+            addedBall = 'W';
+         } else if (runDiff > 0) {
+            addedBall = runDiff.toString();
+         } else if (t2Summary.over !== prevT2.current.over) {
+            addedBall = '.';
+         }
+         prevT2.current = t2Summary;
+     }
+     
+     if (addedBall) {
+         setRecentBalls(prev => [...prev.slice(-5), addedBall!]);
+     }
+
+     // Dynamically update fancy sessions based on live score
+     let activeTeam = team1.substring(0, 3).toUpperCase();
+     let activeRun = parseInt(t1Summary.run || "0");
+     let activeOvers = parseFloat(t1Summary.over || "0.0");
+     let activeWkts = parseInt(t1Summary.wkt || "0");
+     let isT2Batting = false;
+
+     if (parseFloat(t2Summary.over || "0.0") > 0 || parseInt(t2Summary.run || "0") > 0) {
+        activeTeam = team2.substring(0, 3).toUpperCase();
+        activeRun = parseInt(t2Summary.run || "0");
+        activeOvers = parseFloat(t2Summary.over || "0.0");
+        activeWkts = parseInt(t2Summary.wkt || "0");
+        isT2Batting = true;
+     }
+
+     let runRate = activeOvers > 0 ? (activeRun / activeOvers) : 8;
+     if (runRate < 5) runRate = 7;
+     if (runRate > 12) runRate = 10; // keep it somewhat realistic
+
+     const exp10 = Math.max(activeRun + 10, Math.floor(runRate * 10));
+     const exp15 = Math.max(activeRun + 30, Math.floor(runRate * 15));
+     const exp20 = Math.max(activeRun + 50, Math.floor(runRate * 20));
+     
+     const fallOfWkt = Math.max(activeRun + 10, activeRun + Math.floor(Math.random() * 15));
+
+     setFancySessions([
+        { session: `10 over run ${activeTeam}`, no: activeOvers < 10 ? exp10 : null, rate1: 1.10, yes: activeOvers < 10 ? exp10 + 2 : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
+        { session: `15 over run ${activeTeam}`, no: activeOvers < 15 ? exp15 : null, rate1: 1.00, yes: activeOvers < 15 ? exp15 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
+        { session: `20 over run ${activeTeam}`, no: activeOvers < 20 ? exp20 : null, rate1: 1.00, yes: activeOvers < 20 ? exp20 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
+        { session: `Fall of ${activeWkts + 1} wkt ${activeTeam}`, no: activeWkts < 10 ? fallOfWkt : null, rate1: 1.10, yes: activeWkts < 10 ? fallOfWkt : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
+        { session: `Total Run`, no: exp20 + 2, rate1: 1.10, yes: exp20 + 4, rate2: 0.90, posNo: 0.00, posYes: 0.00 }
+     ]);
+
+     // Adjust market odds realistically based on runs and wickets
+     if (addedBall) {
+         setMarketOdds(prev => [
+            { 
+               ...prev[0], 
+               lagai: Math.max(1.01, parseFloat(prev[0].lagai) + (isT2Batting ? 0.05 : -0.05)).toFixed(2),
+               khai: Math.max(1.03, parseFloat(prev[0].khai) + (isT2Batting ? 0.05 : -0.05)).toFixed(2),
+               changeStatus: !isT2Batting ? 'down' : 'up'
+            },
+            { 
+               ...prev[1], 
+               lagai: Math.max(1.01, parseFloat(prev[1].lagai) + (isT2Batting ? -0.05 : 0.05)).toFixed(2),
+               khai: Math.max(1.03, parseFloat(prev[1].khai) + (isT2Batting ? -0.05 : 0.05)).toFixed(2),
+               changeStatus: isT2Batting ? 'down' : 'up'
+            }
+         ]);
+     }
+     
+     
+  }, [t1Summary, t2Summary]);
 
   useEffect(() => {
     if (!matchData?.id) return;
@@ -171,17 +352,13 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
 
     const intervalId = setInterval(() => {
       // We only simulate subtle odds fluctuation to keep the UI active
-      // since the real API doesn't provide real ball-by-ball updates or odds here
-      
-      const outcomes = ['.', '1', '1', '2', '2', '4', '4', '6', 'W', 'Wd', '.'];
-      const nextBall = outcomes[Math.floor(Math.random() * outcomes.length)];
-      setRecentBalls(prev => [...prev.slice(-5), nextBall]);
+      // since the real API doesn't provide real odds here
       
       // Fluctuate match odds
       setMarketOdds(prevOdds => prevOdds.map(odd => {
-         const isVolatile = Math.random() > 0.4; // more volatile
+         const isVolatile = Math.random() > 0.7; // less volatile
          if (isVolatile) {
-           const change = (Math.random() * 0.1 - 0.05);
+           const change = (Math.random() * 0.04 - 0.02);
            const newLagai = Math.max(1.01, parseFloat(odd.lagai) + change);
            const newKhai = newLagai + 0.02; // Khai slightly higher
            return { ...odd, lagai: newLagai.toFixed(2), khai: newKhai.toFixed(2), changeStatus: change > 0 ? 'up' : 'down' };
@@ -189,11 +366,11 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
          return { ...odd, changeStatus: '' };
       }));
 
-      // Fluctuate fancy sessions
+      // Fluctuate fancy sessions (very slightly, primarily relying on score updates)
       setFancySessions(prevSessions => prevSessions.map(session => {
-         if (Math.random() > 0.4) {
+         if (Math.random() > 0.7) {
              const diff = Math.floor(Math.random() * 3) - 1;
-             const rateDiff = (Math.random() * 0.1 - 0.05);
+             const rateDiff = (Math.random() * 0.04 - 0.02);
              return {
                  ...session,
                  no: session.no ? Math.max(1, session.no + diff) : session.no,
@@ -230,18 +407,28 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
       
       await updateBalanceDB(profit);
       
-      const newBet = {
-        id: Math.random().toString(36).substr(2, 9),
-        selection: selectedBet.selection,
-        amount: amountNum,
-        odds: selectedBet.odds,
-        status: isWin ? 'won' : 'lost',
-        profit: profit,
-        time: new Date().toLocaleTimeString(),
-        type: selectedBet.type
-      };
+      try {
+         const { getAuth } = await import('firebase/auth');
+         const { getFirestore, addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+         const auth = getAuth();
+         if (auth.currentUser) {
+            const db = getFirestore();
+            await addDoc(collection(db, `users/${auth.currentUser.uid}/bets`), {
+               selection: selectedBet.selection,
+               amount: amountNum,
+               odds: selectedBet.odds,
+               status: isWin ? 'won' : 'lost',
+               profit: profit,
+               type: selectedBet.type,
+               category: 'match',
+               time: new Date().toLocaleTimeString(),
+               createdAt: serverTimestamp()
+            });
+         }
+      } catch (e) {
+         console.error('Error saving bet:', e);
+      }
       
-      setBetHistory((prev: any[]) => [newBet, ...prev]);
       setIsPlacingBet(false);
       setSelectedBet(null);
     }, 1500);
@@ -419,8 +606,8 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
               <div className="w-full">
                 <div className="grid grid-cols-12 bg-[#05100a] border-b border-[#00ff88]/20 text-xs font-bold text-slate-400 uppercase tracking-wider p-2">
                    <div className="col-span-6 px-3 py-2">Runner</div>
-                   <div className="col-span-3 text-center px-1 py-2 text-cyan-300 bg-cyan-500/10 rounded-l">Back</div>
-                   <div className="col-span-3 text-center px-1 py-2 text-rose-300 bg-rose-500/10 rounded-r">Lay</div>
+                   <div className="col-span-3 text-center px-1 py-2 text-cyan-300 bg-cyan-500/10 rounded-l">LAGAI</div>
+                   <div className="col-span-3 text-center px-1 py-2 text-rose-300 bg-rose-500/10 rounded-r">KHAI</div>
                 </div>
                 
                 <div className="divide-y divide-[#00ff88]/10">
@@ -516,6 +703,26 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                     </div>
                   ))}
                 </div>
+
+                <div className="p-4 border-t border-[#00ff88]/20 flex justify-center bg-[#00ff88]/5">
+                   <button 
+                      onClick={handleAIGenerateSession}
+                      disabled={isGeneratingSession}
+                      className="flex items-center gap-2 bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 py-2 rounded-full font-bold text-xs shadow-lg transform hover:scale-105 transition-all w-full sm:w-auto justify-center"
+                   >
+                     {isGeneratingSession ? (
+                        <>
+                           <RefreshCcw className="w-4 h-4 animate-spin" />
+                           Analyzing Match & Generating...
+                        </>
+                     ) : (
+                        <>
+                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                           AI Session Engine (Generate)
+                        </>
+                     )}
+                   </button>
+                </div>
               </div>
             </div>
           )}
@@ -530,7 +737,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
              <div className="bg-[#05100a] rounded-xl shadow-xl border border-[#00ff88]/50 overflow-hidden transform transition-all animate-in zoom-in-95">
                <div className={`px-5 py-3.5 flex items-center justify-between text-slate-900 font-extrabold ${selectedBet.type === 'back' ? 'bg-[#72bbed]' : 'bg-[#faa9ba]'}`}>
                  <h3 className="flex items-center gap-2 uppercase tracking-wide text-sm">
-                   {selectedBet.type === 'back' ? 'BACK (YES)' : 'LAY (NO)'} SLIP
+                   {selectedBet.type === 'back' ? 'LAGAI (YES)' : 'KHAI (NO)'} SLIP
                  </h3>
                  <button onClick={() => setSelectedBet(null)} className="hover:bg-black/10 p-1.5 rounded-full transition-colors text-slate-900">
                    <ChevronRight className="w-4 h-4" />
@@ -619,18 +826,27 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                           </div>
                         </div>
                         <div className="flex items-center gap-2 mt-2">
-                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm ${bet.type === 'back' ? 'bg-[#72bbed] text-slate-900' : 'bg-[#faa9ba] text-slate-900'}`}>{bet.type === 'back' ? 'BACK' : 'LAY'}</span>
+                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm ${bet.type === 'back' ? 'bg-[#72bbed] text-slate-900' : 'bg-[#faa9ba] text-slate-900'}`}>{bet.type === 'back' ? 'LAGAI' : 'KHAI'}</span>
                            <span className="text-slate-300 font-bold text-sm">@{bet.odds}</span>
                         </div>
                         <div className="flex justify-between items-end mt-3 bg-slate-900 p-2 rounded border border-slate-800 text-xs">
-                          <div className="flex gap-4">
+                          <div className="flex gap-4 items-center">
                              <div><span className="text-slate-500 font-semibold mr-1">Stake:</span><span className="text-slate-200 font-bold">₹{bet.amount.toFixed(2)}</span></div>
                           </div>
-                          <div>
-                             <span className="text-slate-500 font-semibold mr-1">Rtn:</span>
-                             <span className={`font-black ${bet.profit > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                               {bet.profit > 0 ? '+' : ''}{bet.profit.toFixed(2)}
-                             </span>
+                          <div className="flex items-center gap-3">
+                             <div className={`text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
+                               bet.status === 'won' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30' : 
+                               bet.status === 'lost' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 
+                               'bg-slate-500/10 text-slate-400 border-slate-500/30'
+                             }`}>
+                               {bet.status}
+                             </div>
+                             <div className="text-right flex flex-col">
+                                <span className="text-[9px] text-slate-500 font-semibold uppercase leading-tight tracking-wider">Return</span>
+                                <span className={`font-black text-sm leading-tight ${bet.status === 'won' ? 'text-[#00ff88]' : bet.status === 'lost' ? 'text-rose-400' : 'text-slate-400'}`}>
+                                  {bet.profit > 0 ? '+' : ''}{bet.profit.toFixed(2)}
+                                </span>
+                             </div>
                           </div>
                         </div>
                       </div>

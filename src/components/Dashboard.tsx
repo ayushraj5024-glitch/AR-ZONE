@@ -59,6 +59,30 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
   const [adminData, setAdminData] = useState<any>({ balance: 1000, mComm: '3', sComm: '3', share: '50.0%' });
   const [realStats, setRealStats] = useState({ totalUsers: 247, activeUsers: 247, suspended: 16, transactions: 1859 });
   const [companyContact, setCompanyContact] = useState("SC211607");
+  const [marqueeMatches, setMarqueeMatches] = useState<any[]>([]);
+  const [marqueeApiError, setMarqueeApiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLiveScores = async () => {
+      try {
+        const res = await fetch('/api/live-matches');
+        const data = await res.json();
+        
+        if (data.success === false) {
+           setMarqueeApiError(data.error || "Failed to load live matches.");
+           // Fallback to static if needed, but we keep the current marqueeMatches
+        } else if (data.matches && data.matches.length > 0) {
+           const active = data.matches.filter((m: any) => m.t1s || m.t2s || m.ms === 'live');
+           setMarqueeMatches(active.length > 0 ? active.slice(0, 5) : data.matches.slice(0, 5));
+           setMarqueeApiError(null);
+        }
+      } catch (e) {}
+    };
+    fetchLiveScores();
+    // Do not poll aggressively because we have free API limits
+    const interval = setInterval(fetchLiveScores, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let unsub: any = null;
@@ -94,7 +118,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
             tx += stmts.size;
           } catch(e) {}
           try {
-             const bets = await getDocs(collection(db, `users/${u.id}/betHistory`));
+             const bets = await getDocs(collection(db, `users/${u.id}/bets`));
              tx += bets.size;
           } catch(e) {}
         }
@@ -278,13 +302,25 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
           
           <div className="whitespace-nowrap text-[#00ff88] text-sm font-exo flex items-center gap-8 pl-4" style={{ animation: 'marquee 25s linear infinite' }}>
              <span className="w-2 h-2 rounded-full bg-[#00ff88] shadow-[0_0_8px_rgba(0,255,136,1)] animate-pulse"></span>
-             <span>🏏 <span className="font-bold text-white">Somerset</span> <span className="text-[#f0b429]">145/3 (14.3 ov)</span> vs <span className="font-bold text-white">Glamorgan</span></span>
-             <span className="text-[#00ff88]/50 font-bold">•</span>
-             <span>🏏 <span className="font-bold text-white">India</span> <span className="text-[#f0b429]">210/4 (20.0 ov)</span> vs <span className="font-bold text-white">Australia</span> <span className="text-[#f0b429]">185/8 (20.0 ov)</span></span>
-             <span className="text-[#00ff88]/50 font-bold">•</span>
-             <span>🏏 <span className="font-bold text-white">CSK</span> <span className="text-[#f0b429]">165/2 (15.0 ov)</span> vs <span className="font-bold text-white">MI</span></span>
-             <span className="text-[#00ff88]/50 font-bold">•</span>
-             <span>⚽ <span className="font-bold text-white">Real Madrid</span> <span className="text-[#f0b429]">2 - 1</span> <span className="font-bold text-white">Barcelona</span></span>
+             {marqueeApiError && (
+               <>
+                 <span className="text-rose-400 font-bold">⚠️ API Limit Reached (Free Tier)</span>
+                 <span className="text-[#00ff88]/50 font-bold">•</span>
+               </>
+             )}
+             {marqueeMatches.length > 0 ? marqueeMatches.map((m: any, idx: number) => (
+               <React.Fragment key={m.id || idx}>
+                 <span>
+                    {m.matchType === 'football' ? '⚽' : '🏏'} <span className="font-bold text-white">{m.t1 || 'Team 1'}</span> <span className="text-[#f0b429]">{m.t1s || ''}</span> vs <span className="font-bold text-white">{m.t2 || 'Team 2'}</span> <span className="text-[#f0b429]">{m.t2s || ''}</span>
+                 </span>
+                 <span className="text-[#00ff88]/50 font-bold">•</span>
+               </React.Fragment>
+             )) : (
+               <>
+                 <span>🏏 <span className="font-bold text-white">Fetching Live...</span></span>
+                 <span className="text-[#00ff88]/50 font-bold">•</span>
+               </>
+             )}
              <span className="w-20 inline-block"></span>
           </div>
 
@@ -306,7 +342,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
                 </div>
               </div>
               <div className="text-slate-400 font-exo text-sm tracking-[0.2em] uppercase font-semibold">
-                 Admin Dashboard <span className="mx-2 text-slate-600">·</span> System Control Panel
+                 {adminData.role === 'admin' ? 'Admin Dashboard' : 'Client Dashboard'} <span className="mx-2 text-slate-600">·</span> {adminData.role === 'admin' ? 'System Control Panel' : 'User Control Panel'}
               </div>
            </div>
 
@@ -356,17 +392,25 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               
               {/* Row 1 */}
-              <div className="bg-(--card-bg) border border-(--gold) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.3s' }}>
+              <div className={`bg-(--card-bg) border rounded-[14px] p-6 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp ${adminData.role === 'admin' ? 'border-(--gold) hover:shadow-[0_0_20px_rgba(240,180,41,0.15)] hover:border-[#f0b429]/40' : 'border-[#00ff88] hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40'}`} style={{ animationDelay: '0.3s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Username</h3>
-                 <div className="text-(--gold) font-orbitron text-3xl font-bold tracking-wider mb-2">ADMIN</div>
-                 <div className="text-slate-300 text-sm font-exo mb-3">System Level Access</div>
-                 <div className="inline-block px-2.5 py-1 rounded border border-(--gold)/40 bg-(--gold)/10 text-(--gold) text-xs font-bold font-exo tracking-widest">MASTER</div>
+                 <div className={`font-orbitron text-3xl font-bold tracking-wider mb-2 ${adminData.role === 'admin' ? 'text-(--gold)' : 'text-[#00ff88]'}`}>
+                    {adminData.name ? adminData.name.toUpperCase() : (adminData.role?.toUpperCase() || 'CLIENT')}
+                 </div>
+                 <div className="text-slate-300 text-sm font-exo mb-3">{adminData.role === 'admin' ? 'System Level Access' : 'Client Access'}</div>
+                 <div className={`inline-block px-2.5 py-1 rounded border text-xs font-bold font-exo tracking-widest ${adminData.role === 'admin' ? 'border-(--gold)/40 bg-(--gold)/10 text-(--gold)' : 'border-[#00ff88]/40 bg-[#00ff88]/10 text-[#00ff88]'}`}>
+                    {adminData.role === 'admin' ? 'MASTER' : 'USER'}
+                 </div>
               </div>
 
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.4s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Level</h3>
-                 <div className="text-white font-bobbaluna text-3xl tracking-wider mb-2 leading-tight mt-1">SYSTEM ADMIN</div>
-                 <div className="inline-block px-2.5 py-1 rounded border border-(--green)/40 bg-(--green)/10 text-(--green) text-xs font-bold font-exo tracking-widest mt-1">TOP TIER</div>
+                 <div className="text-white font-bobbaluna text-3xl tracking-wider mb-2 leading-tight mt-1">
+                    {adminData.role === 'admin' ? 'SYSTEM ADMIN' : adminData.role ? adminData.role.toUpperCase() : 'CLIENT'}
+                 </div>
+                 <div className={`inline-block px-2.5 py-1 rounded border text-xs font-bold font-exo tracking-widest mt-1 ${adminData.role === 'admin' ? 'border-(--green)/40 bg-(--green)/10 text-(--green)' : 'border-(--blue)/40 bg-(--blue)/10 text-(--blue)'}`}>
+                    {adminData.role === 'admin' ? 'TOP TIER' : 'STANDARD'}
+                 </div>
               </div>
 
               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.5s' }}>
@@ -412,6 +456,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            </div>
 
            {/* Live Stats Row */}
+           {adminData.role === 'admin' && (
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeUp" style={{ animationDelay: '0.8s' }}>
               
               <div className="bg-(--card-bg) border-x border-t border-(--card-border) live-stat-card rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
@@ -442,6 +487,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
               </div>
 
            </div>
+           )}
         </div>
 
         {/* Footer */}
@@ -451,7 +497,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            </div>
            
            <div className="flex items-center gap-4">
-              <span className="text-slate-400 text-xs font-exo font-medium tracking-wider">Admin Panel v2.0.0</span>
+              <span className="text-slate-400 text-xs font-exo font-medium tracking-wider">{adminData.role === 'admin' ? 'Admin Panel v2.0.0' : 'Client Portal v2.0.0'}</span>
               <div className="px-3 py-1 rounded bg-(--green)/10 border border-(--green)/30 text-(--green) text-[10px] font-bold font-exo tracking-widest uppercase">
                 SECURE BUILD
               </div>
