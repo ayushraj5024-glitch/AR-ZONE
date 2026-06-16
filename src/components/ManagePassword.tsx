@@ -76,13 +76,14 @@ export default function ManagePassword() {
   };
 
   return (
-    <div className="p-4 lg:p-8 max-w-2xl mx-auto">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto">
       <div className="flex items-center space-x-3 mb-6">
         <Lock size={24} className="text-[#00ff88]" />
         <h2 className="text-2xl font-orbitron font-bold text-white tracking-wider">Manage Password</h2>
       </div>
 
-      <div className="bg-[#05100a] border border-[#00ff88]/20 rounded-lg p-6 shadow-[0_0_15px_rgba(0,255,136,0.05)]">
+      <div className="max-w-2xl">
+        <div className="bg-[#05100a] border border-[#00ff88]/20 rounded-lg p-6 shadow-[0_0_15px_rgba(0,255,136,0.05)]">
         {message && (
           <div className={`px-4 py-3 rounded mb-6 text-sm font-medium border ${isError ? 'bg-[#ff3355]/10 text-[#ff3355] border-[#ff3355]/30' : 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30'}`}>
             {message}
@@ -163,6 +164,7 @@ export default function ManagePassword() {
             <span>{isLoading ? 'Saving...' : 'Save Password'}</span>
           </button>
         </form>
+        </div>
       </div>
     </div>
   );

@@ -192,7 +192,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020503] flex font-exo text-slate-200">
+    <div className="h-dvh w-full overflow-hidden bg-[#020503] flex font-exo text-slate-200">
       {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div 
@@ -501,12 +501,13 @@ export default function App() {
         <div className="flex-1 overflow-auto bg-[#020503] text-slate-200">
           
           {/* Alert Banner */}
-          <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border-b border-[#00ff88]/20 text-slate-200 px-4 py-3 flex items-center shadow-sm">
+          <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border-b border-[#00ff88]/20 text-slate-200 px-4 py-3 flex items-center shadow-sm w-full overflow-hidden">
             <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
             </div>
-            <div className="text-sm font-medium overflow-hidden text-ellipsis whitespace-nowrap animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
-              {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
+            <div className="flex-1 min-w-0 overflow-hidden relative h-6">
+              <div className="absolute top-0 left-0 text-sm font-medium whitespace-nowrap animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
+                {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
                 <>
                   <span>🎰 <span className="font-bold text-white">Lucky 7</span> <span className="text-[#f0b429]">JACKPOT ALERT!</span> ₹2,50,000 Won by user ****42</span>
                   <span className="text-[#00ff88]/50 font-bold">•</span>
@@ -527,6 +528,7 @@ export default function App() {
                   <span>⚽ <span className="font-bold text-white">Real Madrid</span> <span className="text-[#f0b429]">2 - 1</span> <span className="font-bold text-white">Barcelona</span></span>
                 </>
               )}
+              </div>
             </div>
             <div className="ml-auto pl-4 hidden sm:block">
               {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (

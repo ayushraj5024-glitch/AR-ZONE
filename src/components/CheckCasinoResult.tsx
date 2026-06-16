@@ -86,37 +86,44 @@ export default function CheckCasinoResult() {
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#1b4332] min-h-[calc(100vh-64px)]">
-      {/* Header */}
-      <div className="bg-[#1f2937] px-4 py-3 border-b border-gray-700">
-        <h2 className="text-white font-medium text-lg">Home</h2>
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+          Check Casino Result
+        </h2>
+        <div className="text-sm font-medium text-slate-400 mt-1 flex items-center space-x-2">
+          <span>Home</span>
+          <span className="text-slate-300">/</span>
+          <span className="text-white">Check Casino Result</span>
+        </div>
       </div>
 
-      <div className="p-4 lg:p-6 space-y-6">
-        <div>
-          <h3 className="text-white text-sm mb-2">Show Casino Results</h3>
-          <div className="flex items-center gap-2">
-            <div className="relative w-full max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="bg-[#05100a] border border-[#00ff88]/20 rounded-lg p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-end gap-4 mb-2">
+          <div className="relative w-full max-w-sm">
+            <h3 className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-2">Search Records</h3>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search....."
+                placeholder="Search by Match, Client or Bet Type..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full bg-[#1a3828] border border-gray-600 rounded pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-500 placeholder-gray-400"
+                className="w-full pl-9 pr-4 py-2 bg-[rgba(5,16,10,0.5)] border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/50 focus:border-[#00ff88] text-white text-sm transition-all"
               />
             </div>
-            <button
-              onClick={handleSearch}
-              className="bg-[#0dcaf0] hover:bg-[#0bacce] text-black px-4 py-1.5 rounded text-sm font-medium transition-colors"
-            >
-              Search
-            </button>
           </div>
+          <button
+            onClick={handleSearch}
+            className="w-full sm:w-auto px-6 py-2 bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 hover:bg-[#00ff88] hover:text-[#020503] font-bold text-sm rounded shadow-sm transition-all"
+          >
+            Show Result
+          </button>
         </div>
+      </div>
 
-        {isSearched && (
+      {isSearched && (
           <div className="bg-[#1f2937] rounded-md overflow-hidden border border-gray-700 shadow-xl mt-6">
             <div className="bg-[#374151] px-4 py-2 border-b border-gray-600">
               <h3 className="text-white font-medium text-sm">Results for "{searchTerm}"</h3>
@@ -172,6 +179,5 @@ export default function CheckCasinoResult() {
           </div>
         )}
       </div>
-    </div>
   );
 }

@@ -66,11 +66,11 @@ export default function RoyalCasinoReport() {
   const total = isSearched ? reportData.reduce((acc, curr) => acc + curr.profitLoss, 0) : 0;
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-4">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-4">
       {/* Alert Banner / Ticker */}
       <div className="bg-[#60999b] text-white flex items-center justify-between shadow-sm overflow-hidden mb-6 h-10 text-sm">
-        <div className="flex-1 overflow-hidden relative h-full flex items-center px-4 font-bold tracking-wide">
-            <div className="absolute whitespace-nowrap animate-[marquee_25s_linear_infinite] flex items-center gap-8 text-white">
+        <div className="flex-1 min-w-0 overflow-hidden relative h-full flex items-center px-4 font-bold tracking-wide">
+            <div className="absolute top-0 left-0 h-full whitespace-nowrap animate-[marquee_25s_linear_infinite] flex items-center gap-8 text-white">
               <span>Fancy has been Suspend for Matchname:- Oman v Kuwait,FancyName:- Over/Under 8.5 Goals, Reason:-Wrong Market</span>
               <span className="text-white/50 font-bold">•</span>
               <span>Match Suspended:- India v Australia (T20 World Cup), Reason:- Rain Delay</span>

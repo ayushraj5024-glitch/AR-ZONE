@@ -26,7 +26,7 @@ export default function BlockMarket() {
   };
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6">
       {/* Header & Breadcrumbs */}
       <div>
         <h2 className="text-[28px] font-normal text-slate-200">Block Sports</h2>

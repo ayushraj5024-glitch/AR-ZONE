@@ -418,6 +418,8 @@ export default function CasinoGame({
   const [betAmount, setBetAmount] = useState("100");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [betHistory, setBetHistory] = useState<BetRecord[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Cards state
   const [revealedCards, setRevealedCards] = useState<{
@@ -566,7 +568,7 @@ export default function CasinoGame({
 
   if (!status.liveCasino) {
     return (
-      <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans pb-16 relative">
+      <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans pb-16 relative">
         <button
           onClick={onBack}
           className="absolute top-6 right-6 lg:top-10 lg:right-10 z-50 text-slate-400 hover:text-white transition-colors"
@@ -584,7 +586,7 @@ export default function CasinoGame({
 
   if (gameId === "aviator") {
     return (
-      <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans text-sm pb-16 relative">
+      <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans text-sm pb-16 relative">
         <button
           onClick={onBack}
           className="absolute top-6 right-6 lg:top-10 lg:right-10 z-50 text-slate-400 hover:text-white transition-colors"
@@ -639,8 +641,12 @@ export default function CasinoGame({
     );
   }
 
+  const totalPages = Math.ceil(betHistory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBets = betHistory.slice(startIndex, startIndex + itemsPerPage);
+
   return (
-    <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans text-sm pb-16">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans text-sm pb-16">
       {/* Top Bar with Balance */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#05100a] p-4 rounded-xl shadow-sm border border-[#00ff88]/20">
         <div>
@@ -685,8 +691,8 @@ export default function CasinoGame({
         <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
           <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
         </div>
-        <div className="flex-1 overflow-hidden relative h-6">
-            <div className="absolute whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
+        <div className="flex-1 min-w-0 overflow-hidden relative h-6">
+            <div className="absolute left-0 top-0 whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
               <span>🏏 <span className="font-bold text-white">Somerset</span> <span className="text-[#f0b429]">145/3 (14.3 ov)</span> vs <span className="font-bold text-white">Glamorgan</span></span>
               <span className="text-[#00ff88]/50 font-bold">•</span>
               <span>🏏 <span className="font-bold text-white">India</span> <span className="text-[#f0b429]">210/4 (20.0 ov)</span> vs <span className="font-bold text-white">Australia</span> <span className="text-[#f0b429]">185/8 (20.0 ov)</span></span>
@@ -1016,50 +1022,73 @@ export default function CasinoGame({
 
             <div className="flex-1 overflow-y-auto p-0">
               {betHistory.length > 0 ? (
-                <div className="divide-y divide-[#00ff88]/20">
-                  {betHistory.map((bet) => (
-                    <div
-                      key={bet.id}
-                      className="p-4 hover:bg-[#020503] transition-colors"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <span className="font-bold text-white">
-                            {bet.selection}
-                          </span>
-                          <span className="text-slate-400 text-xs ml-2">
-                            @{bet.odds}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {bet.time}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-end mt-3">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                            Stake
-                          </span>
-                          <span className="font-bold text-slate-200">
-                            ₹{bet.amount.toFixed(2)}
+                <>
+                  <div className="divide-y divide-[#00ff88]/20">
+                    {paginatedBets.map((bet) => (
+                      <div
+                        key={bet.id}
+                        className="p-4 hover:bg-[#020503] transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <span className="font-bold text-white">
+                              {bet.selection}
+                            </span>
+                            <span className="text-slate-400 text-xs ml-2">
+                              @{bet.odds}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {bet.time}
                           </span>
                         </div>
+                        <div className="flex justify-between items-end mt-3">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                              Stake
+                            </span>
+                            <span className="font-bold text-slate-200">
+                              ₹{bet.amount.toFixed(2)}
+                            </span>
+                          </div>
 
-                        <div className="flex flex-col items-end">
-                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                            Result
-                          </span>
-                          <span
-                            className={`font-bold ${bet.profit > 0 ? "text-emerald-500" : "text-rose-500"}`}
-                          >
-                            {bet.profit > 0 ? "+" : ""}
-                            {bet.profit.toFixed(2)}
-                          </span>
+                          <div className="flex flex-col items-end">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                              Result
+                            </span>
+                            <span
+                              className={`font-bold ${bet.profit > 0 ? "text-emerald-500" : "text-rose-500"}`}
+                            >
+                              {bet.profit > 0 ? "+" : ""}
+                              {bet.profit.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between p-4 border-t border-[#00ff88]/20 bg-[#020503]">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-xs text-slate-400 font-medium">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-[#020503]/50">
                   <div className="w-12 h-12 bg-[#00ff88]/5 rounded-full flex items-center justify-center mb-3">

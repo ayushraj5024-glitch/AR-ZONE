@@ -15,7 +15,7 @@ export default function ProfitLoss() {
   };
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-white">Profit & Loss</h2>
         <div className="text-sm font-medium text-slate-400 mt-1 flex items-center space-x-2">

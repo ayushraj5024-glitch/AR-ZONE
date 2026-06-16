@@ -198,7 +198,7 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
 
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6">
       {/* Title & Breadcrumbs */}
       <div>
         <h2 className="text-2xl font-semibold text-white">Matches</h2>

@@ -55,7 +55,8 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
             t1s: m.t1s,
             t2s: m.t2s,
             t1: m.t1,
-            t2: m.t2
+            t2: m.t2,
+            ms: m.ms
           }));
           
           // Filter for matches that seem completed
@@ -69,7 +70,8 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
               }
             }
 
-            const isStatusCompleted = m.status?.toLowerCase().includes('won') || 
+            const isStatusCompleted = m.ms === 'result' ||
+              m.status?.toLowerCase().includes('won') || 
               m.status?.toLowerCase().includes('ended') || 
               m.status?.toLowerCase().includes('result') ||
               m.status?.toLowerCase().includes('abandoned') ||
@@ -103,7 +105,7 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
   );
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-white">{title}</h2>
         <div className="text-sm font-medium text-slate-400 mt-1 flex items-center space-x-2">

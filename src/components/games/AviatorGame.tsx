@@ -13,6 +13,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
   const [activeBetAmount, setActiveBetAmount] = useState(0); 
   const [cashedOutAmount, setCashedOutAmount] = useState<number | null>(null);
   const [crashPoint, setCrashPoint] = useState(2.50);
+  const [countdown, setCountdown] = useState(10);
   
   const [myBetsHistory, setMyBetsHistory] = useState<{ id?: string, date: string, amount: number, multiplier?: number, payout?: number, status: 'won' | 'lost'}[]>([]);
 
@@ -67,6 +68,107 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
     else if (type === "1/2") current = Math.max(1, Math.floor(current / 2));
     
     setBetAmount(String(current));
+  };
+
+  const placeBet = () => {
+      const bet = Number(betAmount) || 0;
+      if (gameState !== 'waiting' || countdown <= 3) {
+        alert("Wait for the next round to place a bet");
+        return;
+      }
+      if (activeBetAmount > 0) {
+        return; // already bet
+      }
+      if (bet > balance) {
+        alert("Insufficient balance");
+        return;
+      }
+      if (onResult) {
+        onResult(-bet);
+      }
+      setActiveBetAmount(bet);
+      setCashedOutAmount(null);
+  };
+
+  const cashOut = () => {
+      if (gameState === 'flying' && activeBetAmount > 0) {
+        let rawPayout = activeBetAmount * multiplier;
+        let profit = rawPayout - activeBetAmount;
+        let adminFee = profit > 0 ? profit * 0.04 : 0;
+        let payout = rawPayout - adminFee;
+        setCashedOutAmount(payout);
+        if (onResult) {
+          onResult(payout);
+        }
+        const betData = { 
+          date: new Date().toLocaleTimeString(), 
+          amount: activeBetAmount, 
+          multiplier: multiplier, 
+          payout: payout, 
+          status: 'won' 
+        };
+        setMyBetsHistory(curr => [betData as any, ...curr]);
+        saveBetToFirestore(betData);
+        setActiveBetAmount(0);
+      }
+  };
+
+  useEffect(() => {
+    if (gameState === 'waiting') {
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            startFlying();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [gameState]);
+
+  useEffect(() => {
+    if (gameState === 'crashed') {
+      const timer = setTimeout(() => {
+        setGameState('waiting');
+        setCountdown(10);
+        setCrashPoint(generateCrashPoint());
+        setMultiplier(1.0);
+        setCashedOutAmount(null);
+        setActiveBetAmount(0);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState]);
+
+  const generateCrashPoint = () => {
+      const rand = Math.random();
+      let crash = 1.0;
+      if (rand < 0.30) {
+        crash = 1.00 + (Math.random() * 0.20);
+      } else if (rand < 0.54) {
+        crash = 1.21 + (Math.random() * 0.29);
+      } else if (rand < 0.72) {
+        crash = 1.51 + (Math.random() * 0.49);
+      } else if (rand < 0.85) {
+        crash = 2.01 + (Math.random() * 0.99);
+      } else if (rand < 0.93) {
+        crash = 3.01 + (Math.random() * 1.99);
+      } else if (rand < 0.97) {
+        crash = 5.01 + (Math.random() * 4.99);
+      } else if (rand < 0.99) {
+        crash = 10.01 + (Math.random() * 39.99);
+      } else {
+        crash = 50.00 + (Math.random() * 950.00);
+      }
+      return parseFloat(crash.toFixed(2));
+  };
+
+  const startFlying = () => {
+    setGameState('flying');
+    setMultiplier(1.0);
   };
 
   const history = [
@@ -173,6 +275,23 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
                Flew Away!<br/><span className="text-sm tracking-normal">({multiplier.toFixed(2)}x)</span>
              </div>
           )}
+          {gameState === 'waiting' && (
+            <div className="absolute top-1/4 flex flex-col items-center w-full max-w-sm px-6 z-50">
+              <div className={`text-sm uppercase tracking-[0.2em] font-bold px-6 py-2 rounded-full border shadow-xl transition-colors duration-300 ${countdown <= 3 ? 'text-rose-500 bg-rose-500/10 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.3)] animate-[pulse_1s_ease-in-out_infinite]' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(52,211,153,0.1)]'}`}>
+                 {countdown <= 3 ? 'BETS CLOSED' : 'WAITING FOR NEXT ROUND'}
+              </div>
+              
+              <div className="w-full mt-6 bg-slate-900/80 rounded-full h-2 overflow-hidden border border-slate-700/50 backdrop-blur-sm">
+                <div 
+                  className={`h-full transition-all duration-1000 ease-linear ${countdown <= 3 ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.8)]' : 'bg-emerald-500 shadow-[0_0_15px_rgba(52,211,153,0.8)]'}`}
+                  style={{ width: `${(countdown / 10) * 100}%` }}
+                ></div>
+              </div>
+              <div className={`mt-3 font-mono text-xl md:text-2xl font-black tracking-widest drop-shadow-md ${countdown <= 3 ? 'text-rose-500 animate-pulse' : 'text-emerald-400'}`}>
+                00:{countdown.toString().padStart(2, '0')}
+              </div>
+            </div>
+          )}
           <div className="relative flex items-center justify-center">
              <div className={`text-[60px] sm:text-[80px] md:text-[100px] font-black drop-shadow-[0_0_30px_rgba(0,255,136,0.5)] font-mono tracking-tighter mix-blend-screen leading-none transition-colors ${gameState === 'crashed' ? 'text-rose-500 drop-shadow-[0_0_30px_rgba(244,63,94,0.5)]' : 'text-[#00ff88]'}`}>
                {multiplier.toFixed(2)}x
@@ -199,140 +318,95 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
       </div>
 
       {/* Controls Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* YOUR BET Column */}
-        <div className="bg-[#18212e] p-2 sm:p-4 rounded-xl border border-slate-700/50 lg:col-span-5 shadow-lg flex flex-col justify-between">
+        <div className="bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-slate-700/50 lg:col-span-4 shadow-[0_8px_30px_rgb(0,0,0,0.4)] flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+          
           <div>
-            <div className="bg-[#212b3a] border border-slate-600 rounded-lg p-1.5 mb-2 shadow-inner">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Bet Amount</span>
+              <span className="text-emerald-400 font-mono text-xs font-bold">₹ {balance.toFixed(2)} Bal</span>
+            </div>
+            
+            <div className="bg-[#0b1016] border border-slate-700 focus-within:border-emerald-500/50 rounded-xl p-2 mb-4 shadow-inner transition-colors flex items-center">
+              <span className="text-slate-500 font-bold px-2">₹</span>
               <input
                 type="text"
                 value={betAmount}
                 onChange={(e) => setBetAmount(e.target.value)}
-                className="w-full bg-transparent text-center text-white font-bold text-base sm:text-lg outline-none"
+                className="w-full bg-transparent text-center text-white font-black text-xl sm:text-2xl outline-none"
               />
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5 mb-2">
-              {["+50", "+100", "+500", "x2"].map((btn) => (
+            <div className="grid grid-cols-5 gap-2 mb-4">
+              {["+50", "+100", "+500", "x2", "½"].map((btn) => (
                 <button
                   key={btn}
-                  onClick={() => adjustBet(btn)}
-                  className="bg-[#212b3a] border border-slate-600 hover:border-slate-400 text-white font-bold py-1.5 rounded-md text-[10px] sm:text-xs transition-colors shadow-sm"
+                  onClick={() => adjustBet(btn === "½" ? "1/2" : btn)}
+                  className="bg-slate-800/50 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-slate-300 font-bold py-2 rounded-lg text-[10px] sm:text-xs transition-all shadow-sm active:scale-95"
                 >
                   {btn}
                 </button>
               ))}
             </div>
             
-            <div className="mb-2 flex gap-1.5">
-              <button 
-                onClick={() => adjustBet("1/2")}
-                className="bg-[#212b3a] border border-slate-600 hover:border-slate-400 text-white font-bold w-10 sm:w-12 py-1 rounded-md text-[10px] sm:text-xs transition-colors shadow-sm"
-              >
-                ½
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 mb-3">
-              <button 
-                onClick={() => setAutoCashoutEnabled(!autoCashoutEnabled)}
-                className={`text-[9px] sm:text-[10px] items-center flex font-semibold text-left leading-tight w-12 sm:w-14 uppercase transition-colors ${autoCashoutEnabled ? 'text-[#00ff88]' : 'text-slate-400'}`}
-              >
-                Auto cash {autoCashoutEnabled ? 'ON' : 'OFF'}
-              </button>
-              <div className={`flex-1 border rounded-lg p-1 shadow-inner max-w-20 transition-colors ${autoCashoutEnabled ? 'bg-[#212b3a] border-[#00ff88]/50' : 'bg-[#1a212d] border-slate-700'}`}>
+            <div className="flex items-center justify-between gap-4 mb-4 bg-slate-800/30 p-3 rounded-xl border border-slate-700/30">
+              <div className="flex flex-col">
+                <span className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">Auto Cashout</span>
+                <button 
+                  onClick={() => setAutoCashoutEnabled(!autoCashoutEnabled)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${autoCashoutEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${autoCashoutEnabled ? 'translate-x-4.5' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              
+              <div className={`flex items-center border rounded-lg p-1.5 shadow-inner w-24 transition-colors ${autoCashoutEnabled ? 'bg-[#0b1016] border-emerald-500/50' : 'bg-slate-900 border-slate-700 opacity-50'}`}>
                 <input
                   type="text"
                   value={autoCashout}
                   onChange={(e) => setAutoCashout(e.target.value)}
                   disabled={!autoCashoutEnabled}
-                  className={`w-full bg-transparent text-center font-bold text-sm outline-none transition-colors ${autoCashoutEnabled ? 'text-white' : 'text-slate-500'}`}
+                  className="w-full bg-transparent text-center font-bold text-sm outline-none text-white"
                 />
+                <span className="text-slate-500 text-xs font-bold pr-1">x</span>
               </div>
             </div>
           </div>
 
           <button 
             onClick={() => {
-              if (gameState === 'waiting' || gameState === 'crashed') {
-                const bet = Number(betAmount) || 0;
-                if (bet > balance) {
-                  alert("Insufficient balance");
-                  return;
-                }
-                if (onResult) {
-                  onResult(-bet);
-                }
-                setGameState('flying');
-                setMultiplier(1.0);
-                setActiveBetAmount(bet);
-                setCashedOutAmount(null);
-                
-                // RTP Crash Distribution
-                const rand = Math.random();
-                let crash = 1.0;
-                if (rand < 0.30) {
-                  // 30% chance: 1.00x – 1.20x
-                  crash = 1.00 + (Math.random() * 0.20);
-                } else if (rand < 0.54) {
-                  // 24% chance: 1.21x – 1.50x
-                  crash = 1.21 + (Math.random() * 0.29);
-                } else if (rand < 0.72) {
-                  // 18% chance: 1.51x – 2.00x
-                  crash = 1.51 + (Math.random() * 0.49);
-                } else if (rand < 0.92) {
-                  // 20% chance: 2.01x – 5.00x
-                  crash = 2.01 + (Math.random() * 2.99);
-                } else if (rand < 0.97) {
-                  // 5% chance: 5.01x – 10.00x
-                  crash = 5.01 + (Math.random() * 4.99);
-                } else {
-                  // 3% chance: 10.00x+ (Capped at 30x for playability)
-                  crash = 10.01 + (Math.random() * 19.99);
-                }
-                
-                setCrashPoint(Number(crash.toFixed(2)));
+              if (gameState === 'waiting') {
+                placeBet();
               } else if (gameState === 'flying' && activeBetAmount > 0) {
-                let rawPayout = activeBetAmount * multiplier;
-                let profit = rawPayout - activeBetAmount;
-                let adminFee = profit > 0 ? profit * 0.04 : 0;
-                let payout = rawPayout - adminFee;
-                setCashedOutAmount(payout);
-                if (onResult) {
-                  onResult(payout);
-                }
-                const betData = { 
-                  date: new Date().toLocaleTimeString(), 
-                  amount: activeBetAmount, 
-                  multiplier: multiplier, 
-                  payout: payout, 
-                  status: 'won' 
-                };
-                setMyBetsHistory(curr => [betData as any, ...curr]);
-                saveBetToFirestore(betData);
-                setActiveBetAmount(0);
+                cashOut();
               }
             }}
-            disabled={gameState === 'flying' && activeBetAmount === 0}
-            className={`w-full py-2.5 border-2 rounded-lg font-black tracking-widest text-sm transition-all shadow-md active:scale-[0.98]
+            disabled={(gameState === 'waiting' && countdown <= 3 && activeBetAmount === 0) || (gameState === 'flying' && activeBetAmount === 0) || gameState === 'crashed'}
+            className={`w-full py-3 md:py-4 border-2 rounded-xl font-black tracking-widest text-sm md:text-base transition-all shadow-xl active:scale-[0.98]
               ${gameState === 'flying' && activeBetAmount > 0
-                ? 'bg-orange-500 text-white border-orange-400 hover:bg-orange-600' 
-                : gameState === 'flying' && activeBetAmount === 0
-                ? 'bg-[#212b3a] text-slate-500 border-slate-700 cursor-not-allowed'
-                : 'bg-[#00ff88] text-[#05100a] border-[#00ff88] hover:bg-[#00cc6a] hover:border-[#00cc6a]'
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.4)]' 
+                : (gameState === 'waiting' && countdown <= 3 && activeBetAmount === 0)
+                ? 'bg-rose-600 border-rose-500 text-white cursor-not-allowed shadow-[0_0_20px_rgba(225,29,72,0.4)]'
+                : ((gameState === 'flying' || gameState === 'crashed') && activeBetAmount === 0)
+                ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed hidden-glow'
+                : 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:shadow-[0_0_35px_rgba(16,185,129,0.5)]'
               }`}
           >
             {gameState === 'flying' && activeBetAmount > 0 
               ? `CASH OUT ₹${(activeBetAmount * multiplier).toFixed(2)}` 
-              : gameState === 'flying' && activeBetAmount === 0
-              ? 'WAITING...'
-              : 'BET'}
+              : gameState === 'waiting'
+              ? (activeBetAmount > 0 ? `WAITING FOR NEXT ROUND...` : countdown <= 3 ? 'BETS CLOSED' : `BET ₹${betAmount}`)
+              : 'WAITING...'}
           </button>
         </div>
 
         {/* My Bets History Column (Moved up) */}
-        <div className="bg-[#18212e] p-2 sm:p-4 rounded-xl border border-slate-700/50 lg:col-span-7 shadow-lg flex flex-col h-full">
-          <h3 className="text-slate-400 font-bold uppercase tracking-widest mb-2 sm:mb-3 text-[10px] sm:text-xs">
+        <div className="bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-slate-700/50 lg:col-span-8 shadow-[0_8px_30px_rgb(0,0,0,0.4)] flex flex-col h-full relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-1 bg-gradient-to-l from-emerald-500/50 to-transparent"></div>
+          <h3 className="text-slate-400 font-bold uppercase tracking-widest mb-3 sm:mb-4 text-xs flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
             My Bets History
           </h3>
           {myBetsHistory.length === 0 ? (

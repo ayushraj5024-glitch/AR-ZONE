@@ -117,6 +117,8 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
   const [betAmount, setBetAmount] = useState('100');
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [betHistory, setBetHistory] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const matchTitle = matchData?.title || 'Team 1 vs Team 2';
   let teams = ['Team A', 'Team B'];
@@ -439,16 +441,20 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 
+  const totalPages = Math.ceil(betHistory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBets = betHistory.slice(startIndex, startIndex + itemsPerPage);
+
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6 font-sans text-sm pb-16">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans text-sm pb-16">
       
       {/* Alert Banner / Ticker */}
       <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border border-[#00ff88]/20 rounded-xl px-4 py-3 flex items-center shadow-sm text-slate-200 overflow-hidden mb-6">
         <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
           <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
         </div>
-        <div className="flex-1 overflow-hidden relative h-6">
-            <div className="absolute whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-mono flex items-center gap-8 text-[#00ff88]">
+        <div className="flex-1 min-w-0 overflow-hidden relative h-6">
+            <div className="absolute top-0 left-0 whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-mono flex items-center gap-8 text-[#00ff88]">
               {matchData ? (
                 <>
                    <span>🏏 <span className="font-bold text-white">{team1}</span> <span className="text-[#f0b429]">{t1Summary.raw || `${t1Summary.run}/${t1Summary.wkt}`}</span> vs <span className="font-bold text-white">{team2}</span> <span className="text-[#f0b429]">{t2Summary.raw || `${t2Summary.run}/${t2Summary.wkt}`}</span></span>
@@ -816,42 +822,65 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
              
              <div className="flex-1 overflow-y-auto p-0 custom-scrollbar">
                 {betHistory.length > 0 ? (
-                  <div className="divide-y divide-[#00ff88]/10">
-                    {betHistory.map((bet: any) => (
-                      <div key={bet.id} className="p-4 hover:bg-slate-900/50 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-bold text-white text-sm pb-1 border-b border-slate-800 w-full flex justify-between items-center">
-                            {bet.selection}
-                            <span className="text-[9px] text-slate-500 font-mono font-medium">{bet.time}</span>
+                  <>
+                    <div className="divide-y divide-[#00ff88]/10">
+                      {paginatedBets.map((bet: any) => (
+                        <div key={bet.id} className="p-4 hover:bg-slate-900/50 transition-colors">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="font-bold text-white text-sm pb-1 border-b border-slate-800 w-full flex justify-between items-center">
+                              {bet.selection}
+                              <span className="text-[9px] text-slate-500 font-mono font-medium">{bet.time}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                             <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm ${bet.type === 'back' ? 'bg-[#72bbed] text-slate-900' : 'bg-[#faa9ba] text-slate-900'}`}>{bet.type === 'back' ? 'LAGAI' : 'KHAI'}</span>
+                             <span className="text-slate-300 font-bold text-sm">@{bet.odds}</span>
+                          </div>
+                          <div className="flex justify-between items-end mt-3 bg-slate-900 p-2 rounded border border-slate-800 text-xs">
+                            <div className="flex gap-4 items-center">
+                               <div><span className="text-slate-500 font-semibold mr-1">Stake:</span><span className="text-slate-200 font-bold">₹{bet.amount.toFixed(2)}</span></div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                               <div className={`text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
+                                 bet.status === 'won' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30' : 
+                                 bet.status === 'lost' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 
+                                 'bg-slate-500/10 text-slate-400 border-slate-500/30'
+                               }`}>
+                                 {bet.status}
+                               </div>
+                               <div className="text-right flex flex-col">
+                                  <span className="text-[9px] text-slate-500 font-semibold uppercase leading-tight tracking-wider">Return</span>
+                                  <span className={`font-black text-sm leading-tight ${bet.status === 'won' ? 'text-[#00ff88]' : bet.status === 'lost' ? 'text-rose-400' : 'text-slate-400'}`}>
+                                    {bet.profit > 0 ? '+' : ''}{bet.profit.toFixed(2)}
+                                  </span>
+                               </div>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm ${bet.type === 'back' ? 'bg-[#72bbed] text-slate-900' : 'bg-[#faa9ba] text-slate-900'}`}>{bet.type === 'back' ? 'LAGAI' : 'KHAI'}</span>
-                           <span className="text-slate-300 font-bold text-sm">@{bet.odds}</span>
-                        </div>
-                        <div className="flex justify-between items-end mt-3 bg-slate-900 p-2 rounded border border-slate-800 text-xs">
-                          <div className="flex gap-4 items-center">
-                             <div><span className="text-slate-500 font-semibold mr-1">Stake:</span><span className="text-slate-200 font-bold">₹{bet.amount.toFixed(2)}</span></div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                             <div className={`text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
-                               bet.status === 'won' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30' : 
-                               bet.status === 'lost' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 
-                               'bg-slate-500/10 text-slate-400 border-slate-500/30'
-                             }`}>
-                               {bet.status}
-                             </div>
-                             <div className="text-right flex flex-col">
-                                <span className="text-[9px] text-slate-500 font-semibold uppercase leading-tight tracking-wider">Return</span>
-                                <span className={`font-black text-sm leading-tight ${bet.status === 'won' ? 'text-[#00ff88]' : bet.status === 'lost' ? 'text-rose-400' : 'text-slate-400'}`}>
-                                  {bet.profit > 0 ? '+' : ''}{bet.profit.toFixed(2)}
-                                </span>
-                             </div>
-                          </div>
-                        </div>
+                      ))}
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between p-4 border-t border-[#00ff88]/20 bg-slate-900">
+                        <button
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-xs text-slate-400 font-medium">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-center p-8">
                     <Monitor className="w-12 h-12 text-slate-700 mb-4" />

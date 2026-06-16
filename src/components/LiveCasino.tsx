@@ -80,7 +80,7 @@ export default function LiveCasino({
 
   if (!status.liveCasino) {
     return (
-      <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans pb-16">
+      <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans pb-16">
         <div className="flex flex-col items-center justify-center p-12 bg-[#05100a] border border-red-500/20 rounded-2xl text-center space-y-4">
           <Ban className="w-16 h-16 text-red-500" />
           <h2 className="text-2xl font-bold text-white">Live Casino is Currently Suspended</h2>
@@ -91,7 +91,7 @@ export default function LiveCasino({
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-350 mx-auto space-y-6 font-sans pb-16">
+    <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans pb-16">
       {/* Header & Breadcrumbs */}
       <div>
         <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
