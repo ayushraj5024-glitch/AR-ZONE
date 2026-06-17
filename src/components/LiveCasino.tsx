@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { Gamepad2, ChevronRight, PlayCircle, Star, Ban, Loader2 } from "lucide-react";
 import { useMarketStatus } from "../hooks/useMarketStatus";
 
-import imgLucky7 from '../assets/images/lucky7_cover_1780751828906.png';
-import imgAviator from '../assets/images/aviator_cover_1780752208276.png';
-import imgHeadTail from '../assets/images/head_tail_cover_1780751846165.png';
-import imgTeenPatti from '../assets/images/teenpatti_cover_1780751859979.png';
-import img32Cards from '../assets/images/cards32_cover_1780751902410.png';
-import imgDragonTiger from '../assets/images/dragon_tiger_cover_1780751916527.png';
-import imgBaccarat from '../assets/images/baccarat_cover_1780751932017.png';
+import imgLucky7 from '../assets/images/lucky_seven_1781558885185.jpg';
+import imgAviator from '../assets/images/aviator_game_1781558900807.jpg';
+import imgHeadTail from '../assets/images/head_and_tail_1781558914657.jpg';
+import imgTeenPatti from '../assets/images/teen_patti_1781558928066.jpg';
+import img32Cards from '../assets/images/thirty_two_cards_1781558942556.jpg';
+import imgDragonTiger from '../assets/images/dragon_tiger_1781558955709.jpg';
+import imgBaccarat from '../assets/images/baccarat_game_1781558969074.jpg';
 
 interface Game {
   id: string;
