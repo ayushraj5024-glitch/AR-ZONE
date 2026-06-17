@@ -9,7 +9,7 @@ interface HeadAndTailProps {
     profit: number,
     win: boolean,
     details: string,
-  ) => void;
+  ) => void | Promise<void>;
   onDeductBet?: (amount: number) => Promise<void>;
   gameName?: string;
 }
@@ -102,7 +102,7 @@ export default function HeadAndTail({
       
        {/* Top Header - Live Casino Feel */}
        <div className="bg-[#02040a] border-b border-blue-500/10 px-6 py-4 flex justify-between items-center relative overflow-hidden backdrop-blur-md">
-         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50"></div>
+         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-blue-500 to-transparent opacity-50"></div>
          <div className="flex items-center gap-3">
             <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${stage === 'BETTING' && timeLeft <= 3 ? 'bg-rose-500' : 'bg-blue-500'}`}></span>
             <h1 className="text-white font-bold tracking-wider uppercase text-sm">{gameName} Live</h1>
@@ -112,9 +112,9 @@ export default function HeadAndTail({
          </div>
        </div>
 
-      <div className="flex flex-col md:flex-row min-h-[360px]">
+      <div className="flex flex-col md:flex-row min-h-90">
         {/* Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 relative bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#0f2347] via-[#051025] to-[#02040a] border-r border-blue-500/10">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 relative bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-[#0f2347] via-[#051025] to-[#02040a] border-r border-blue-500/10">
           
           {/* Status Overlay */}
           <div className="absolute top-8 left-1/2 -translate-x-1/2 z-10 w-full flex flex-col items-center pointer-events-none">
@@ -134,7 +134,7 @@ export default function HeadAndTail({
                   </div>
                )}
                {stage === 'RESULT' && result && (
-                  <div className="text-white font-black text-3xl uppercase tracking-[0.1em] drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">
+                  <div className="text-white font-black text-3xl uppercase tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">
                      {result} Wins!
                   </div>
                )}
@@ -145,10 +145,10 @@ export default function HeadAndTail({
             <motion.div
               className={`w-full h-full rounded-full preserve-3d flex items-center justify-center font-bold text-5xl shadow-2xl ${
                 result === "HEAD"
-                  ? "bg-gradient-to-br from-amber-300 to-amber-500 text-amber-950 border-4 border-amber-200 shadow-[0_0_40px_rgba(251,191,36,0.4)]"
+                  ? "bg-linear-to-br from-amber-300 to-amber-500 text-amber-950 border-4 border-amber-200 shadow-[0_0_40px_rgba(251,191,36,0.4)]"
                   : result === "TAIL"
-                    ? "bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800 border-4 border-slate-100 shadow-[0_0_40px_rgba(148,163,184,0.4)]"
-                    : "bg-gradient-to-br from-blue-400 to-blue-600 text-blue-950 border-4 border-blue-300 shadow-[0_0_40px_rgba(59,130,246,0.4)]"
+                    ? "bg-linear-to-br from-slate-200 to-slate-400 text-slate-800 border-4 border-slate-100 shadow-[0_0_40px_rgba(148,163,184,0.4)]"
+                    : "bg-linear-to-br from-blue-400 to-blue-600 text-blue-950 border-4 border-blue-300 shadow-[0_0_40px_rgba(59,130,246,0.4)]"
               }`}
               animate={{
                 rotateY: stage === 'FLIPPING'
@@ -166,14 +166,14 @@ export default function HeadAndTail({
             >
               {/* Front face (HEAD) */}
               <div
-                className="absolute w-full h-full rounded-full flex items-center justify-center bg-gradient-to-br from-amber-300 to-amber-500 border-[6px] border-amber-200 text-amber-950 backface-hidden shadow-inner"
+                className="absolute w-full h-full rounded-full flex items-center justify-center bg-linear-to-br from-amber-300 to-amber-500 border-[6px] border-amber-200 text-amber-950 backface-hidden shadow-inner"
                 style={{ backfaceVisibility: "hidden" }}
               >
                 H
               </div>
               {/* Back face (TAIL) */}
               <div
-                className="absolute w-full h-full rounded-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-400 border-[6px] border-slate-100 text-slate-800 backface-hidden shadow-inner"
+                className="absolute w-full h-full rounded-full flex items-center justify-center bg-linear-to-br from-slate-200 to-slate-400 border-[6px] border-slate-100 text-slate-800 backface-hidden shadow-inner"
                 style={{
                   transform: "rotateY(180deg)",
                   backfaceVisibility: "hidden",
@@ -211,14 +211,14 @@ export default function HeadAndTail({
                     className={`flex-1 group relative p-4 rounded-xl border transition-all duration-300 ${
                        (stage !== 'BETTING' && !currentBet) || (stage === 'BETTING' && timeLeft <= 3 && !currentBet) ? 'opacity-50 cursor-not-allowed bg-[#010206] border-slate-800 grayscale' : 
                        currentBet?.side === 'TAIL' ? 'opacity-50 cursor-not-allowed bg-slate-900/50 border-slate-800' :
-                       'bg-gradient-to-b from-amber-900/30 to-amber-900/10 border-amber-500/40 hover:border-amber-400 hover:from-amber-800/40 shadow-[0_0_20px_rgba(245,158,11,0.1)] hover:shadow-[0_0_25px_rgba(245,158,11,0.3)]'
+                       'bg-linear-to-b from-amber-900/30 to-amber-900/10 border-amber-500/40 hover:border-amber-400 hover:from-amber-800/40 shadow-[0_0_20px_rgba(245,158,11,0.1)] hover:shadow-[0_0_25px_rgba(245,158,11,0.3)]'
                     }`}
                  >
                      {currentBet?.side === 'HEAD' && (
                          <div className="absolute inset-0 border-2 border-blue-400 rounded-xl z-20 pointer-events-none shadow-[0_0_20px_rgba(59,130,246,0.5)]"></div>
                      )}
                      <div className="flex flex-col items-center justify-center">
-                         <span className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center font-black text-amber-950 text-xl border-2 border-amber-200 mb-2 shadow-[0_0_20px_rgba(245,158,11,0.6)]">H</span>
+                         <span className="w-12 h-12 bg-linear-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center font-black text-amber-950 text-xl border-2 border-amber-200 mb-2 shadow-[0_0_20px_rgba(245,158,11,0.6)]">H</span>
                          <span className="font-bold text-sm tracking-wider uppercase text-amber-200">HEAD</span>
                          <span className="text-[10px] text-amber-400/80 font-mono mt-1 bg-amber-950/50 px-2 py-0.5 rounded">1.9x</span>
                      </div>
@@ -230,14 +230,14 @@ export default function HeadAndTail({
                     className={`flex-1 group relative p-4 rounded-xl border transition-all duration-300 ${
                        (stage !== 'BETTING' && !currentBet) || (stage === 'BETTING' && timeLeft <= 3 && !currentBet) ? 'opacity-50 cursor-not-allowed bg-[#010206] border-slate-800 grayscale' : 
                        currentBet?.side === 'HEAD' ? 'opacity-50 cursor-not-allowed bg-slate-900/50 border-slate-800' :
-                       'bg-gradient-to-b from-slate-700/30 to-slate-700/10 border-slate-500/40 hover:border-slate-400 hover:from-slate-600/40 shadow-[0_0_20px_rgba(148,163,184,0.1)] hover:shadow-[0_0_25px_rgba(148,163,184,0.3)]'
+                       'bg-linear-to-b from-slate-700/30 to-slate-700/10 border-slate-500/40 hover:border-slate-400 hover:from-slate-600/40 shadow-[0_0_20px_rgba(148,163,184,0.1)] hover:shadow-[0_0_25px_rgba(148,163,184,0.3)]'
                     }`}
                  >
                      {currentBet?.side === 'TAIL' && (
                          <div className="absolute inset-0 border-2 border-blue-400 rounded-xl z-20 pointer-events-none shadow-[0_0_20px_rgba(59,130,246,0.5)]"></div>
                      )}
                      <div className="flex flex-col items-center justify-center">
-                         <span className="w-12 h-12 bg-gradient-to-br from-slate-300 to-slate-500 rounded-full flex items-center justify-center font-black text-slate-900 text-xl border-2 border-slate-200 mb-2 shadow-[0_0_20px_rgba(203,213,225,0.6)]">T</span>
+                         <span className="w-12 h-12 bg-linear-to-br from-slate-300 to-slate-500 rounded-full flex items-center justify-center font-black text-slate-900 text-xl border-2 border-slate-200 mb-2 shadow-[0_0_20px_rgba(203,213,225,0.6)]">T</span>
                          <span className="font-bold text-sm tracking-wider uppercase text-slate-200">TAIL</span>
                          <span className="text-[10px] text-slate-400/80 font-mono mt-1 bg-slate-900/80 px-2 py-0.5 rounded">1.9x</span>
                      </div>
@@ -256,7 +256,7 @@ export default function HeadAndTail({
                      key={chip}
                      onClick={() => setBetAmount(chip)}
                      disabled={stage !== 'BETTING' || currentBet !== null || (stage === 'BETTING' && timeLeft <= 3)}
-                     className={`flex-1 min-w-[50px] py-2 rounded font-bold text-xs transition-all border disabled:opacity-30 disabled:grayscale ${
+                     className={`flex-1 min-w-12.5 py-2 rounded font-bold text-xs transition-all border disabled:opacity-30 disabled:grayscale ${
                        betAmount === chip 
                          ? 'bg-blue-500/20 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:bg-slate-800'

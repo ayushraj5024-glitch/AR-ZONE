@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 interface TeenPattiProps {
   balance: number;
   gameName?: string;
-  onPlay: (amount: number, profit: number, win: boolean, details: string) => void;
+  onPlay: (amount: number, profit: number, win: boolean, details: string) => void | Promise<void>;
   onDeductBet?: (amount: number) => Promise<void>;
 }
 
@@ -73,7 +73,7 @@ interface CardProps {
 const Card: React.FC<CardProps> = ({ value, suit, faceDown }) => {
   if (faceDown) {
     return (
-      <div className="w-10 h-14 bg-gradient-to-br from-[#1E1B4B] to-[#2E3192] border border-[#6366F1]/30 rounded flex items-center justify-center shadow-inner">
+      <div className="w-10 h-14 bg-linear-to-br from-[#1E1B4B] to-[#2E3192] border border-[#6366F1]/30 rounded flex items-center justify-center shadow-inner">
          <span className="text-[#6366F1] font-bold text-sm opacity-50">?</span>
       </div>
     );
@@ -199,7 +199,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
        
        {/* Top Header - Live Casino Feel */}
        <div className="bg-[#020503] border-b border-[#00ff88]/10 px-6 py-4 flex justify-between items-center relative overflow-hidden">
-         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
          <div className="flex items-center gap-3">
             <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${stage === 'BETTING' && timeLeft <= 3 ? 'bg-rose-500' : 'bg-[#00ff88]'}`}></span>
             <h1 className="text-white font-bold tracking-wider uppercase text-sm">{gameName}</h1>
@@ -210,7 +210,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
        </div>
 
        {/* Video/Table Area Placeholder */}
-       <div className="relative h-[280px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#134624] via-[#0A2613] to-[#020904] p-6 flex flex-col items-center justify-between border-b border-white/5">
+       <div className="relative h-70 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-[#134624] via-[#0A2613] to-[#020904] p-6 flex flex-col items-center justify-between border-b border-white/5">
            
            {/* Center Status indicator */}
            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-full flex flex-col items-center pointer-events-none">
@@ -230,7 +230,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
                   </div>
                )}
                {stage === 'RESULT' && winner && (
-                  <div className="text-white font-black text-3xl uppercase tracking-[0.1em] drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">
+                  <div className="text-white font-black text-3xl uppercase tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">
                      Player {winner} Wins
                   </div>
                )}
@@ -279,7 +279,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
                   disabled={stage !== 'BETTING' || currentBet !== null || (stage === 'BETTING' && timeLeft <= 3)}
                   className={`flex-1 group relative p-5 rounded-xl border transition-all duration-300 ${
                      stage !== 'BETTING' || currentBet !== null || (stage === 'BETTING' && timeLeft <= 3) ? 'opacity-50 cursor-not-allowed bg-[#010302] border-white/5 grayscale' : 
-                     'bg-gradient-to-br from-blue-900/30 to-blue-900/10 border-blue-500/40 hover:border-blue-400 hover:from-blue-800/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+                     'bg-linear-to-br from-blue-900/30 to-blue-900/10 border-blue-500/40 hover:border-blue-400 hover:from-blue-800/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]'
                   }`}
                >
                    {currentBet?.player === 'A' && (
@@ -297,7 +297,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
                   disabled={stage !== 'BETTING' || currentBet !== null || (stage === 'BETTING' && timeLeft <= 3)}
                   className={`flex-1 group relative p-5 rounded-xl border transition-all duration-300 ${
                      stage !== 'BETTING' || currentBet !== null || (stage === 'BETTING' && timeLeft <= 3) ? 'opacity-50 cursor-not-allowed bg-[#010302] border-white/5 grayscale' : 
-                     'bg-gradient-to-br from-rose-900/30 to-rose-900/10 border-rose-500/40 hover:border-rose-400 hover:from-rose-800/40 hover:shadow-[0_0_20px_rgba(225,29,72,0.3)]'
+                     'bg-linear-to-br from-rose-900/30 to-rose-900/10 border-rose-500/40 hover:border-rose-400 hover:from-rose-800/40 hover:shadow-[0_0_20px_rgba(225,29,72,0.3)]'
                   }`}
                >
                    {currentBet?.player === 'B' && (

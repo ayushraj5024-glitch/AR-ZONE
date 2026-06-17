@@ -321,7 +321,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* YOUR BET Column */}
         <div className="bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-slate-700/50 lg:col-span-4 shadow-[0_8px_30px_rgb(0,0,0,0.4)] flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-emerald-500/50 to-transparent"></div>
           
           <div>
             <div className="flex justify-between items-center mb-3">
@@ -386,12 +386,12 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
             disabled={(gameState === 'waiting' && countdown <= 3 && activeBetAmount === 0) || (gameState === 'flying' && activeBetAmount === 0) || gameState === 'crashed'}
             className={`w-full py-3 md:py-4 border-2 rounded-xl font-black tracking-widest text-sm md:text-base transition-all shadow-xl active:scale-[0.98]
               ${gameState === 'flying' && activeBetAmount > 0
-                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.4)]' 
+                ? 'bg-linear-to-r from-orange-500 to-amber-500 text-white border-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.4)]' 
                 : (gameState === 'waiting' && countdown <= 3 && activeBetAmount === 0)
                 ? 'bg-rose-600 border-rose-500 text-white cursor-not-allowed shadow-[0_0_20px_rgba(225,29,72,0.4)]'
                 : ((gameState === 'flying' || gameState === 'crashed') && activeBetAmount === 0)
                 ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed hidden-glow'
-                : 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:shadow-[0_0_35px_rgba(16,185,129,0.5)]'
+                : 'bg-linear-to-r from-emerald-500 to-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:shadow-[0_0_35px_rgba(16,185,129,0.5)]'
               }`}
           >
             {gameState === 'flying' && activeBetAmount > 0 
@@ -404,7 +404,7 @@ export default function AviatorGame({ balance, onResult }: { balance: number, on
 
         {/* My Bets History Column (Moved up) */}
         <div className="bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-slate-700/50 lg:col-span-8 shadow-[0_8px_30px_rgb(0,0,0,0.4)] flex flex-col h-full relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-1 bg-gradient-to-l from-emerald-500/50 to-transparent"></div>
+          <div className="absolute top-0 right-0 w-32 h-1 bg-linear-to-l from-emerald-500/50 to-transparent"></div>
           <h3 className="text-slate-400 font-bold uppercase tracking-widest mb-3 sm:mb-4 text-xs flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
             My Bets History
