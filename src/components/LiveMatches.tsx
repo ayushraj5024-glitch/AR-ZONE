@@ -209,9 +209,9 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
         </div>
       </div>
 
-      <div className="bg-[#05100a] rounded-xl border border-[#00ff88]/20 shadow-sm overflow-hidden">
+      <div className="bg-[#05100a] rounded-xl border border-\(--primary\)/20 shadow-sm overflow-hidden">
         {/* Header Bar */}
-        <div className="bg-[#62a2a3] px-4 py-3 border-b border-[#00ff88]/20 flex justify-between items-center">
+        <div className="bg-[#62a2a3] px-4 py-3 border-b border-\(--primary\)/20 flex justify-between items-center">
           <h3 className="font-semibold text-white">All Matches</h3>
           {apiError && (
              <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded font-medium border border-red-500/30">
@@ -280,10 +280,12 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
           </div>
 
           {/* Data Table */}
-          <div className="overflow-x-auto border border-[#00ff88]/20 rounded mt-4">
+          <div className="overflow-x-auto border border-\(--primary\)/20 rounded mt-4">
             {marketLoading ? (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#00ff88]" />
+              <div className="flex flex-col gap-2 p-4">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="h-12 w-full bg-\(--primary\)/5 animate-pulse rounded border border-\(--primary\)/10"></div>
+                ))}
               </div>
             ) : isCurrentMarketBlocked ? (
               <div className="flex flex-col items-center justify-center p-12 bg-[#05100a] text-center space-y-4">
@@ -297,39 +299,40 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
               </div>
             ) : (
               <table className="w-full text-sm text-left">
-                <thead className="bg-[#020503] text-slate-300 text-xs uppercase border-b border-[#00ff88]/20">
+                <thead className="bg-[#020503] text-slate-300 text-xs uppercase border-b border-\(--primary\)/20">
                   <tr>
-                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">ID</th>
-                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">PID</th>
-                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">Title</th>
-                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">Sport</th>
-                    <th className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">DATE</th>
+                    <th className="px-4 py-3 font-semibold border-r border-\(--primary\)/20">ID</th>
+                    <th className="px-4 py-3 font-semibold border-r border-\(--primary\)/20">PID</th>
+                    <th className="px-4 py-3 font-semibold border-r border-\(--primary\)/20">Title</th>
+                    <th className="px-4 py-3 font-semibold border-r border-\(--primary\)/20">Sport</th>
+                    <th className="px-4 py-3 font-semibold border-r border-\(--primary\)/20">DATE</th>
                     <th className="px-4 py-3 font-semibold text-center">Profit / Loss</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#00ff88]/20">
+                <tbody className="divide-y divide-\(--primary\)/20">
                   {localLoading ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
-                        <div className="flex flex-col items-center justify-center">
-                          <svg className="animate-spin h-6 w-6 text-[#00ff88] mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span>Connecting to Live Score API...</span>
-                        </div>
-                      </td>
-                    </tr>
+                    <>
+                      {[1,2,3,4,5].map(i => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="px-4 py-3"><div className="h-4 bg-\(--primary\)/10 rounded w-16"></div></td>
+                          <td className="px-4 py-3"><div className="h-4 bg-\(--primary\)/10 rounded w-16"></div></td>
+                          <td className="px-4 py-3"><div className="h-4 bg-\(--primary\)/10 rounded w-48"></div></td>
+                          <td className="px-4 py-3"><div className="h-4 bg-\(--primary\)/10 rounded w-20"></div></td>
+                          <td className="px-4 py-3"><div className="h-4 bg-\(--primary\)/10 rounded w-24"></div></td>
+                          <td className="px-4 py-3"><div className="h-8 bg-\(--primary\)/10 rounded w-full"></div></td>
+                        </tr>
+                      ))}
+                    </>
                   ) : filteredMatches.length > 0 ? (
                     filteredMatches.map((match, idx) => (
                       <tr key={idx} className="hover:bg-[#020503]/50 transition-colors">
-                        <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.id}</td>
-                        <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20 text-xs">{match.pid}</td>
-                        <td className="px-4 py-3 font-medium text-[#00ff88] hover:text-blue-700 cursor-pointer border-r border-[#00ff88]/20">
+                        <td className="px-4 py-3 text-slate-300 border-r border-\(--primary\)/20 text-xs">{match.id}</td>
+                        <td className="px-4 py-3 text-slate-300 border-r border-\(--primary\)/20 text-xs">{match.pid}</td>
+                        <td className="px-4 py-3 font-medium text-\(--primary\) hover:text-blue-700 cursor-pointer border-r border-\(--primary\)/20">
                           {match.title}
                         </td>
-                        <td className="px-4 py-3 text-slate-300 border-r border-[#00ff88]/20">{match.sport}</td>
-                        <td className="px-4 py-3 text-slate-300 flex items-center space-x-1 border-r border-[#00ff88]/20">
+                        <td className="px-4 py-3 text-slate-300 border-r border-\(--primary\)/20">{match.sport}</td>
+                        <td className="px-4 py-3 text-slate-300 flex items-center space-x-1 border-r border-\(--primary\)/20">
                           <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                           <span>{match.date}</span>
                         </td>

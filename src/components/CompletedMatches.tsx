@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, Download, Share2 } from 'lucide-react';
+import { exportToCSV } from '../lib/exportUtils';
+import DateRangeFilter from './DateRangeFilter';
 
 interface CompletedMatchesProps {
   title: string;
@@ -115,15 +117,19 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
         </div>
       </div>
 
-      <div className="bg-[#05100a] text-left border border-[#00ff88]/20 rounded-lg shadow-sm flex flex-col mt-4 pt-0 relative z-0 min-w-0 w-full overflow-hidden">
+      <div className="bg-[#05100a] text-left border border-\(--primary\)/20 rounded-lg shadow-sm flex flex-col mt-4 pt-0 relative z-0 min-w-0 w-full overflow-hidden">
         <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between rounded-t-lg">
           <h3 className="font-semibold">{subTitle}</h3>
         </div>
         
-        <div className="p-4 border-b border-[#00ff88]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#020503]/50 min-w-0">
-          <div className="flex space-x-2 shrink-0">
-            <button className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">
-              CSV
+        <div className="p-4 border-b border-\(--primary\)/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#020503]/50 min-w-0">
+          <div className="flex space-x-2 shrink-0 items-center">
+            <DateRangeFilter onRangeSelect={(s, e) => console.log(s, e)} />
+            <button 
+              onClick={() => exportToCSV(filteredData, 'Completed_Matches')}
+              className="flex items-center gap-1 bg-[#05100a] border border-\(--primary\)/30 text-\(--primary\) hover:bg-\(--primary\)/10 px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors"
+            >
+              <Download size={16} /> CSV
             </button>
           </div>
           <div className="relative flex items-center w-full sm:w-auto">
@@ -133,14 +139,14 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
               placeholder="Search matches..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border border-[#00ff88]/30 rounded px-3 py-1.5 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] w-full sm:w-64 bg-[#05100a] text-slate-200"
+              className="border border-\(--primary\)/30 rounded px-3 py-1.5 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-\(--primary\)/30 focus:border-\(--primary\) w-full sm:w-64 bg-[#05100a] text-slate-200"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto min-h-75 w-full">
           <table className="w-full text-sm text-left text-slate-200">
-            <thead className="text-xs text-slate-200 bg-[#020503] border-b border-[#00ff88]/20">
+            <thead className="text-xs text-slate-200 bg-[#020503] border-b border-\(--primary\)/20">
               <tr>
                 <th className="px-4 py-3 font-semibold text-slate-300">Match ID</th>
                 <th className="px-4 py-3 font-semibold text-slate-300">Title</th>
@@ -149,16 +155,16 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
                 <th className="px-4 py-3 font-semibold text-slate-300">Winner</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#00ff88]/20">
+            <tbody className="divide-y divide-\(--primary\)/20">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-[#00ff88]/20">
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-\(--primary\)/20">
                     Loading matches...
                   </td>
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-[#00ff88]/20">
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-\(--primary\)/20">
                     No completed matches found
                   </td>
                 </tr>
@@ -170,7 +176,7 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
                     onClick={() => onViewReport?.(row)}
                   >
                     <td className="px-4 py-3 font-medium text-slate-400">{row.id}</td>
-                    <td className="px-4 py-3 text-[#00ff88] font-medium">{row.title}</td>
+                    <td className="px-4 py-3 text-\(--primary\) font-medium">{row.title}</td>
                     <td className="px-4 py-3">{row.sport}</td>
                     <td className="px-4 py-3">{row.date}</td>
                     <td className="px-4 py-3 text-white font-bold">{row.winner}</td>
@@ -181,13 +187,13 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
           </table>
         </div>
 
-        <div className="p-4 border-t border-[#00ff88]/20 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 bg-[#05100a] rounded-b-lg">
+        <div className="p-4 border-t border-\(--primary\)/20 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 bg-[#05100a] rounded-b-lg">
           <div>
             Showing 1 to {filteredData.length} of entries {filteredData.length}
           </div>
-          <div className="flex mt-3 sm:mt-0 items-center border border-[#00ff88]/20 rounded divide-x divide-[#00ff88]/20 bg-[#05100a]">
+          <div className="flex mt-3 sm:mt-0 items-center border border-\(--primary\)/20 rounded divide-x divide-\(--primary\)/20 bg-[#05100a]">
             <button className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" disabled>Previous</button>
-            <button className="px-3 py-1.5 bg-[#00ff88]/10 text-[#00ff88] font-medium cursor-default">1</button>
+            <button className="px-3 py-1.5 bg-\(--primary\)/10 text-\(--primary\) font-medium cursor-default">1</button>
             <button className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" disabled>Next</button>
           </div>
         </div>

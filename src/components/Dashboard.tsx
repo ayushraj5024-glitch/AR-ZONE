@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Shield, LogOut, AlertTriangle, ChevronRight } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, onSnapshot, collection, getDocs } from 'firebase/firestore';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import ThemeAndNotifications from './ThemeAndNotifications';
 
 // Custom CSS added locally within component for specific complex effects
 const DashboardStyles = `
@@ -98,6 +100,11 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
           if (docSn.exists()) {
             setAdminData((prev: any) => ({...prev, ...docSn.data()}));
             setCompanyContact(docSn.id.substring(0, 8).toUpperCase());
+          } else {
+             if (auth.currentUser?.email === 'ayushraj5024@gmail.com') {
+               setAdminData((prev: any) => ({...prev, role: 'admin'}));
+               setCompanyContact('AYUSH502');
+             }
           }
         });
 
@@ -181,7 +188,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
         this.vx = (Math.random() - 0.5) * 1.5;
         this.vy = (Math.random() - 0.5) * 1.5;
         this.radius = Math.random() * 2 + 1;
-        this.color = Math.random() > 0.5 ? '#00ff88' : '#f0b429';
+        this.color = Math.random() > 0.5 ? 'var(--primary)' : '#f0b429';
       }
 
       update() {
@@ -249,14 +256,14 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
   }, []);
 
   return (
-    <div ref={containerRef} className="h-screen bg-[#05100a] text-slate-200 font-exo relative overflow-y-auto overflow-x-hidden custom-scrollbar" style={{ '--gold': '#f0b429', '--gold2': '#ffda6a', '--green': '#00ff88', '--green2': '#00cc6a', '--blue': '#00aaff', '--red': '#ff3355' } as React.CSSProperties}>
+    <div ref={containerRef} className="h-screen bg-[#05100a] text-slate-200 font-exo relative overflow-y-auto overflow-x-hidden custom-scrollbar" style={{ '--gold': '#f0b429', '--gold2': '#ffda6a', '--green': 'var(--primary)', '--green2': '#00cc6a', '--blue': '#00aaff', '--red': '#ff3355' } as React.CSSProperties}>
       <style>{DashboardStyles}</style>
 
       {/* Background Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <canvas ref={canvasRef} className="absolute inset-0 z-0" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,136,0.03)_1px,transparent_1px)] bg-size-[40px_40px]"></div>
-        <div className="absolute top-1/4 left-1/4 w-150 h-150 bg-[#00ff88]/5 rounded-full blur-[150px]"></div>
+        <div className="absolute top-1/4 left-1/4 w-150 h-150 bg-\(--primary\)/5 rounded-full blur-[150px]"></div>
         <div className="absolute bottom-1/4 right-1/4 w-125 h-125 bg-[#f0b429]/5 rounded-full blur-[150px]"></div>
         <div className="absolute inset-0 crt-scanlines z-10"></div>
         {/* Corner brackets */}
@@ -270,24 +277,25 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
       <div className="relative z-20 flex flex-col min-h-full">
         {/* Navbar */}
-        <nav className="sticky top-0 z-30 px-6 py-3 border-b border-[#00ff88]/30 bg-[#05100a]/90 backdrop-blur-[20px] flex items-center justify-between shadow-[0_4px_30px_rgba(0,255,136,0.1)]">
+        <nav className="sticky top-0 z-30 px-6 py-3 border-b border-\(--primary\)/30 bg-[#05100a]/90 backdrop-blur-[20px] flex items-center justify-between shadow-[0_4px_30px_rgba(0,255,136,0.1)]">
            <div className="flex items-center gap-4">
-             <button onClick={onMenuClick} className="md:hidden text-[#00ff88] hover:text-white transition-colors">
+             <button onClick={onMenuClick} className="md:hidden text-\(--primary\) hover:text-white transition-colors">
                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
              </button>
              <span className="ar-zone-logo text-3xl pb-1 tracking-normal">AR ZONE</span>
            </div>
 
-           <div className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00ff88]/40 bg-[#00ff88]/5 text-[#00ff88] text-sm font-bold shadow-[0_0_15px_rgba(0,255,136,0.15)]">
+           <div className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full border border-\(--primary\)/40 bg-\(--primary\)/5 text-\(--primary\) text-sm font-bold shadow-[0_0_15px_rgba(0,255,136,0.15)]">
              <Shield size={16} />
              <span>HIGH SECURITY</span>
            </div>
 
-           <div className="flex items-center gap-6">
-             <div className="hidden sm:flex items-center gap-2 text-slate-300 text-sm font-medium">
-               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
+           <div className="flex items-center gap-3 sm:gap-6">
+             <div className="hidden lg:flex items-center gap-2 text-slate-300 text-sm font-medium">
+               <span className="w-2 h-2 rounded-full bg-\(--primary\) animate-pulse shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
                SYSTEM ONLINE
              </div>
+             <ThemeAndNotifications />
              <button onClick={onLogout} className="group flex items-center gap-2 px-4 py-2 rounded border border-slate-700 hover:border-[#ff3355] text-white hover:text-[#ff3355] font-exo font-semibold text-sm transition-all shadow-sm">
                <span className="hidden sm:inline">SIGN OUT</span>
                <LogOut size={16} className="group-hover:text-[#ff3355] transition-colors" />
@@ -296,16 +304,16 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
         </nav>
 
         {/* Alert Marquee */}
-        <div className="bg-[#00ff88]/5 border-b border-[#00ff88]/20 overflow-hidden flex items-center relative h-10 shadow-[inset_0_0_20px_rgba(0,255,136,0.02)] sm:hidden md:flex">
+        <div className="bg-\(--primary\)/5 border-b border-\(--primary\)/20 overflow-hidden flex items-center relative h-10 shadow-[inset_0_0_20px_rgba(0,255,136,0.02)] sm:hidden md:flex">
           <div className="absolute left-0 top-0 bottom-0 w-16 bg-linear-to-r from-[#05100a] to-transparent z-10 pointer-events-none"></div>
           <div className="absolute right-0 top-0 bottom-0 w-32 bg-linear-to-l from-[#05100a] to-transparent z-10 pointer-events-none"></div>
           
-          <div className="whitespace-nowrap text-[#00ff88] text-sm font-exo flex items-center gap-8 pl-4" style={{ animation: 'marquee 25s linear infinite' }}>
-             <span className="w-2 h-2 rounded-full bg-[#00ff88] shadow-[0_0_8px_rgba(0,255,136,1)] animate-pulse"></span>
+          <div className="whitespace-nowrap text-\(--primary\) text-sm font-exo flex items-center gap-8 pl-4" style={{ animation: 'marquee 25s linear infinite' }}>
+             <span className="w-2 h-2 rounded-full bg-\(--primary\) shadow-[0_0_8px_rgba(0,255,136,1)] animate-pulse"></span>
              {marqueeApiError && (
                <>
                  <span className="text-rose-400 font-bold">⚠️ API Limit Reached (Free Tier)</span>
-                 <span className="text-[#00ff88]/50 font-bold">•</span>
+                 <span className="text-\(--primary\)/50 font-bold">•</span>
                </>
              )}
              {marqueeMatches.length > 0 ? marqueeMatches.map((m: any, idx: number) => (
@@ -313,18 +321,18 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
                  <span>
                     {m.matchType === 'football' ? '⚽' : '🏏'} <span className="font-bold text-white">{m.t1 || 'Team 1'}</span> <span className="text-[#f0b429]">{m.t1s || ''}</span> vs <span className="font-bold text-white">{m.t2 || 'Team 2'}</span> <span className="text-[#f0b429]">{m.t2s || ''}</span>
                  </span>
-                 <span className="text-[#00ff88]/50 font-bold">•</span>
+                 <span className="text-\(--primary\)/50 font-bold">•</span>
                </React.Fragment>
              )) : (
                <>
                  <span>🏏 <span className="font-bold text-white">Fetching Live...</span></span>
-                 <span className="text-[#00ff88]/50 font-bold">•</span>
+                 <span className="text-\(--primary\)/50 font-bold">•</span>
                </>
              )}
              <span className="w-20 inline-block"></span>
           </div>
 
-          <button onClick={() => onNavigate?.('live_matches')} className="absolute right-4 text-xs font-bold text-[#00ff88] border border-[#00ff88]/50 bg-[#05100a] px-3 py-1 rounded hover:bg-[#00ff88]/20 transition-colors z-20 whitespace-nowrap">
+          <button onClick={() => onNavigate?.('live_matches')} className="absolute right-4 text-xs font-bold text-\(--primary\) border border-\(--primary\)/50 bg-[#05100a] px-3 py-1 rounded hover:bg-\(--primary\)/20 transition-colors z-20 whitespace-nowrap">
             LIVE VIEW
           </button>
         </div>
@@ -336,9 +344,9 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            <div className="mb-8 animate-fadeUp" style={{ animationDelay: '0.1s' }}>
               <div className="flex items-center gap-4 mb-1">
                 <h1 className="ar-zone-logo text-4xl md:text-5xl pb-1">Home</h1>
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/10 ml-2">
-                   <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
-                   <span className="text-xs font-orbitron text-[#00ff88] font-bold tracking-wider">LIVE</span>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-\(--primary\)/50 bg-\(--primary\)/10 ml-2">
+                   <span className="w-2 h-2 rounded-full bg-\(--primary\) animate-pulse shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
+                   <span className="text-xs font-orbitron text-\(--primary\) font-bold tracking-wider">LIVE</span>
                 </div>
               </div>
               <div className="text-slate-400 font-exo text-sm tracking-[0.2em] uppercase font-semibold">
@@ -349,25 +357,25 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            {/* Security Status Bar */}
            <div className="bg-[rgba(255,255,255,0.02)] border border-[rgba(0,255,136,0.1)] rounded-xl p-4 mb-8 flex flex-wrap max-md:flex-col items-center justify-between gap-4 backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.2s' }}>
              <div className="flex items-center gap-4 flex-wrap w-full md:w-auto">
-               <div className="flex items-center gap-2 text-[#00ff88] font-orbitron font-bold text-sm mr-4 tracking-wider">
+               <div className="flex items-center gap-2 text-\(--primary\) font-orbitron font-bold text-sm mr-4 tracking-wider">
                   ⬡ SECURITY
                </div>
                
                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88]"></span>
-                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">SSL <span className="text-[#00ff88]">Encrypted</span></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-\(--primary\)"></span>
+                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">SSL <span className="text-\(--primary\)">Encrypted</span></span>
                </div>
                <div className="hidden sm:block w-px h-4 bg-slate-700/50"></div>
 
                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88]"></span>
-                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">2FA <span className="text-[#00ff88]">Active</span></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-\(--primary\)"></span>
+                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">2FA <span className="text-\(--primary\)">Active</span></span>
                </div>
                <div className="hidden sm:block w-px h-4 bg-slate-700/50"></div>
 
                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88]"></span>
-                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">Firewall <span className="text-[#00ff88]">ON</span></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-\(--primary\)"></span>
+                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">Firewall <span className="text-\(--primary\)">ON</span></span>
                </div>
                <div className="hidden sm:block w-px h-4 bg-slate-700/50"></div>
 
@@ -378,8 +386,8 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
                <div className="hidden sm:block w-px h-4 bg-slate-700/50"></div>
 
                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88]"></span>
-                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">Session <span className="text-[#00ff88]">Secure</span></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-\(--primary\)"></span>
+                  <span className="text-slate-300 text-xs font-exo uppercase tracking-wider">Session <span className="text-\(--primary\)">Secure</span></span>
                </div>
              </div>
 
@@ -392,18 +400,18 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               
               {/* Row 1 */}
-              <div className={`bg-(--card-bg) border rounded-[14px] p-6 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp ${adminData.role === 'admin' ? 'border-(--gold) hover:shadow-[0_0_20px_rgba(240,180,41,0.15)] hover:border-[#f0b429]/40' : 'border-[#00ff88] hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40'}`} style={{ animationDelay: '0.3s' }}>
+              <div className={`bg-(--card-bg) border rounded-[14px] p-6 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp ${adminData.role === 'admin' ? 'border-(--gold) hover:shadow-[0_0_20px_rgba(240,180,41,0.15)] hover:border-[#f0b429]/40' : 'border-\(--primary\) hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40'}`} style={{ animationDelay: '0.3s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Username</h3>
-                 <div className={`font-orbitron text-3xl font-bold tracking-wider mb-2 ${adminData.role === 'admin' ? 'text-(--gold)' : 'text-[#00ff88]'}`}>
+                 <div className={`font-orbitron text-3xl font-bold tracking-wider mb-2 ${adminData.role === 'admin' ? 'text-(--gold)' : 'text-\(--primary\)'}`}>
                     {adminData.name ? adminData.name.toUpperCase() : (adminData.role?.toUpperCase() || 'CLIENT')}
                  </div>
                  <div className="text-slate-300 text-sm font-exo mb-3">{adminData.role === 'admin' ? 'System Level Access' : 'Client Access'}</div>
-                 <div className={`inline-block px-2.5 py-1 rounded border text-xs font-bold font-exo tracking-widest ${adminData.role === 'admin' ? 'border-(--gold)/40 bg-(--gold)/10 text-(--gold)' : 'border-[#00ff88]/40 bg-[#00ff88]/10 text-[#00ff88]'}`}>
+                 <div className={`inline-block px-2.5 py-1 rounded border text-xs font-bold font-exo tracking-widest ${adminData.role === 'admin' ? 'border-(--gold)/40 bg-(--gold)/10 text-(--gold)' : 'border-\(--primary\)/40 bg-\(--primary\)/10 text-\(--primary\)'}`}>
                     {adminData.role === 'admin' ? 'MASTER' : 'USER'}
                  </div>
               </div>
 
-              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.4s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.4s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Level</h3>
                  <div className="text-white font-bobbaluna text-3xl tracking-wider mb-2 leading-tight mt-1">
                     {adminData.role === 'admin' ? 'SYSTEM ADMIN' : adminData.role ? adminData.role.toUpperCase() : 'CLIENT'}
@@ -413,20 +421,20 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
                  </div>
               </div>
 
-              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.5s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.5s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">My Fix Limit</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{Number(adminData.balance).toLocaleString()}</div>
                  <div className="text-(--green) text-sm font-exo mt-3">Active Limit</div>
               </div>
 
-              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.6s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.6s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3">Company Contact</h3>
                  <div className="text-white font-orbitron text-2xl font-bold tracking-wider mb-3 mt-1">{companyContact}</div>
                  <div className="inline-block px-2.5 py-1 rounded border border-(--green)/40 bg-(--green)/10 text-(--green) text-xs font-bold font-exo tracking-widest mt-1">VERIFIED</div>
               </div>
 
               {/* Row 2 */}
-              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3 leading-relaxed">Maximum My<br/>Share</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">{adminData.share || '50.0%'}</div>
                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
@@ -434,7 +442,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
                  </div>
               </div>
 
-              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-3 leading-relaxed">Minimum Company<br/>Share</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-4">{adminData.share || '50%'}</div>
                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
@@ -442,21 +450,75 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
                  </div>
               </div>
 
-              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-4 leading-relaxed">Match<br/>Commission</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{adminData.mComm || '3'}</div>
                  <div className="text-(--green) text-sm font-exo mt-3">Per Transaction</div>
               </div>
 
-              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-[#00ff88]/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 hover:shadow-[0_0_20px_rgba(0,255,136,0.15)] hover:border-\(--primary\)/40 hover:-translate-y-0.75 transition-all backdrop-blur-md animate-fadeUp" style={{ animationDelay: '0.7s' }}>
                  <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-4 leading-relaxed">Session<br/>Commission</h3>
                  <div className="text-white font-orbitron text-3xl font-bold tracking-wider mb-2">{adminData.sComm || '3'}</div>
                  <div className="text-(--green) text-sm font-exo mt-3">Per Session</div>
               </div>
            </div>
 
+           {/* Charts Section */}
+           {adminData.role !== 'client' && (
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fadeUp" style={{ animationDelay: '0.8s' }}>
+               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 backdrop-blur-md">
+                 <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-6 flex justify-between">
+                   <span>Weekly Profit/Loss (₹)</span>
+                   <span className="text-\(--primary\) text-xs">Last 7 Days</span>
+                 </h3>
+                 <div className="h-62.5 w-full">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <LineChart data={[
+                       { name: 'Mon', pnl: 4000 },
+                       { name: 'Tue', pnl: 3000 },
+                       { name: 'Wed', pnl: -2000 },
+                       { name: 'Thu', pnl: 2780 },
+                       { name: 'Fri', pnl: 1890 },
+                       { name: 'Sat', pnl: 2390 },
+                       { name: 'Sun', pnl: 3490 },
+                     ]}>
+                       <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                       <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                       <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value: number | string) => `₹${value}`} />
+                       <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#05100a', borderColor: 'var(--primary)', color: '#fff' }} />
+                       <Line type="monotone" dataKey="pnl" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: '#05100a', stroke: 'var(--primary)', strokeWidth: 2 }} activeDot={{ r: 6, fill: 'var(--primary)', stroke: '#05100a', strokeWidth: 2 }} />
+                     </LineChart>
+                   </ResponsiveContainer>
+                 </div>
+               </div>
+
+               <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-6 backdrop-blur-md">
+                 <h3 className="text-slate-400 font-exo text-xs font-bold tracking-widest uppercase mb-6 flex justify-between">
+                   <span>Active Clients vs Suspended</span>
+                   <span className="text-[#f0b429] text-xs">Overview</span>
+                 </h3>
+                 <div className="h-62.5 w-full">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <BarChart data={[
+                       { name: 'Stockists', active: 40, suspended: 4 },
+                       { name: 'Agents', active: 120, suspended: 15 },
+                       { name: 'Clients', active: 850, suspended: 45 },
+                     ]}>
+                       <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                       <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                       <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#05100a', borderColor: 'var(--primary)', color: '#fff' }} />
+                       <Bar dataKey="active" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                       <Bar dataKey="suspended" fill="#ff3355" radius={[4, 4, 0, 0]} />
+                     </BarChart>
+                   </ResponsiveContainer>
+                 </div>
+               </div>
+             </div>
+           )}
+
            {/* Live Stats Row */}
-           {adminData.role === 'admin' && (
+           {adminData.role !== 'client' && (
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeUp" style={{ animationDelay: '0.8s' }}>
               
               <div className="bg-(--card-bg) border-x border-t border-(--card-border) live-stat-card rounded-t-[14px] rounded-b-sm p-6 hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] hover:-translate-y-0.5 transition-all backdrop-blur-md">
@@ -493,7 +555,7 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
         {/* Footer */}
         <footer className="mt-auto px-6 py-4 border-t border-(--green)/40 bg-[#05100a]/95 backdrop-blur flex flex-wrap max-md:flex-col items-center justify-between gap-4 z-20">
            <div className="text-slate-400 text-xs font-exo font-medium tracking-wider">
-             <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-(--gold) font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021–2026
+             <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-\(--primary\)/30">|</span> Powered By <span className="text-(--gold) font-bold">AR Gaming</span> <span className="mx-2 text-\(--primary\)/30">|</span> Copyright © 2021–2026
            </div>
            
            <div className="flex items-center gap-4">

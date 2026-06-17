@@ -1,5 +1,6 @@
 import React from 'react';
-import { Wrench } from 'lucide-react';
+import { Wrench, Download, Share2 } from 'lucide-react';
+import { exportToCSV, shareToWhatsApp } from '../lib/exportUtils';
 
 export default function CollectionReport() {
   return (
@@ -25,30 +26,48 @@ export default function CollectionReport() {
 }
 
 function ReportCard({ title, hasTotal = false }: { title: string, hasTotal?: boolean }) {
+  const dummyData = [{ client: hasTotal ? 'Total' : 'demouser', balance: hasTotal ? 0.0 : -500.0 }];
+
+  const handleExport = () => {
+    exportToCSV(dummyData, `Collection_Report_${title}`);
+  };
+
+  const handleShare = () => {
+    shareToWhatsApp(`Collection Report - ${title}\nClient: ${dummyData[0].client}, Balance: ${dummyData[0].balance}`);
+  };
+
   return (
-    <div className="bg-[#05100a] border text-left border-[#00ff88]/20 rounded-lg shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-[#05100a] border text-left border-\(--primary\)/20 rounded-lg shadow-sm overflow-hidden flex flex-col">
       <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between">
         <h3 className="font-semibold text-sm">{title}</h3>
-        <Wrench size={14} className="text-white/70" />
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="flex items-center gap-1 bg-[#4d7a7c] hover:bg-[#3d6163] px-2 py-1 rounded text-xs transition-colors">
+            <Download size={14} />
+          </button>
+          <button onClick={handleShare} className="flex items-center gap-1 bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs transition-colors">
+            <Share2 size={14} />
+          </button>
+          <Wrench size={14} className="text-white/70 ml-1" />
+        </div>
       </div>
       
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left text-slate-200">
-          <thead className="text-sm text-slate-300 font-semibold bg-[#05100a] border-b border-[#00ff88]/20">
+          <thead className="text-sm text-slate-300 font-semibold bg-[#05100a] border-b border-\(--primary\)/20">
             <tr>
-              <th className="px-4 py-3 border-r border-[#00ff88]/20">Client</th>
+              <th className="px-4 py-3 border-r border-\(--primary\)/20">Client</th>
               <th className="px-4 py-3">Balance</th>
             </tr>
           </thead>
           <tbody>
             {hasTotal ? (
               <tr>
-                <td className="px-4 py-3 font-semibold border-r border-[#00ff88]/20">Total</td>
+                <td className="px-4 py-3 font-semibold border-r border-\(--primary\)/20">Total</td>
                 <td className="px-4 py-3">0.0</td>
               </tr>
             ) : (
               <tr className="hover:bg-[#020503] transition-colors">
-                <td className="px-4 py-3 font-medium text-white border-r border-[#00ff88]/20">demouser</td>
+                <td className="px-4 py-3 font-medium text-white border-r border-\(--primary\)/20">demouser</td>
                 <td className="px-4 py-3 text-rose-500 font-semibold">-500.00</td>
               </tr>
             )}
