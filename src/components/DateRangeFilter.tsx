@@ -1,28 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { format, subDays, startOfMonth, startOfToday, startOfYesterday } from 'date-fns';
+import { format, subDays, startOfMonth, startOfToday, startOfYesterday, endOfToday, endOfYesterday, endOfMonth } from 'date-fns';
 
 interface DateRangeFilterProps {
   onRangeSelect: (start: Date, end: Date) => void;
 }
 
+const RANGES = [
+  { label: 'Today', getDates: () => [startOfToday(), endOfToday()] },
+  { label: 'Yesterday', getDates: () => [startOfYesterday(), endOfYesterday()] },
+  { label: 'Last 7 Days', getDates: () => [subDays(new Date(), 7), endOfToday()] },
+  { label: 'This Month', getDates: () => [startOfMonth(new Date()), endOfMonth(new Date())] },
+];
+
 export default function DateRangeFilter({ onRangeSelect }: DateRangeFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState('Today');
+
+  useEffect(() => {
+    // Fire the initial selection on mount
+    const todayDates = RANGES[0].getDates();
+    onRangeSelect(todayDates[0], todayDates[1]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (label: string, start: Date, end: Date) => {
     setSelectedLabel(label);
     setIsOpen(false);
     onRangeSelect(start, end);
   };
-
-  const ranges = [
-    { label: 'Today', getDates: () => [startOfToday(), new Date()] },
-    { label: 'Yesterday', getDates: () => [startOfYesterday(), startOfYesterday()] },
-    { label: 'Last 7 Days', getDates: () => [subDays(new Date(), 7), new Date()] },
-    { label: 'This Month', getDates: () => [startOfMonth(new Date()), new Date()] },
-  ];
 
   return (
     <div className="relative">
@@ -41,7 +47,7 @@ export default function DateRangeFilter({ onRangeSelect }: DateRangeFilterProps)
             initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
             className="absolute top-10 left-0 w-48 bg-[#05100a] border border-\(--primary\)/30 rounded-lg shadow-xl z-50 overflow-hidden"
           >
-            {ranges.map((r) => (
+            {RANGES.map((r) => (
               <div 
                 key={r.label}
                 onClick={() => {

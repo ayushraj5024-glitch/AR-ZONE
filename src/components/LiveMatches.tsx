@@ -33,74 +33,6 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
   const [apiError, setApiError] = useState<string | null>(null);
   const { status, loading: marketLoading } = useMarketStatus();
 
-  // Initial Mock data based on the full list provided
-  const initialMockMatches: Match[] = [
-    {
-      id: '10000306',
-      pid: '10000696',
-      title: 'Somerset v Glamorgan',
-      sport: 'CRICKET',
-      date: '14 Jun 2026 11:30 PM',
-      liveReportUrl: 'https://ss.365bsf.live/liveGameAnalysis/4/35661353',
-      status: 'Live',
-      t1s: '185/4 (18.2)',
-      t2s: ''
-    },
-    {
-      id: '10000307',
-      pid: '10000697',
-      title: 'Eagle Thane Strikers v Arcs Andheri',
-      sport: 'CRICKET',
-      date: '14 Jun 2026 02:00 PM',
-      liveReportUrl: 'true',
-      status: 'Inplay',
-      t1s: '142/6 (20.0)',
-      t2s: '89/3 (12.1)'
-    },
-    {
-      id: '10000308',
-      pid: '10000698',
-      title: 'England v New Zealand',
-      sport: 'CRICKET',
-      date: '16 Jun 2026 03:30 PM',
-      status: 'Upcoming'
-    },
-    {
-      id: '10000309',
-      pid: '10000699',
-      title: 'Alcaraz, C v Djokovic, N',
-      sport: 'TENNIS',
-      date: '14 Jun 2026 06:30 PM',
-      liveReportUrl: 'true',
-      status: 'Live'
-    },
-    {
-      id: '10000310',
-      pid: '10000700',
-      title: 'Swiatek, I v Sabalenka, A',
-      sport: 'TENNIS',
-      date: '15 Jun 2026 07:00 PM',
-      status: 'Upcoming'
-    },
-    {
-      id: '10000311',
-      pid: '10000701',
-      title: 'Real Madrid v Barcelona',
-      sport: 'SOCCER',
-      date: '14 Jun 2026 11:00 PM',
-      liveReportUrl: 'true',
-      status: 'Inplay'
-    },
-    {
-      id: '10000312',
-      pid: '10000702',
-      title: 'Manchester City v Arsenal',
-      sport: 'SOCCER',
-      date: '16 Jun 2026 09:30 AM',
-      status: 'Upcoming'
-    }
-  ];
-
   // Fetch from the backend proxy
   React.useEffect(() => {
     const fetchLiveMatches = async () => {
@@ -111,7 +43,7 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
         
         if (data.success === false) {
           setApiError(data.error || "Failed to load live matches from API.");
-          setMatches(initialMockMatches); // Fallback to mock data
+          setMatches([]); 
         } else if (data.matches && data.matches.length > 0) {
           // Map real CricAPI data to the Match interface
           const liveMatches = data.matches.map((m: any) => {
@@ -140,8 +72,8 @@ export default function LiveMatches({ onViewReport }: LiveMatchesProps) {
           setMatches([]);
         }
       } catch (error) {
-        setApiError("Network error. Falling back to mock data.");
-        setMatches(initialMockMatches);
+        setApiError("Network error.");
+        setMatches([]);
       } finally {
         setLocalLoading(false);
       }

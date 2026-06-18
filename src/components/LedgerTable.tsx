@@ -16,13 +16,10 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
     setTimeout(() => setIsSearching(false), 500);
   };
 
-  const mockLedgers = [
-    { date: '04 Jun 2026', entry: 'Deposit from Master', debit: '0.00', credit: '500.00', balance: '1500.00', note: 'Fund addition' },
-    { date: '03 Jun 2026', entry: 'Withdrawal', debit: '200.00', credit: '0.00', balance: '1000.00', note: 'Requested payout' }
-  ];
+  const ledgerData: any[] = [];
 
   const handleExport = () => {
-    exportToCSV(mockLedgers, 'Ledger_Report');
+    exportToCSV(ledgerData, 'Ledger_Report');
   };
 
   const handleShare = () => {
@@ -40,20 +37,20 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
         </div>
       </div>
 
-      <div className="bg-[#05100a] border text-left border-\(--primary\)/20 rounded-lg shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-[#05100a] border text-left border-(--primary)/20 rounded-lg shadow-sm overflow-hidden flex flex-col">
         {title === 'Agent' ? (
-          <div className="p-4 bg-[#020503]/50 border-b border-\(--primary\)/20 flex items-center space-x-4">
-            <DateRangeFilter onRangeSelect={(s, e) => console.log(s, e)} />
+          <div className="p-4 bg-[#020503]/50 border-b border-(--primary)/20 flex items-center space-x-4">
+            <DateRangeFilter onRangeSelect={(s: Date, e: Date) => console.log(s, e)} />
             <button onClick={handleSearch} disabled={isSearching} className="bg-[#60999b] hover:bg-[#4d7a7c] text-white px-4 py-1.5 rounded text-sm font-medium transition-colors min-w-20 flex justify-center items-center">
               {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
             </button>
           </div>
         ) : (
-          <div className="p-4 bg-[#020503]/50 border-b border-\(--primary\)/20 flex items-center space-x-4">
+          <div className="p-4 bg-[#020503]/50 border-b border-(--primary)/20 flex items-center space-x-4">
              <div className="relative">
-              <input type="text" placeholder="Search..." className="border border-\(--primary\)/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-\(--primary\) bg-[#05100a] w-48 text-slate-300" />
+              <input type="text" placeholder="Search..." className="border border-(--primary)/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-(--primary) bg-[#05100a] w-48 text-slate-300" />
              </div>
-             <DateRangeFilter onRangeSelect={(s, e) => console.log(s, e)} />
+             <DateRangeFilter onRangeSelect={(s: Date, e: Date) => console.log(s, e)} />
             <button onClick={handleSearch} disabled={isSearching} className="bg-[#60999b] hover:bg-[#4d7a7c] text-white px-4 py-1.5 rounded text-sm font-medium transition-colors min-w-20 flex justify-center items-center">
               {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
             </button>
@@ -75,7 +72,7 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
         
         <div className="overflow-x-auto min-h-50">
           <table className="w-full text-sm text-left text-slate-200">
-            <thead className="text-xs text-slate-200 uppercase bg-\(--primary\)/5/50 border-b border-\(--primary\)/20">
+            <thead className="text-xs text-slate-200 uppercase bg-(--primary)/5/50 border-b border-(--primary)/20">
               {title === 'Agent' ? (
                 <tr>
                   <th className="px-4 py-3 font-semibold">Date</th>
@@ -97,7 +94,7 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
                 </tr>
               )}
             </thead>
-            <tbody className="divide-y divide-\(--primary\)/20">
+            <tbody className="divide-y divide-(--primary)/20">
               <tr>
                 <td colSpan={title === 'Agent' ? 7 : 6} className="px-4 py-8 text-center text-slate-500">
                   No records found in current ledger.

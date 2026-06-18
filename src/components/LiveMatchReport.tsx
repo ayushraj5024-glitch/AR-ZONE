@@ -176,6 +176,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
   const [t1Summary, setT1Summary] = useState(initialT1);
   const [t2Summary, setT2Summary] = useState(initialT2);
   const [recentBalls, setRecentBalls] = useState<string[]>(['.', '1', '1', '2', '4', 'W']);
+  const [isSuspended, setIsSuspended] = useState(false);
   const [marketOdds, setMarketOdds] = useState([
     { runner: team1, lagai: "1.92", khai: "1.94", position: "0.0", changeStatus: "" },
     { runner: team2, lagai: "2.04", khai: "2.06", position: "0.0", changeStatus: "" }
@@ -202,11 +203,11 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
   const initFallOfWkt = Math.max(initialActiveRun + 10, initialActiveRun + Math.floor(Math.random() * 15));
 
   const [fancySessions, setFancySessions] = useState([
-    { session: `10 over run ${initialActiveTeam}`, no: initialActiveOvers < 10 ? initExp10 : null, rate1: 1.10, yes: initialActiveOvers < 10 ? initExp10 + 2 : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
-    { session: `15 over run ${initialActiveTeam}`, no: initialActiveOvers < 15 ? initExp15 : null, rate1: 1.00, yes: initialActiveOvers < 15 ? initExp15 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
-    { session: `20 over run ${initialActiveTeam}`, no: initialActiveOvers < 20 ? initExp20 : null, rate1: 1.00, yes: initialActiveOvers < 20 ? initExp20 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
-    { session: `Fall of ${initialActiveWkts + 1} wkt ${initialActiveTeam}`, no: initialActiveWkts < 10 ? initFallOfWkt : null, rate1: 1.10, yes: initialActiveWkts < 10 ? initFallOfWkt : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
-    { session: `Total Run`, no: initExp20 + 2, rate1: 1.10, yes: initExp20 + 4, rate2: 0.90, posNo: 0.00, posYes: 0.00 }
+    { session: `10 over run ${initialActiveTeam}`, no: initialActiveOvers < 10 ? initExp10 : null, rate1: 1.10, yes: initialActiveOvers < 10 ? initExp10 + 2 : null, rate2: 0.90, posNo: 0.00, posYes: 0.00, active: true },
+    { session: `15 over run ${initialActiveTeam}`, no: initialActiveOvers < 15 ? initExp15 : null, rate1: 1.00, yes: initialActiveOvers < 15 ? initExp15 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00, active: true },
+    { session: `20 over run ${initialActiveTeam}`, no: initialActiveOvers < 20 ? initExp20 : null, rate1: 1.00, yes: initialActiveOvers < 20 ? initExp20 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00, active: true },
+    { session: `Fall of ${initialActiveWkts + 1} wkt ${initialActiveTeam}`, no: initialActiveWkts < 10 ? initFallOfWkt : null, rate1: 1.10, yes: initialActiveWkts < 10 ? initFallOfWkt : null, rate2: 0.90, posNo: 0.00, posYes: 0.00, active: true },
+    { session: `Total Run`, no: initExp20 + 2, rate1: 1.10, yes: initExp20 + 4, rate2: 0.90, posNo: 0.00, posYes: 0.00, active: true }
   ]);
   const [lastEvent, setLastEvent] = useState<string>("Match in play");
 
@@ -249,6 +250,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
      
      if (addedBall) {
          setRecentBalls(prev => [...prev.slice(-5), addedBall!]);
+         // Add visual suspension state check if using a state variable
      }
 
      // Dynamically update fancy sessions based on live score
@@ -267,51 +269,98 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
      }
 
      let runRate = activeOvers > 0 ? (activeRun / activeOvers) : 8;
-     if (runRate < 5) runRate = 7;
-     if (runRate > 12) runRate = 10; // keep it somewhat realistic
+     if (runRate < 5) runRate = 6;
+     if (runRate > 12) runRate = 10;
 
-     const exp10 = Math.max(activeRun + 10, Math.floor(runRate * 10));
-     const exp15 = Math.max(activeRun + 30, Math.floor(runRate * 15));
-     const exp20 = Math.max(activeRun + 50, Math.floor(runRate * 20));
-     
-     const fallOfWkt = Math.max(activeRun + 10, activeRun + Math.floor(Math.random() * 15));
+     const sessions = [];
+     const createSession = (overTarget: number, labelName: string) => {
+         if (activeOvers < overTarget) {
+            const oversLeft = overTarget - activeOvers;
+            const expectedAdditionalRuns = Math.floor(oversLeft * runRate);
+            const expectedTotal = activeRun + expectedAdditionalRuns;
+            const variance = Math.max(1, Math.floor(runRate / 2));
+            sessions.push({
+                session: `${labelName} run ${activeTeam}`, 
+                no: expectedTotal - variance, rate1: 1.10, 
+                yes: expectedTotal + variance, rate2: 0.90, 
+                posNo: 0.00, posYes: 0.00,
+                active: true
+            });
+         } else {
+            sessions.push({
+                session: `${labelName} run ${activeTeam}`, 
+                no: null, rate1: 0, yes: null, rate2: 0, 
+                posNo: 0.00, posYes: 0.00,
+                active: false
+            });
+         }
+     };
 
-     setFancySessions([
-        { session: `10 over run ${activeTeam}`, no: activeOvers < 10 ? exp10 : null, rate1: 1.10, yes: activeOvers < 10 ? exp10 + 2 : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
-        { session: `15 over run ${activeTeam}`, no: activeOvers < 15 ? exp15 : null, rate1: 1.00, yes: activeOvers < 15 ? exp15 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
-        { session: `20 over run ${activeTeam}`, no: activeOvers < 20 ? exp20 : null, rate1: 1.00, yes: activeOvers < 20 ? exp20 + 2 : null, rate2: 1.00, posNo: 0.00, posYes: 0.00 },
-        { session: `Fall of ${activeWkts + 1} wkt ${activeTeam}`, no: activeWkts < 10 ? fallOfWkt : null, rate1: 1.10, yes: activeWkts < 10 ? fallOfWkt : null, rate2: 0.90, posNo: 0.00, posYes: 0.00 },
-        { session: `Total Run`, no: exp20 + 2, rate1: 1.10, yes: exp20 + 4, rate2: 0.90, posNo: 0.00, posYes: 0.00 }
-     ]);
-
-     // Adjust market odds realistically based on runs and wickets
-     if (addedBall) {
-         setMarketOdds(prev => [
-            { 
-               ...prev[0], 
-               lagai: Math.max(1.01, parseFloat(prev[0].lagai) + (isT2Batting ? 0.05 : -0.05)).toFixed(2),
-               khai: Math.max(1.03, parseFloat(prev[0].khai) + (isT2Batting ? 0.05 : -0.05)).toFixed(2),
-               changeStatus: !isT2Batting ? 'down' : 'up'
-            },
-            { 
-               ...prev[1], 
-               lagai: Math.max(1.01, parseFloat(prev[1].lagai) + (isT2Batting ? -0.05 : 0.05)).toFixed(2),
-               khai: Math.max(1.03, parseFloat(prev[1].khai) + (isT2Batting ? -0.05 : 0.05)).toFixed(2),
-               changeStatus: isT2Batting ? 'down' : 'up'
-            }
-         ]);
+     if (activeOvers < 20) {
+         if (activeOvers < 6) createSession(6, '6 over');
+         if (activeOvers < 10) createSession(10, '10 over');
+         if (activeOvers < 15) createSession(15, '15 over');
+         createSession(20, '20 over');
+         
+         const nextWicket = activeWkts + 1;
+         if (nextWicket <= 10) {
+             const nextFall = activeRun + Math.floor(Math.max(10, runRate * 2) * (1 + Math.random()*0.5));
+             sessions.push({
+                 session: `Fall of ${nextWicket} wkt ${activeTeam}`, 
+                 no: nextFall - 1, rate1: 1.05, 
+                 yes: nextFall + 1, rate2: 0.95, 
+                 posNo: 0.00, posYes: 0.00,
+                 active: true
+             });
+         }
+         sessions.push({ session: `${activeTeam} to win match`, no: 1.95, rate1: 1.00, yes: 2.05, rate2: 1.00, posNo: 0, posYes: 0, active: true});
      }
+     setFancySessions(sessions as any);
+
+     // Adjust Match Odds
+     const safeOverT1 = Math.max(1, parseFloat(t1Summary.over || "0.1"));
+     const safeOverT2 = Math.max(1, parseFloat(t2Summary.over || "0.1"));
+     let team1Advantage = 0;
+     
+     if (isT2Batting) {
+        const target = parseInt(t1Summary.run || "0");
+        const required = target - parseInt(t2Summary.run || "0");
+        const ballsLeft = 120 - Math.floor(safeOverT2 * 6);
+        const reqRate = ballsLeft > 0 ? (required / (ballsLeft / 6)) : 99;
+        const currRate = parseInt(t2Summary.run || "0") / safeOverT2;
+        team1Advantage = (reqRate - currRate) * 0.1;
+     } else {
+        const currRate = parseInt(t1Summary.run || "0") / safeOverT1;
+        team1Advantage = (currRate - 8) * 0.1; 
+     }
+
+     let oddsVal = 1.90 - team1Advantage;
+     if (oddsVal < 1.01) oddsVal = 1.01;
+     if (oddsVal > 10.0) oddsVal = 10.0;
+
+     let oddsT2 = 2.0 - (oddsVal - 1.0);
+     if (oddsT2 < 1.01) oddsT2 = 1.01;
+
+     setMarketOdds(prev => [
+         { 
+            ...prev[0], 
+            lagai: oddsVal.toFixed(2),
+            khai: (oddsVal + 0.02).toFixed(2),
+            changeStatus: addedBall ? (!isT2Batting ? 'down' : 'up') : ''
+         },
+         { 
+            ...prev[1], 
+            lagai: oddsT2.toFixed(2),
+            khai: (oddsT2 + 0.02).toFixed(2),
+            changeStatus: addedBall ? (isT2Batting ? 'down' : 'up') : ''
+         }
+     ]);
      
      
   }, [t1Summary, t2Summary]);
 
   useEffect(() => {
     if (!matchData?.id) return;
-    
-    // Don't poll the API if this is a mock match (mock match IDs are 10000306, etc.)
-    if (matchData.id.startsWith('10000') || String(matchData.pid).startsWith('10000')) {
-        return;
-    }
     
     // Periodically fetch live score to keep the report fully real-time
     const fetchRealTimeScore = async () => {
@@ -449,16 +498,16 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
     <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans text-sm pb-16">
       
       {/* Alert Banner / Ticker */}
-      <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border border-[#00ff88]/20 rounded-xl px-4 py-3 flex items-center shadow-sm text-slate-200 overflow-hidden mb-6">
-        <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
-          <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
+      <div className="bg-linear-to-r from-\(--primary\)/10 to-[#020503] border border-\(--primary\)/20 rounded-xl px-4 py-3 flex items-center shadow-sm text-slate-200 overflow-hidden mb-6">
+        <div className="bg-\(--primary\)/20 p-1.5 rounded mr-3 shrink-0 border border-\(--primary\)/30">
+          <span className="w-2 h-2 rounded-full bg-\(--primary\) animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
         </div>
         <div className="flex-1 min-w-0 overflow-hidden relative h-6">
-            <div className="absolute top-0 left-0 whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-mono flex items-center gap-8 text-[#00ff88]">
+            <div className="absolute top-0 left-0 whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-mono flex items-center gap-8 text-\(--primary\)">
               {matchData ? (
                 <>
                    <span>🏏 <span className="font-bold text-white">{team1}</span> <span className="text-[#f0b429]">{t1Summary.raw || `${t1Summary.run}/${t1Summary.wkt}`}</span> vs <span className="font-bold text-white">{team2}</span> <span className="text-[#f0b429]">{t2Summary.raw || `${t2Summary.run}/${t2Summary.wkt}`}</span></span>
-                   <span className="text-[#00ff88]/50 font-bold">•</span>
+                   <span className="text-\(--primary\)/50 font-bold">•</span>
                    <span>Status: {lastEvent}</span>
                 </>
               ) : (
@@ -484,7 +533,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-[#05100a]/80 backdrop-blur-sm px-6 py-3 rounded-xl border border-[#00ff88]/20 shadow-sm mt-4 sm:mt-0">
+        <div className="flex items-center gap-4 bg-[#05100a]/80 backdrop-blur-sm px-6 py-3 rounded-xl border border-\(--primary\)/20 shadow-sm mt-4 sm:mt-0">
           <div className="p-2 bg-indigo-500/10 rounded-lg">
             <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
           </div>
@@ -501,8 +550,8 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
         <div className="xl:col-span-8 space-y-6">
           
           {/* Professional Live Score & Tracker Card */}
-          <div className="bg-linear-to-br from-slate-900 to-[#020503] rounded-2xl shadow-xl overflow-hidden border border-[#00ff88]/30 relative">
-            <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+          <div className="bg-linear-to-br from-slate-900 to-[#020503] rounded-2xl shadow-xl overflow-hidden border border-\(--primary\)/30 relative">
+            <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-transparent via-\(--primary\) to-transparent opacity-50"></div>
             
             <div className="p-6 md:p-8 flex flex-col items-center">
               <div className="flex w-full items-center justify-between z-10">
@@ -559,7 +608,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
             </div>
 
             {/* Ball Tracker Banner */}
-            <div className="bg-[#05100a] px-6 py-4 border-t border-[#00ff88]/20 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-[#05100a] px-6 py-4 border-t border-\(--primary\)/20 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <span className="text-xs uppercase font-bold text-slate-400 tracking-wider shrink-0">Recent Balls:</span>
                 <div className="flex gap-2 font-mono">
@@ -576,7 +625,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                 </div>
               </div>
               <div className="text-slate-300 font-medium text-sm flex items-center gap-2">
-                 <RefreshCcw className="w-4 h-4 text-[#00ff88] animate-spin-slow" />
+                 <RefreshCcw className="w-4 h-4 text-\(--primary\) animate-spin-slow" />
                  Match Info: <span className="font-bold text-white">{lastEvent}</span>
               </div>
             </div>
@@ -585,13 +634,13 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
           <div className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar">
             <button 
               onClick={() => setActiveTab('match')}
-              className={`px-6 py-3 rounded-lg font-bold text-sm tracking-wide transition-all ${activeTab === 'match' ? 'bg-[#00ff88] text-slate-900 shadow-[0_0_15px_rgba(0,255,136,0.3)]' : 'bg-[#05100a] text-slate-400 hover:bg-[#00ff88]/10 border border-[#00ff88]/20'}`}
+              className={`px-6 py-3 rounded-lg font-bold text-sm tracking-wide transition-all ${activeTab === 'match' ? 'bg-\(--primary\) text-slate-900 shadow-[0_0_15px_rgba(0,255,136,0.3)]' : 'bg-[#05100a] text-slate-400 hover:bg-\(--primary\)/10 border border-\(--primary\)/20'}`}
             >
               Match Odds
             </button>
             <button 
               onClick={() => setActiveTab('fancy')}
-              className={`px-6 py-3 rounded-lg font-bold text-sm tracking-wide transition-all ${activeTab === 'fancy' ? 'bg-[#00ff88] text-slate-900 shadow-[0_0_15px_rgba(0,255,136,0.3)]' : 'bg-[#05100a] text-slate-400 hover:bg-[#00ff88]/10 border border-[#00ff88]/20'}`}
+              className={`px-6 py-3 rounded-lg font-bold text-sm tracking-wide transition-all ${activeTab === 'fancy' ? 'bg-\(--primary\) text-slate-900 shadow-[0_0_15px_rgba(0,255,136,0.3)]' : 'bg-[#05100a] text-slate-400 hover:bg-\(--primary\)/10 border border-\(--primary\)/20'}`}
             >
               Fancy Markets
             </button>
@@ -599,10 +648,10 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
 
           {/* Match Odds Market Section */}
           {activeTab === 'match' && (
-            <div className="bg-[#020503] border border-[#00ff88]/20 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-slate-900 px-5 py-4 border-b border-[#00ff88]/20 flex justify-between items-center">
+            <div className="bg-[#020503] border border-\(--primary\)/20 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-slate-900 px-5 py-4 border-b border-\(--primary\)/20 flex justify-between items-center">
                 <h4 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
-                   <TrendingUp className="w-4 h-4 text-[#00ff88]" /> Main Book
+                   <TrendingUp className="w-4 h-4 text-\(--primary\)" /> Main Book
                 </h4>
                 <div className="flex space-x-2">
                    <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded">Rule: Normal</span>
@@ -610,13 +659,13 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
               </div>
               
               <div className="w-full">
-                <div className="grid grid-cols-12 bg-[#05100a] border-b border-[#00ff88]/20 text-xs font-bold text-slate-400 uppercase tracking-wider p-2">
+                <div className="grid grid-cols-12 bg-[#05100a] border-b border-\(--primary\)/20 text-xs font-bold text-slate-400 uppercase tracking-wider p-2">
                    <div className="col-span-6 px-3 py-2">Runner</div>
                    <div className="col-span-3 text-center px-1 py-2 text-cyan-300 bg-cyan-500/10 rounded-l">LAGAI</div>
                    <div className="col-span-3 text-center px-1 py-2 text-rose-300 bg-rose-500/10 rounded-r">KHAI</div>
                 </div>
                 
-                <div className="divide-y divide-[#00ff88]/10">
+                <div className="divide-y divide-\(--primary\)/10">
                   {marketOdds.map((r, idx) => (
                     <div key={idx} className="grid grid-cols-12 hover:bg-slate-900/50 transition-colors p-2 items-center">
                       <div className="col-span-6 px-3 py-3">
@@ -629,7 +678,10 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                          </div>
                       </div>
                       
-                      <div className="col-span-3 p-1">
+                      <div className="col-span-3 p-1 relative">
+                        {isSuspended || r.changeStatus === 'suspended' ? (
+                           <div className="absolute inset-1 flex items-center justify-center bg-slate-900/90 rounded text-slate-400 font-bold uppercase text-[10px] tracking-widest z-10 border border-slate-700/50 backdrop-blur-sm">Suspended</div>
+                        ) : null}
                         <div 
                            onClick={() => setSelectedBet({selection: r.runner, odds: r.lagai, type: 'back'})}
                            className={`h-11 rounded font-bold text-base flex flex-col items-center justify-center cursor-pointer transition-all ${r.changeStatus === 'up' ? 'bg-cyan-300 scale-105 shadow-md text-slate-900' : 'bg-[#72bbed] hover:bg-[#62aadd] text-slate-900'}`}
@@ -639,7 +691,10 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                         </div>
                       </div>
 
-                      <div className="col-span-3 p-1">
+                      <div className="col-span-3 p-1 relative">
+                        {isSuspended || r.changeStatus === 'suspended' ? (
+                           <div className="absolute inset-1 flex items-center justify-center bg-slate-900/90 rounded text-slate-400 font-bold uppercase text-[10px] tracking-widest z-10 border border-slate-700/50 backdrop-blur-sm">Suspended</div>
+                        ) : null}
                         <div 
                            onClick={() => setSelectedBet({selection: r.runner, odds: r.khai, type: 'lay'})}
                            className={`h-11 rounded font-bold text-base flex flex-col items-center justify-center cursor-pointer transition-all ${r.changeStatus === 'down' ? 'bg-rose-300 scale-105 shadow-md text-slate-900' : 'bg-[#faa9ba] hover:bg-[#e998a9] text-slate-900'}`}
@@ -657,21 +712,21 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
 
           {/* Fancy Market Section */}
           {activeTab === 'fancy' && (
-            <div className="bg-[#020503] border border-[#00ff88]/20 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-slate-900 px-5 py-4 border-b border-[#00ff88]/20 flex justify-between items-center">
+            <div className="bg-[#020503] border border-\(--primary\)/20 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-slate-900 px-5 py-4 border-b border-\(--primary\)/20 flex justify-between items-center">
                 <h4 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
-                   <ShieldCheck className="w-4 h-4 text-[#00ff88]" /> Session Runs
+                   <ShieldCheck className="w-4 h-4 text-\(--primary\)" /> Session Runs
                 </h4>
               </div>
               
               <div className="w-full">
-                 <div className="grid grid-cols-12 bg-[#05100a] border-b border-[#00ff88]/20 text-xs font-bold text-slate-400 uppercase tracking-wider p-2">
+                 <div className="grid grid-cols-12 bg-[#05100a] border-b border-\(--primary\)/20 text-xs font-bold text-slate-400 uppercase tracking-wider p-2">
                    <div className="col-span-6 px-3 py-2">Session</div>
                    <div className="col-span-3 text-center px-1 py-2 text-rose-300 bg-rose-500/10 rounded-l">No</div>
                    <div className="col-span-3 text-center px-1 py-2 text-cyan-300 bg-cyan-500/10 rounded-r">Yes</div>
                 </div>
 
-                <div className="divide-y divide-[#00ff88]/10">
+                <div className="divide-y divide-\(--primary\)/10">
                   {fancySessions.map((s, idx) => (
                     <div key={idx} className="grid grid-cols-12 hover:bg-slate-900/50 transition-colors p-2 items-center">
                       <div className="col-span-6 px-3 py-2">
@@ -679,7 +734,10 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                          <div className="text-[10px] text-slate-500 font-semibold mt-1">Book: <span className="text-emerald-500 inline-block min-w-4 text-center">{s.posYes}</span> / <span className="text-rose-500 inline-block min-w-4 text-center">{s.posNo}</span></div>
                       </div>
                       
-                      <div className="col-span-3 p-1">
+                      <div className="col-span-3 p-1 relative">
+                        {isSuspended && s.active ? (
+                           <div className="absolute inset-1 flex items-center justify-center bg-slate-900/90 rounded text-slate-400 font-bold uppercase text-[10px] tracking-widest z-10 border border-slate-700/50 backdrop-blur-sm">Ball</div>
+                        ) : null}
                         {s.no ? (
                           <div 
                              onClick={() => setSelectedBet({selection: s.session, odds: (s.rate1 || 1.0).toString(), type: 'lay'})}
@@ -693,7 +751,10 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                         )}
                       </div>
 
-                      <div className="col-span-3 p-1">
+                      <div className="col-span-3 p-1 relative">
+                        {isSuspended && s.active ? (
+                           <div className="absolute inset-1 flex items-center justify-center bg-slate-900/90 rounded text-slate-400 font-bold uppercase text-[10px] tracking-widest z-10 border border-slate-700/50 backdrop-blur-sm">Ball</div>
+                        ) : null}
                         {s.yes ? (
                           <div 
                              onClick={() => setSelectedBet({selection: s.session, odds: (s.rate2 || 1.0).toString(), type: 'back'})}
@@ -710,7 +771,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                   ))}
                 </div>
 
-                <div className="p-4 border-t border-[#00ff88]/20 flex justify-center bg-[#00ff88]/5">
+                <div className="p-4 border-t border-\(--primary\)/20 flex justify-center bg-\(--primary\)/5">
                    <button 
                       onClick={handleAIGenerateSession}
                       disabled={isGeneratingSession}
@@ -740,7 +801,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
           
           {/* Bet Slip component */}
           {selectedBet ? (
-             <div className="bg-[#05100a] rounded-xl shadow-xl border border-[#00ff88]/50 overflow-hidden transform transition-all animate-in zoom-in-95">
+             <div className="bg-[#05100a] rounded-xl shadow-xl border border-\(--primary\)/50 overflow-hidden transform transition-all animate-in zoom-in-95">
                <div className={`px-5 py-3.5 flex items-center justify-between text-slate-900 font-extrabold ${selectedBet.type === 'back' ? 'bg-[#72bbed]' : 'bg-[#faa9ba]'}`}>
                  <h3 className="flex items-center gap-2 uppercase tracking-wide text-sm">
                    {selectedBet.type === 'back' ? 'LAGAI (YES)' : 'KHAI (NO)'} SLIP
@@ -770,7 +831,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                            value={betAmount}
                            onChange={(e: any) => setBetAmount(e.target.value)}
                            min="1"
-                           className="w-full p-3 bg-slate-900 border border-[#00ff88]/30 rounded-lg focus:ring-1 focus:ring-[#00ff88] focus:border-[#00ff88] transition-shadow outline-none text-lg font-bold text-white text-center"
+                           className="w-full p-3 bg-slate-900 border border-\(--primary\)/30 rounded-lg focus:ring-1 focus:ring-\(--primary\) focus:border-\(--primary\) transition-shadow outline-none text-lg font-bold text-white text-center"
                            placeholder="0.00"
                            disabled={isPlacingBet}
                         />
@@ -803,7 +864,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                   <button 
                     type="submit"
                     disabled={isPlacingBet || !betAmount || isNaN(parseFloat(betAmount))}
-                    className="w-full py-3.5 bg-linear-to-r from-[#00ff88] to-emerald-400 hover:to-emerald-500 text-slate-900 font-extrabold text-sm uppercase tracking-widest rounded-lg transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 bg-linear-to-r from-\(--primary\) to-emerald-400 hover:to-emerald-500 text-slate-900 font-extrabold text-sm uppercase tracking-widest rounded-lg transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isPlacingBet ? 'Processing...' : 'Place Bet'}
                   </button>
@@ -812,18 +873,18 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
           ) : null}
 
           {/* Open Bets / Matched list */}
-          <div className="bg-[#020503] rounded-xl shadow-sm border border-[#00ff88]/20 flex flex-col h-125">
-             <div className="bg-slate-900 px-5 py-3.5 border-b border-[#00ff88]/20 flex justify-between items-center">
+          <div className="bg-[#020503] rounded-xl shadow-sm border border-\(--primary\)/20 flex flex-col h-125">
+             <div className="bg-slate-900 px-5 py-3.5 border-b border-\(--primary\)/20 flex justify-between items-center">
                <h4 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#00ff88]" /> Matched Bets
+                  <Activity className="w-4 h-4 text-\(--primary\)" /> Matched Bets
                </h4>
-               <span className="text-xs font-bold bg-[#00ff88]/20 text-[#00ff88] px-2 py-0.5 rounded-full">{betHistory.length}</span>
+               <span className="text-xs font-bold bg-\(--primary\)/20 text-\(--primary\) px-2 py-0.5 rounded-full">{betHistory.length}</span>
              </div>
              
              <div className="flex-1 overflow-y-auto p-0 custom-scrollbar">
                 {betHistory.length > 0 ? (
                   <>
-                    <div className="divide-y divide-[#00ff88]/10">
+                    <div className="divide-y divide-\(--primary\)/10">
                       {paginatedBets.map((bet: any) => (
                         <div key={bet.id} className="p-4 hover:bg-slate-900/50 transition-colors">
                           <div className="flex justify-between items-start mb-2">
@@ -842,7 +903,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                             </div>
                             <div className="flex items-center gap-3">
                                <div className={`text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
-                                 bet.status === 'won' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30' : 
+                                 bet.status === 'won' ? 'bg-\(--primary\)/10 text-\(--primary\) border-\(--primary\)/30' : 
                                  bet.status === 'lost' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 
                                  'bg-slate-500/10 text-slate-400 border-slate-500/30'
                                }`}>
@@ -850,7 +911,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                                </div>
                                <div className="text-right flex flex-col">
                                   <span className="text-[9px] text-slate-500 font-semibold uppercase leading-tight tracking-wider">Return</span>
-                                  <span className={`font-black text-sm leading-tight ${bet.status === 'won' ? 'text-[#00ff88]' : bet.status === 'lost' ? 'text-rose-400' : 'text-slate-400'}`}>
+                                  <span className={`font-black text-sm leading-tight ${bet.status === 'won' ? 'text-\(--primary\)' : bet.status === 'lost' ? 'text-rose-400' : 'text-slate-400'}`}>
                                     {bet.profit > 0 ? '+' : ''}{bet.profit.toFixed(2)}
                                   </span>
                                </div>
@@ -860,11 +921,11 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                       ))}
                     </div>
                     {totalPages > 1 && (
-                      <div className="flex items-center justify-between p-4 border-t border-[#00ff88]/20 bg-slate-900">
+                      <div className="flex items-center justify-between p-4 border-t border-\(--primary\)/20 bg-slate-900">
                         <button
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                           disabled={currentPage === 1}
-                          className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1 text-xs font-semibold rounded bg-\(--primary\)/10 text-\(--primary\) disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Previous
                         </button>
@@ -874,7 +935,7 @@ export default function LiveMatchReport({ matchData, onNavigateBack, onGoToDashb
                         <button
                           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                           disabled={currentPage === totalPages}
-                          className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1 text-xs font-semibold rounded bg-\(--primary\)/10 text-\(--primary\) disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Next
                         </button>

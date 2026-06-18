@@ -30,14 +30,9 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
   const [searchTerm, setSearchTerm] = useState('');
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Mock data fallback
-  const mockCompletedMatches: Match[] = [
-    { id: '1000100', pid: 'pid1', title: 'India v Australia', sport: 'CRICKET', date: '11 Jun 2026', winner: 'India', t1s: '210/4 (20.0)', t2s: '185/8 (20.0)', t1: 'India', t2: 'Australia', status: 'Match Ended' },
-    { id: '1000101', pid: 'pid2', title: 'Chennai Super Kings v Mumbai Indians', sport: 'CRICKET', date: '12 Jun 2026', winner: 'Chennai Super Kings', t1s: '165/2 (15.0)', t2s: '164/8 (20.0)', t1: 'CSK', t2: 'MI', status: 'Match Ended' },
-    { id: '1000102', pid: 'pid3', title: 'Real Madrid vs Barcelona', sport: 'SOCCER', date: '12 Jun 2026', winner: 'Real Madrid', status: 'Match Ended' },
-    { id: '1000103', pid: 'pid4', title: 'Yorkshire v Lancashire', sport: 'CRICKET', date: '13 Jun 2026', winner: 'Yorkshire', t1s: '145/3 (14.3)', t2s: '144/10 (19.2)', t1: 'Yorkshire', t2: 'Lancashire', status: 'Match Ended' },
-  ];
+  const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   React.useEffect(() => {
     const fetchMatches = async () => {
@@ -87,13 +82,13 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
           if (completedFromApi.length > 0) {
             setMatches(completedFromApi);
           } else {
-            setMatches(mockCompletedMatches);
+            setMatches([]);
           }
         } else {
-          setMatches(mockCompletedMatches);
+          setMatches([]);
         }
       } catch (err) {
-        setMatches(mockCompletedMatches);
+        setMatches([]);
       } finally {
         setLoading(false);
       }
@@ -101,10 +96,44 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
     fetchMatches();
   }, []);
 
-  const filteredData = matches.filter(d => 
-    d.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    d.sport.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = useMemo(() => {
+    return matches.filter(d => {
+      const searchMatch = d.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        d.sport.toLowerCase().includes(searchTerm.toLowerCase());
+
+      let dateMatch = true;
+      if (dateRange.start || dateRange.end) {
+        const matchDate = new Date(d.date);
+        if (isNaN(matchDate.getTime())) {
+          dateMatch = false;
+        } else {
+          const normalizeDate = (dt: Date) => {
+            const temp = new Date(dt);
+            temp.setHours(0, 0, 0, 0);
+            return temp.getTime();
+          };
+          
+          const mTime = normalizeDate(matchDate);
+          const startT = dateRange.start ? normalizeDate(dateRange.start) : -Infinity;
+          const endT = dateRange.end ? normalizeDate(dateRange.end) : Infinity;
+          
+          dateMatch = mTime >= startT && mTime <= endT;
+        }
+      }
+
+      return searchMatch && dateMatch;
+    });
+  }, [matches, searchTerm, dateRange]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateRange]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredData, currentPage]);
 
   return (
     <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6">
@@ -124,7 +153,7 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
         
         <div className="p-4 border-b border-\(--primary\)/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#020503]/50 min-w-0">
           <div className="flex space-x-2 shrink-0 items-center">
-            <DateRangeFilter onRangeSelect={(s, e) => console.log(s, e)} />
+            <DateRangeFilter onRangeSelect={(s, e) => setDateRange({ start: s, end: e })} />
             <button 
               onClick={() => exportToCSV(filteredData, 'Completed_Matches')}
               className="flex items-center gap-1 bg-[#05100a] border border-\(--primary\)/30 text-\(--primary\) hover:bg-\(--primary\)/10 px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors"
@@ -162,14 +191,14 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
                     Loading matches...
                   </td>
                 </tr>
-              ) : filteredData.length === 0 ? (
+              ) : paginatedData.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-\(--primary\)/20">
                     No completed matches found
                   </td>
                 </tr>
               ) : (
-                filteredData.map((row) => (
+                paginatedData.map((row) => (
                   <tr 
                     key={row.id} 
                     className="hover:bg-[#020503]/50 transition-colors cursor-pointer"
@@ -189,12 +218,26 @@ export default function CompletedMatches({ title, subTitle, breadcrumb, onViewRe
 
         <div className="p-4 border-t border-\(--primary\)/20 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 bg-[#05100a] rounded-b-lg">
           <div>
-            Showing 1 to {filteredData.length} of entries {filteredData.length}
+            Showing {filteredData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredData.length)} of {filteredData.length} entries
           </div>
           <div className="flex mt-3 sm:mt-0 items-center border border-\(--primary\)/20 rounded divide-x divide-\(--primary\)/20 bg-[#05100a]">
-            <button className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" disabled>Previous</button>
-            <button className="px-3 py-1.5 bg-\(--primary\)/10 text-\(--primary\) font-medium cursor-default">1</button>
-            <button className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" disabled>Next</button>
+            <button 
+              className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1.5 bg-[#020503] text-slate-300 font-medium cursor-default">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button 
+              className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" 
+              disabled={currentPage === totalPages || filteredData.length === 0}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>

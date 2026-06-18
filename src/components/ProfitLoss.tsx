@@ -6,11 +6,10 @@ export default function ProfitLoss() {
   const [tags, setTags] = useState(['Cricket', 'Football']);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Mock data for the table
-  const mockReportData = [{ id: 1, sport: 'Total', matchEarnings: 0, commEarnings: 0, total: 0 }];
+  const reportData: any[] = [];
 
   const handleExport = () => {
-    exportToCSV(mockReportData, 'Profit_Loss_Report');
+    exportToCSV(reportData, 'Profit_Loss_Report');
   };
 
   const handleShare = () => {

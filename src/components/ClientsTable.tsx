@@ -108,10 +108,17 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
     };
   }, []);
 
-  const filteredData = usersData.filter(d => 
-    (d.username && d.username.toLowerCase().includes(searchTerm.toLowerCase())) || 
-    (d.name && d.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredData = usersData.filter(d => {
+    const searchMatch = (d.username && d.username.toLowerCase().includes(searchTerm.toLowerCase())) || 
+                        (d.name && d.name.toLowerCase().includes(searchTerm.toLowerCase()));
+                        
+    if (subTitle === 'Blocked Users') {
+      return searchMatch && d.status === 'blocked';
+    }
+    
+    // For "All Users", usually we show active and suspended
+    return searchMatch && d.status !== 'blocked';
+  });
 
   const toggleMenu = (id: string) => {
     if (activeMenuId === id) setActiveMenuId(null);
@@ -295,9 +302,9 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-semibold text-white">{title}</h2>
           {adminBalance !== null && (
-            <div className="bg-[#00ff88]/10 border border-[#00ff88]/30 px-3 py-1.5 rounded flex items-center space-x-2">
+            <div className="bg-\(--primary\)/10 border border-\(--primary\)/30 px-3 py-1.5 rounded flex items-center space-x-2">
                <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Master Balance</span>
-               <span className="text-[#00ff88] font-mono font-bold">₹{adminBalance.toLocaleString()}</span>
+               <span className="text-\(--primary\) font-mono font-bold">₹{adminBalance.toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -308,7 +315,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         </div>
       </div>
 
-      <div className="bg-[#05100a] border text-left border-[#00ff88]/20 rounded-lg shadow-sm flex flex-col mt-4 pt-0 relative z-0">
+      <div className="bg-[#05100a] border text-left border-\(--primary\)/20 rounded-lg shadow-sm flex flex-col mt-4 pt-0 relative z-0">
         <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between rounded-t-lg">
           <h3 className="font-semibold">{subTitle}</h3>
           {!hideCreate && (
@@ -316,7 +323,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               {getAuth().currentUser?.email === 'ayushraj5024@gmail.com' && (
                 <button 
                   onClick={() => setIsTopupModalOpen(true)}
-                  className="bg-[#00ff88] hover:bg-[#00cc6a] text-[#020503] font-bold text-sm px-4 py-1.5 border border-[#00ff88] rounded shadow-sm flex items-center space-x-1 transition-colors">
+                  className="bg-\(--primary\) hover:bg-[#00cc6a] text-[#020503] font-bold text-sm px-4 py-1.5 border border-\(--primary\) rounded shadow-sm flex items-center space-x-1 transition-colors">
                   <IndianRupee size={16} />
                   <span>Top Up Master Account</span>
                 </button>
@@ -331,12 +338,12 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
           )}
         </div>
         
-        <div className="p-4 border-b border-[#00ff88]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#020503]/50">
+        <div className="p-4 border-b border-\(--primary\)/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#020503]/50">
           <div className="flex space-x-2">
-            <button className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">
+            <button className="bg-[#05100a] border border-\(--primary\)/30 text-slate-300 hover:bg-[#020503] px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">
               CSV
             </button>
-            <button className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">
+            <button className="bg-[#05100a] border border-\(--primary\)/30 text-slate-300 hover:bg-[#020503] px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">
               PDF
             </button>
           </div>
@@ -346,14 +353,14 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               placeholder="Search.."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border border-[#00ff88]/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ff88]/30/20 focus:border-[#00ff88] w-full sm:w-64 bg-[#05100a] text-slate-200"
+              className="border border-\(--primary\)/30 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-\(--primary\)/30/20 focus:border-\(--primary\) w-full sm:w-64 bg-[#05100a] text-slate-200"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto min-h-75">
           <table className="w-full text-sm text-left text-slate-200">
-            <thead className="text-xs text-slate-200 bg-[#020503] border-b border-[#00ff88]/20">
+            <thead className="text-xs text-slate-200 bg-[#020503] border-b border-\(--primary\)/20">
               <tr>
                 <SortableHeader label="ID" />
                 <SortableHeader label="User Name" />
@@ -366,10 +373,10 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 <SortableHeader label="Actions" hideSort />
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#00ff88]/20">
+            <tbody className="divide-y divide-\(--primary\)/20">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={hideActions ? 8 : 9} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-[#00ff88]/20">
+                  <td colSpan={hideActions ? 8 : 9} className="px-4 py-8 text-center text-slate-400 bg-[#05100a] border-b border-\(--primary\)/20">
                     No data available in table
                   </td>
                 </tr>
@@ -377,10 +384,10 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 filteredData.map((row) => (
                   <tr key={row.id} className="hover:bg-[#020503]/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-400">{row.id.substring(0, 6)}</td>
-                    <td className="px-4 py-3 text-[#00ff88] font-medium cursor-pointer hover:underline">{row.username}</td>
+                    <td className="px-4 py-3 text-\(--primary\) font-medium cursor-pointer hover:underline">{row.username}</td>
                     {!hideActions && <td className="px-4 py-3">{row.name}</td>}
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${row.status === 'active' ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30' : row.status === 'suspended' ? 'bg-[#f0b429]/10 text-[#f0b429] border border-[#f0b429]/30' : 'bg-[#ff3355]/10 text-[#ff3355] border border-[#ff3355]/30'}`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${row.status === 'active' ? 'bg-\(--primary\)/10 text-\(--primary\) border border-\(--primary\)/30' : row.status === 'suspended' ? 'bg-[#f0b429]/10 text-[#f0b429] border border-[#f0b429]/30' : 'bg-[#ff3355]/10 text-[#ff3355] border border-[#ff3355]/30'}`}>
                         {row.status}
                       </span>
                     </td>
@@ -391,7 +398,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     <td className={`px-4 py-3 relative ${activeMenuId === row.id ? 'z-50' : ''}`}>
                       <button 
                         onClick={() => toggleMenu(row.id)}
-                        className="bg-[#00ff88]/10 border border-[#00ff88]/50 hover:bg-[#00ff88]/20 text-[#00ff88] p-1.5 rounded transition-colors focus:outline-none"
+                        className="bg-\(--primary\)/10 border border-\(--primary\)/50 hover:bg-\(--primary\)/20 text-\(--primary\) p-1.5 rounded transition-colors focus:outline-none"
                       >
                         <MoreVertical size={16} />
                       </button>
@@ -399,17 +406,17 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                       {activeMenuId === row.id && (
                         <>
                           <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }}></div>
-                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-[#00ff88]/30 py-1 z-50 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
-                            <button onClick={(e) => { e.stopPropagation(); setSelectedProfile(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Profile</button>
-                            <button onClick={(e) => { e.stopPropagation(); setSelectedStatement(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#00ff88]/10 hover:text-[#00ff88]">Statement</button>
-                            <div className="h-px w-full bg-[#00ff88]/20 my-1"></div>
+                          <div className="absolute right-8 top-10 mt-1 w-48 bg-[#05100a] rounded border border-\(--primary\)/30 py-1 z-50 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedProfile(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-\(--primary\)/10 hover:text-\(--primary\)">Profile</button>
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedStatement(row); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-\(--primary\)/10 hover:text-\(--primary\)">Statement</button>
+                            <div className="h-px w-full bg-\(--primary\)/20 my-1"></div>
                             <button 
                               onClick={(e) => { e.stopPropagation(); setSelectedUserForManage(row); setActiveMenuId(null); }}
                               className="w-full text-left px-4 py-2 text-sm text-[#f0b429] font-medium hover:bg-[#f0b429]/10"
                             >
                               Manage Access
                             </button>
-                            <div className="h-px w-full bg-[#00ff88]/20 my-1"></div>
+                            <div className="h-px w-full bg-\(--primary\)/20 my-1"></div>
                             <button 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
@@ -433,13 +440,13 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
           </table>
         </div>
 
-        <div className="p-4 border-t border-[#00ff88]/20 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 bg-[#05100a] rounded-b-lg">
+        <div className="p-4 border-t border-\(--primary\)/20 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 bg-[#05100a] rounded-b-lg">
           <div>
             Showing 1 to {filteredData.length} of entries {filteredData.length}
           </div>
-          <div className="flex mt-3 sm:mt-0 items-center border border-[#00ff88]/20 rounded divide-x divide-[#00ff88]/20 bg-[#05100a]">
+          <div className="flex mt-3 sm:mt-0 items-center border border-\(--primary\)/20 rounded divide-x divide-\(--primary\)/20 bg-[#05100a]">
             <button className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" disabled>Previous</button>
-            <button className="px-3 py-1.5 bg-[#00ff88]/10 text-[#00ff88] font-medium cursor-default">1</button>
+            <button className="px-3 py-1.5 bg-\(--primary\)/10 text-\(--primary\) font-medium cursor-default">1</button>
             <button className="px-3 py-1.5 hover:bg-[#020503] disabled:opacity-50 text-slate-400" disabled>Next</button>
           </div>
         </div>
@@ -450,12 +457,12 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedUserForManage(null)}></div>
           
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
-            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+          <div className="bg-[#05100a] border border-\(--primary\)/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-\(--primary\) to-transparent opacity-50"></div>
             
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-\(--primary\)/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <ShieldCheck className="text-[#00ff88]" size={20} />
+                <ShieldCheck className="text-\(--primary\)" size={20} />
                 Manage Access
               </h3>
               <button 
@@ -468,11 +475,11 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
             
             <div className="p-6 space-y-6 overflow-y-auto">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(0,255,136,0.15)]">
-                  <Lock className="text-[#00ff88]" size={28} />
+                <div className="w-16 h-16 bg-\(--primary\)/10 border border-\(--primary\)/30 rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(0,255,136,0.15)]">
+                  <Lock className="text-\(--primary\)" size={28} />
                 </div>
                 <h4 className="text-white font-bold text-xl">{selectedUserForManage.name}</h4>
-                <p className="text-[#00ff88] text-sm">@{selectedUserForManage.username}</p>
+                <p className="text-\(--primary\) text-sm">@{selectedUserForManage.username}</p>
               </div>
 
               {/* Play Status */}
@@ -481,7 +488,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 <div className="flex bg-[#020503] border border-slate-800 rounded p-1">
                   <button 
                     onClick={() => updateStatus(selectedUserForManage.id, 'status', 'active')}
-                    className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${selectedUserForManage.status === 'active' ? 'bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${selectedUserForManage.status === 'active' ? 'bg-\(--primary\)/20 text-\(--primary\) border border-\(--primary\)/30' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                   >
                     Active
                   </button>
@@ -517,7 +524,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                       checked={selectedUserForManage.autoBlock} 
                       onChange={(e) => updateStatus(selectedUserForManage.id, 'autoBlock', e.target.checked)}
                     />
-                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#00ff88]"></div>
+                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-\(--primary\)"></div>
                   </label>
                 </div>
                 <p className="text-xs text-slate-400 font-exo leading-relaxed">
@@ -526,8 +533,8 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
               </div>
 
               {/* Balance Management */}
-              <div className="bg-[#00ff88]/5 border border-[#00ff88]/20 rounded p-4">
-                <h5 className="text-xs font-bold font-orbitron tracking-widest text-[#00ff88] uppercase mb-3">Balance Management</h5>
+              <div className="bg-\(--primary\)/5 border border-\(--primary\)/20 rounded p-4">
+                <h5 className="text-xs font-bold font-orbitron tracking-widest text-\(--primary\) uppercase mb-3">Balance Management</h5>
                 <div className="flex items-center justify-between mb-3 text-sm text-slate-300">
                   <span>Current Balance:</span>
                   <span className="font-bold text-white text-lg">₹{Number(selectedUserForManage.balance || 0).toLocaleString()}</span>
@@ -546,7 +553,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 <div className="flex gap-2">
                   <button 
                     onClick={() => handleUpdateBalance('add')}
-                    className="flex-1 bg-[#00ff88] text-black font-bold py-2 rounded text-sm hover:bg-[#00cc6a] transition-colors"
+                    className="flex-1 bg-\(--primary\) text-black font-bold py-2 rounded text-sm hover:bg-[#00cc6a] transition-colors"
                   >
                     Add Balance
                   </button>
@@ -569,10 +576,10 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !createLoading && setIsCreateModalOpen(false)}></div>
           
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
+          <div className="bg-[#05100a] border border-\(--primary\)/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-md relative z-10 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-\(--primary\)/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <UserPlus className="text-[#00ff88]" size={20} />
+                <UserPlus className="text-\(--primary\)" size={20} />
                 Create Client Account
               </h3>
               <button 
@@ -592,7 +599,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     type="text" 
                     value={newUser.email} 
                     onChange={e => setNewUser({...newUser, email: e.target.value})}
-                    className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-3 py-2 text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full bg-[#020503] border border-\(--primary\)/30 rounded px-3 py-2 text-white focus:outline-none focus:border-\(--primary\)"
                  />
                </div>
                <div>
@@ -602,7 +609,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     type="text" 
                     value={newUser.name} 
                     onChange={e => setNewUser({...newUser, name: e.target.value})}
-                    className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-3 py-2 text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full bg-[#020503] border border-\(--primary\)/30 rounded px-3 py-2 text-white focus:outline-none focus:border-\(--primary\)"
                  />
                </div>
                <div>
@@ -614,12 +621,12 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                       minLength={6}
                       value={newUser.password} 
                       onChange={e => setNewUser({...newUser, password: e.target.value})}
-                      className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-3 py-2 text-white focus:outline-none focus:border-[#00ff88] pr-10"
+                      className="w-full bg-[#020503] border border-\(--primary\)/30 rounded px-3 py-2 text-white focus:outline-none focus:border-\(--primary\) pr-10"
                    />
                    <button 
                      type="button" 
                      onClick={() => setShowPasswordCreate(!showPasswordCreate)}
-                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#00ff88] transition-colors"
+                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-\(--primary\) transition-colors"
                    >
                      {showPasswordCreate ? <EyeOff size={16} /> : <Eye size={16} />}
                    </button>
@@ -632,7 +639,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                         type="text" 
                         value={newUser.mComm} 
                         onChange={e => setNewUser({...newUser, mComm: e.target.value})}
-                        className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#00ff88]"
+                        className="w-full bg-[#020503] border border-\(--primary\)/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-\(--primary\)"
                     />
                   </div>
                   <div>
@@ -641,7 +648,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                         type="text" 
                         value={newUser.sComm} 
                         onChange={e => setNewUser({...newUser, sComm: e.target.value})}
-                        className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#00ff88]"
+                        className="w-full bg-[#020503] border border-\(--primary\)/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-\(--primary\)"
                     />
                   </div>
                   <div>
@@ -650,7 +657,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                         type="text" 
                         value={newUser.share} 
                         onChange={e => setNewUser({...newUser, share: e.target.value})}
-                        className="w-full bg-[#020503] border border-[#00ff88]/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#00ff88]"
+                        className="w-full bg-[#020503] border border-\(--primary\)/30 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-\(--primary\)"
                     />
                   </div>
                </div>
@@ -658,7 +665,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                <button 
                  type="submit" 
                  disabled={createLoading}
-                 className="w-full bg-[#00ff88] text-black font-bold py-2.5 rounded mt-4 hover:bg-[#00cc6a] disabled:opacity-50 transition-colors flex justify-center items-center"
+                 className="w-full bg-\(--primary\) text-black font-bold py-2.5 rounded mt-4 hover:bg-[#00cc6a] disabled:opacity-50 transition-colors flex justify-center items-center"
                >
                  {createLoading ? 'Creating User...' : 'Create Client'}
                </button>
@@ -671,9 +678,9 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
       {selectedProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}></div>
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-sm relative z-10 flex flex-col max-h-[90vh]">
-            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503] shrink-0">
+          <div className="bg-[#05100a] border border-\(--primary\)/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-sm relative z-10 flex flex-col max-h-[90vh]">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-\(--primary\) to-transparent opacity-50"></div>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-\(--primary\)/20 bg-[#020503] shrink-0">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 Client Profile
               </h3>
@@ -698,7 +705,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                     </div>
                     <button 
                       onClick={() => setShowPasswordProfile(!showPasswordProfile)}
-                      className="text-slate-400 hover:text-[#00ff88] transition-colors"
+                      className="text-slate-400 hover:text-\(--primary\) transition-colors"
                     >
                       {showPasswordProfile ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -714,8 +721,8 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
       {selectedStatement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedStatement(null)}></div>
-          <div className="bg-[#05100a] border border-[#00ff88]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-4xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#00ff88]/20 bg-[#020503]">
+          <div className="bg-[#05100a] border border-\(--primary\)/30 rounded-xl shadow-[0_0_50px_rgba(0,255,136,0.1)] w-full max-w-4xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-\(--primary\)/20 bg-[#020503]">
               <h3 className="text-lg font-orbitron font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 Statement - {selectedStatement.username}
               </h3>
@@ -723,7 +730,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                  <button onClick={() => {
                    alert("Real PDF Generation requires a backend service (currently not implemented). Defaulting to browser print.");
                    window.print();
-                 }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">PDF</button>
+                 }} className="bg-[#05100a] border border-\(--primary\)/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">PDF</button>
                  <button onClick={() => {
                    if (statementData.length === 0) {
                      alert("No statement data available to download.");
@@ -741,7 +748,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                    document.body.appendChild(link);
                    link.click();
                    document.body.removeChild(link);
-                 }} className="bg-[#05100a] border border-[#00ff88]/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">CSV</button>
+                 }} className="bg-[#05100a] border border-\(--primary\)/30 text-slate-300 hover:bg-[#020503] px-3 py-1 rounded text-xs font-medium shadow-sm transition-colors">CSV</button>
                  <button onClick={() => setSelectedStatement(null)} className="text-slate-400 hover:text-rose-500 transition-colors ml-2">
                    <X size={20} />
                  </button>
@@ -750,7 +757,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
             
             <div className="p-6 overflow-y-auto hidden-scrollbar">
                 <table className="w-full text-sm text-left text-slate-200">
-                    <thead className="text-xs text-slate-400 bg-[#020503] border-b border-[#00ff88]/20 uppercase">
+                    <thead className="text-xs text-slate-400 bg-[#020503] border-b border-\(--primary\)/20 uppercase">
                         <tr>
                             <th className="px-4 py-3">Date</th>
                             <th className="px-4 py-3">Event / Game</th>
@@ -759,7 +766,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                             <th className="px-4 py-3 text-right">Balance</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#00ff88]/10 text-slate-300">
+                    <tbody className="divide-y divide-\(--primary\)/10 text-slate-300">
                         {statementLoading ? (
                           <tr>
                             <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading statements...</td>
@@ -774,7 +781,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                                 <td className="px-4 py-3 whitespace-nowrap">{stmt.date}</td>
                                 <td className="px-4 py-3 text-white font-medium">{stmt.event}</td>
                                 <td className="px-4 py-3">{stmt.type}</td>
-                                <td className={`px-4 py-3 text-right font-mono ${parseFloat(stmt.winLoss) >= 0 ? 'text-[#00ff88]' : 'text-[#ff3355]'}`}>
+                                <td className={`px-4 py-3 text-right font-mono ${parseFloat(stmt.winLoss) >= 0 ? 'text-\(--primary\)' : 'text-[#ff3355]'}`}>
                                   {parseFloat(stmt.winLoss) > 0 ? '+' : ''}{stmt.winLoss}
                                 </td>
                                 <td className="px-4 py-3 text-right font-medium">{stmt.balance}</td>
@@ -790,10 +797,10 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
 
       {isTopupModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#05100a] w-full max-w-sm rounded border border-[#00ff88]/30 shadow-2xl flex flex-col font-exo overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b border-[#00ff88]/20 bg-[#00ff88]/5">
+          <div className="bg-[#05100a] w-full max-w-sm rounded border border-\(--primary\)/30 shadow-2xl flex flex-col font-exo overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b border-\(--primary\)/20 bg-\(--primary\)/5">
               <div className="flex items-center space-x-2">
-                 <IndianRupee className="text-[#00ff88]" size={20} />
+                 <IndianRupee className="text-\(--primary\)" size={20} />
                  <h2 className="text-xl font-bold text-white font-orbitron">Master Topup</h2>
               </div>
               <button onClick={() => setIsTopupModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
@@ -804,8 +811,8 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
             <div className="p-6 space-y-4">
                <div>
                   <label className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 block">Amount to Add (Coins)</label>
-                  <div className="flex bg-[#020503] border border-[#00ff88]/30 rounded overflow-hidden shadow-[0_0_10px_rgba(0,255,136,0.05)_inset]">
-                    <div className="px-4 flex items-center justify-center text-[#00ff88] border-r border-[#00ff88]/30 font-bold bg-[#00ff88]/10">₹</div>
+                  <div className="flex bg-[#020503] border border-\(--primary\)/30 rounded overflow-hidden shadow-[0_0_10px_rgba(0,255,136,0.05)_inset]">
+                    <div className="px-4 flex items-center justify-center text-\(--primary\) border-r border-\(--primary\)/30 font-bold bg-\(--primary\)/10">₹</div>
                     <input
                       type="number"
                       placeholder="Enter Coins..."
@@ -820,7 +827,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                <button 
                  onClick={handleAdminTopup}
                  disabled={topupLoading}
-                 className="w-full bg-[#00ff88] hover:bg-[#00cc6a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 rounded text-sm transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] mt-2 font-orbitron tracking-widest hover:shadow-[0_0_25px_rgba(0,255,136,0.5)]"
+                 className="w-full bg-\(--primary\) hover:bg-[#00cc6a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 rounded text-sm transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] mt-2 font-orbitron tracking-widest hover:shadow-[0_0_25px_rgba(0,255,136,0.5)]"
                >
                  {topupLoading ? 'PROCESSING...' : 'ADD COINS'}
                </button>
@@ -834,7 +841,7 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
 
 function SortableHeader({ label, hideSort = false }: { label: string, hideSort?: boolean }) {
   return (
-    <th scope="col" className={`px-4 py-3 font-semibold text-slate-300 whitespace-nowrap ${hideSort ? '' : 'cursor-pointer hover:bg-[#00ff88]/5'} group`}>
+    <th scope="col" className={`px-4 py-3 font-semibold text-slate-300 whitespace-nowrap ${hideSort ? '' : 'cursor-pointer hover:bg-\(--primary\)/5'} group`}>
       <div className="flex items-center justify-between">
         <span>{label}</span>
         {!hideSort && (
