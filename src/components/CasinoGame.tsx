@@ -189,7 +189,7 @@ const Lucky7Slot = ({
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="flex-1 aspect-3/4 bg-linear-to-b from-slate-200 via-white to-slate-200 rounded-xl shadow-[inset_0_8px_16px_rgba(0,0,0,0.4)] flex items-center justify-center relative overflow-hidden border border-[#00ff88]/30"
+              className="flex-1 aspect-3/4 bg-linear-to-b from-slate-200 via-white to-slate-200 rounded-xl shadow-[inset_0_8px_16px_rgba(0,0,0,0.4)] flex items-center justify-center relative overflow-hidden border border-\(--primary\)/30"
             >
               <div className="absolute inset-x-0 top-1/2 h-px bg-black/10"></div>
               <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/40 pointer-events-none"></div>
@@ -344,6 +344,55 @@ export default function CasinoGame({
       ];
   }
 
+  const [liveOdds, setLiveOdds] = useState<OddsRow[]>(oddsData);
+  const [dealerMessage, setDealerMessage] = useState("Dealer Active • Place your bets");
+
+  useEffect(() => {
+    setLiveOdds(oddsData);
+  }, [gameId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Randomize odds slightly and sometimes suspend
+      setLiveOdds(currentOdds => 
+        currentOdds.map(odd => {
+          const newOdd = { ...odd };
+          const isSuspended = Math.random() > 0.85; // 15% chance to suspend
+          
+          if (!isSuspended) {
+            if (newOdd.back1 && !isNaN(parseFloat(newOdd.back1))) {
+               const shift = (Math.random() - 0.5) * 0.2;
+               newOdd.back1 = Math.max(1.01, parseFloat(newOdd.back1) + shift).toFixed(2);
+            }
+            if (newOdd.back2 && !isNaN(parseFloat(newOdd.back2))) {
+               const shift = (Math.random() - 0.5) * 0.2;
+               newOdd.back2 = Math.max(1.01, parseFloat(newOdd.back2) + shift).toFixed(2);
+            }
+          }
+          
+          newOdd.back1Suspended = isSuspended;
+          newOdd.back2Suspended = isSuspended;
+          
+          return newOdd;
+        })
+      );
+      
+      const messages = [
+        "Dealer Active • Place your bets",
+        "Last few seconds to bet!",
+        "Matching bets...",
+        "Waiting for next round...",
+        "Dealing cards..."
+      ];
+      if (Math.random() > 0.6) {
+        setDealerMessage(messages[Math.floor(Math.random() * messages.length)]);
+      }
+
+    }, 3000); // every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [gameId]);
+
   const [isMessagesExpanded, setIsMessagesExpanded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [balance, setBalance] = useState(0);
@@ -445,6 +494,32 @@ export default function CasinoGame({
   const getRandomCard = () => {
     return `${values[Math.floor(Math.random() * values.length)]}${suits[Math.floor(Math.random() * suits.length)]}`;
   };
+
+  useEffect(() => {
+    // Generate initial cards
+    if (showCardsArea && cardSlots.length > 0) {
+      const initialCards: { [key: number]: string[] } = {};
+      cardSlots.forEach((slot, i) => {
+        initialCards[i] = Array.from({ length: slot.count }).map(getRandomCard);
+      });
+      setRevealedCards(initialCards);
+    }
+  
+    const cardInterval = setInterval(() => {
+      if (showCardsArea && cardSlots.length > 0) {
+         setRevealedCards({}); // momentarily hide/shuffle
+         setTimeout(() => {
+           const newRevealed: { [key: number]: string[] } = {};
+           cardSlots.forEach((slot, i) => {
+             newRevealed[i] = Array.from({ length: slot.count }).map(getRandomCard);
+           });
+           setRevealedCards(newRevealed);
+         }, 800);
+      }
+    }, 6000); // 6 seconds per round deal
+
+    return () => clearInterval(cardInterval);
+  }, [gameId, showCardsArea]);
 
   const handleSlotResult = async (
     amount: number,
@@ -561,7 +636,7 @@ export default function CasinoGame({
   if (loading) {
     return (
       <div className="flex justify-center items-center h-125">
-        <Loader2 className="w-8 h-8 animate-spin text-[#00ff88]" />
+        <Loader2 className="w-8 h-8 animate-spin text-\(--primary\)" />
       </div>
     );
   }
@@ -595,7 +670,7 @@ export default function CasinoGame({
         </button>
         
         {/* Top Bar with Balance */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#05100a] p-4 rounded-xl shadow-sm border border-[#00ff88]/20">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#05100a] p-4 rounded-xl shadow-sm border border-\(--primary\)/20">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
               {gameName}
@@ -648,7 +723,7 @@ export default function CasinoGame({
   return (
     <div className="p-4 lg:p-8 w-full max-w-400 mx-auto space-y-6 font-sans text-sm pb-16">
       {/* Top Bar with Balance */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#05100a] p-4 rounded-xl shadow-sm border border-[#00ff88]/20">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#05100a] p-4 rounded-xl shadow-sm border border-\(--primary\)/20">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">
             {gameName}
@@ -687,18 +762,18 @@ export default function CasinoGame({
       </div>
 
       {/* Alert Banner / Ticker */}
-      <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border border-[#00ff88]/20 rounded-xl px-4 py-3 flex items-center shadow-sm text-slate-200 overflow-hidden mb-6">
-        <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
-          <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
+      <div className="bg-linear-to-r from-\(--primary\)/10 to-[#020503] border border-\(--primary\)/20 rounded-xl px-4 py-3 flex items-center shadow-sm text-slate-200 overflow-hidden mb-6">
+        <div className="bg-\(--primary\)/20 p-1.5 rounded mr-3 shrink-0 border border-\(--primary\)/30">
+          <span className="w-2 h-2 rounded-full bg-\(--primary\) animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
         </div>
         <div className="flex-1 min-w-0 overflow-hidden relative h-6">
-            <div className="absolute left-0 top-0 whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
+            <div className="absolute left-0 top-0 whitespace-nowrap text-sm font-medium animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-\(--primary\)">
               <span>🏏 <span className="font-bold text-white">Somerset</span> <span className="text-[#f0b429]">145/3 (14.3 ov)</span> vs <span className="font-bold text-white">Glamorgan</span></span>
-              <span className="text-[#00ff88]/50 font-bold">•</span>
+              <span className="text-\(--primary\)/50 font-bold">•</span>
               <span>🏏 <span className="font-bold text-white">India</span> <span className="text-[#f0b429]">210/4 (20.0 ov)</span> vs <span className="font-bold text-white">Australia</span> <span className="text-[#f0b429]">185/8 (20.0 ov)</span></span>
-              <span className="text-[#00ff88]/50 font-bold">•</span>
+              <span className="text-\(--primary\)/50 font-bold">•</span>
               <span>🏏 <span className="font-bold text-white">CSK</span> <span className="text-[#f0b429]">165/2 (15.0 ov)</span> vs <span className="font-bold text-white">MI</span></span>
-              <span className="text-[#00ff88]/50 font-bold">•</span>
+              <span className="text-\(--primary\)/50 font-bold">•</span>
               <span>⚽ <span className="font-bold text-white">Real Madrid</span> <span className="text-[#f0b429]">2 - 1</span> <span className="font-bold text-white">Barcelona</span></span>
             </div>
         </div>
@@ -759,9 +834,9 @@ export default function CasinoGame({
                               return (
                                 <div
                                   key={j}
-                                  className="w-10 h-14 bg-linear-to-br from-slate-100 to-slate-200 rounded flex items-center justify-center shrink-0 shadow-lg border border-[#00ff88]/30"
+                                  className="w-10 h-14 bg-linear-to-br from-slate-100 to-slate-200 rounded flex items-center justify-center shrink-0 shadow-lg border border-\(--primary\)/30"
                                 >
-                                  <div className="w-8 h-12 rounded-xs border border-[#00ff88]/20/50 bg-[#05100a] flex items-center justify-center">
+                                  <div className="w-8 h-12 rounded-xs border border-\(--primary\)/20/50 bg-[#05100a] flex items-center justify-center">
                                     <span
                                       className={`text-[14px] font-bold ${card === "?" ? "text-slate-300" : isRed ? "text-red-500" : "text-white"}`}
                                     >
@@ -793,7 +868,7 @@ export default function CasinoGame({
                       </h3>
                       <p className="text-slate-300 text-sm font-medium flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Dealer Active • Place your bets
+                        {dealerMessage}
                       </p>
                     </div>
 
@@ -807,32 +882,32 @@ export default function CasinoGame({
               </div>
 
               {/* Odds Table */}
-              <div className="bg-[#05100a] rounded-xl shadow-sm border border-[#00ff88]/20 overflow-hidden">
+              <div className="bg-[#05100a] rounded-xl shadow-sm border border-\(--primary\)/20 overflow-hidden">
                 {/* Section Header */}
-                <div className="bg-[#020503] px-5 py-4 border-b border-[#00ff88]/20 flex items-center justify-between">
+                <div className="bg-[#020503] px-5 py-4 border-b border-\(--primary\)/20 flex items-center justify-between">
                   <h3 className="font-bold text-white">Match Odds</h3>
                 </div>
 
                 <div className="w-full overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="bg-[#00ff88]/5 text-slate-400 border-b border-[#00ff88]/20 text-[11px] font-bold uppercase tracking-wider">
+                      <tr className="bg-\(--primary\)/5 text-slate-400 border-b border-\(--primary\)/20 text-[11px] font-bold uppercase tracking-wider">
                         <th className="px-5 py-3">Selection</th>
-                        <th className="px-5 py-3 w-32 border-l border-[#00ff88]/20 text-center">
+                        <th className="px-5 py-3 w-32 border-l border-\(--primary\)/20 text-center">
                           Amount
                         </th>
                         <th className="px-5 py-3 text-center w-32 bg-indigo-50 border-l border-indigo-100 text-indigo-700">
                           Back
                         </th>
-                        {oddsData[0].back2 && (
+                        {liveOdds[0]?.back2 && (
                           <th className="px-5 py-3 text-center w-32 bg-indigo-50 border-l border-indigo-100 text-indigo-700">
                             Back
                           </th>
                         )}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#00ff88]/20">
-                      {oddsData.map((row, idx) => (
+                    <tbody className="divide-y divide-\(--primary\)/20">
+                      {liveOdds.map((row, idx) => (
                         <tr
                           key={idx}
                           className="hover:bg-[#020503] transition-colors"
@@ -844,9 +919,9 @@ export default function CasinoGame({
                             {row.amount}
                           </td>
 
-                          <td className="p-2 border-l border-[#00ff88]/20">
+                          <td className="p-2 border-l border-\(--primary\)/20">
                             {row.back1Suspended ? (
-                              <div className="w-full h-12 bg-[#00ff88]/5 rounded flex items-center justify-center">
+                              <div className="w-full h-12 bg-\(--primary\)/5 rounded flex items-center justify-center">
                                 <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1">
                                   <Lock className="w-3 h-3" /> Suspended
                                 </span>
@@ -867,9 +942,9 @@ export default function CasinoGame({
                           </td>
 
                           {row.back2 !== undefined && (
-                            <td className="p-2 border-l border-[#00ff88]/20">
+                            <td className="p-2 border-l border-\(--primary\)/20">
                               {row.back2Suspended ? (
-                                <div className="w-full h-12 bg-[#00ff88]/5 rounded flex items-center justify-center">
+                                <div className="w-full h-12 bg-\(--primary\)/5 rounded flex items-center justify-center">
                                   <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1">
                                     <Lock className="w-3 h-3" /> Suspended
                                   </span>
@@ -921,7 +996,7 @@ export default function CasinoGame({
               </div>
 
               <form onSubmit={handlePlaceBet} className="p-5 space-y-4">
-                <div className="bg-[#020503] p-3 rounded-lg border border-[#00ff88]/20">
+                <div className="bg-[#020503] p-3 rounded-lg border border-\(--primary\)/20">
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">
                     Selection
                   </p>
@@ -948,7 +1023,7 @@ export default function CasinoGame({
                     value={betAmount}
                     onChange={(e) => setBetAmount(e.target.value)}
                     min="1"
-                    className="w-full p-3 bg-[#05100a] border border-[#00ff88]/30 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow outline-none text-lg font-bold"
+                    className="w-full p-3 bg-[#05100a] border border-\(--primary\)/30 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow outline-none text-lg font-bold"
                     placeholder="Enter amount"
                     disabled={isPlacingBet}
                   />
@@ -961,7 +1036,7 @@ export default function CasinoGame({
                       key={amt}
                       type="button"
                       onClick={() => setBetAmount(amt.toString())}
-                      className="py-1.5 bg-[#00ff88]/5 hover:bg-[#00ff88]/20 text-slate-200 font-semibold rounded text-xs transition-colors"
+                      className="py-1.5 bg-\(--primary\)/5 hover:bg-\(--primary\)/20 text-slate-200 font-semibold rounded text-xs transition-colors"
                       disabled={isPlacingBet}
                     >
                       +{amt}
@@ -969,7 +1044,7 @@ export default function CasinoGame({
                   ))}
                 </div>
 
-                <div className="pt-2 border-t border-[#00ff88]/20 space-y-1">
+                <div className="pt-2 border-t border-\(--primary\)/20 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Possible Return:</span>
                     <span className="font-bold text-emerald-600">
@@ -1004,15 +1079,15 @@ export default function CasinoGame({
           ) : null}
 
           {/* Matched Bets History */}
-          <div className="bg-[#05100a] rounded-xl shadow-sm border border-[#00ff88]/20 overflow-hidden flex flex-col min-h-75">
-            <div className="px-5 py-4 bg-[#020503] border-b border-[#00ff88]/20 flex items-center justify-between">
+          <div className="bg-[#05100a] rounded-xl shadow-sm border border-\(--primary\)/20 overflow-hidden flex flex-col min-h-75">
+            <div className="px-5 py-4 bg-[#020503] border-b border-\(--primary\)/20 flex items-center justify-between">
               <h3 className="font-bold text-white flex items-center gap-2">
                 <History className="w-4 h-4 text-slate-400" />
                 Matched Bets ({betHistory.length})
               </h3>
               <button
                 onClick={handleRefresh}
-                className="hover:bg-[#00ff88]/20 text-slate-400 p-1.5 rounded-md transition-colors group"
+                className="hover:bg-\(--primary\)/20 text-slate-400 p-1.5 rounded-md transition-colors group"
               >
                 <RefreshCcw
                   className={`w-4 h-4 ${isRefreshing ? "animate-spin text-indigo-600" : ""}`}
@@ -1023,7 +1098,7 @@ export default function CasinoGame({
             <div className="flex-1 overflow-y-auto p-0">
               {betHistory.length > 0 ? (
                 <>
-                  <div className="divide-y divide-[#00ff88]/20">
+                  <div className="divide-y divide-\(--primary\)/20">
                     {paginatedBets.map((bet) => (
                       <div
                         key={bet.id}
@@ -1068,11 +1143,11 @@ export default function CasinoGame({
                     ))}
                   </div>
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between p-4 border-t border-[#00ff88]/20 bg-[#020503]">
+                    <div className="flex items-center justify-between p-4 border-t border-\(--primary\)/20 bg-[#020503]">
                       <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 text-xs font-semibold rounded bg-\(--primary\)/10 text-\(--primary\) disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Previous
                       </button>
@@ -1082,7 +1157,7 @@ export default function CasinoGame({
                       <button
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         disabled={currentPage === totalPages}
-                        className="px-3 py-1 text-xs font-semibold rounded bg-[#00ff88]/10 text-[#00ff88] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 text-xs font-semibold rounded bg-\(--primary\)/10 text-\(--primary\) disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Next
                       </button>
@@ -1091,7 +1166,7 @@ export default function CasinoGame({
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-[#020503]/50">
-                  <div className="w-12 h-12 bg-[#00ff88]/5 rounded-full flex items-center justify-center mb-3">
+                  <div className="w-12 h-12 bg-\(--primary\)/5 rounded-full flex items-center justify-center mb-3">
                     <History className="w-5 h-5 text-slate-400" />
                   </div>
                   <span className="text-slate-400 text-sm font-medium">

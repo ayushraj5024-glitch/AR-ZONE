@@ -11,9 +11,10 @@ interface ClientsTableProps {
   breadcrumb: string;
   hideActions?: boolean;
   hideCreate?: boolean;
+  onNavigate?: (view: string) => void;
 }
 
-export default function ClientsTable({ title, subTitle, breadcrumb, hideActions = false, hideCreate = false }: ClientsTableProps) {
+export default function ClientsTable({ title, subTitle, breadcrumb, hideActions = false, hideCreate = false, onNavigate }: ClientsTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [selectedUserForManage, setSelectedUserForManage] = useState<any | null>(null);
@@ -281,9 +282,11 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
       const adminData = adminSnap.data();
       const currentBalance = adminData?.balance || 0;
       
-      await updateDoc(adminRef, {
-        balance: currentBalance + amount
-      });
+      await setDoc(adminRef, {
+        balance: currentBalance + amount,
+        role: 'admin',
+        email: auth.currentUser.email
+      }, { merge: true });
       
       alert(`Successfully added ₹${amount.toLocaleString()} to Master Account.`);
       setIsTopupModalOpen(false);
@@ -384,7 +387,13 @@ export default function ClientsTable({ title, subTitle, breadcrumb, hideActions 
                 filteredData.map((row) => (
                   <tr key={row.id} className="hover:bg-[#020503]/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-400">{row.id.substring(0, 6)}</td>
-                    <td className="px-4 py-3 text-\(--primary\) font-medium cursor-pointer hover:underline">{row.username}</td>
+                    <td className="px-4 py-3 text-[#00ff88] font-medium cursor-pointer hover:underline" onClick={() => {
+                        if (onNavigate) {
+                          onNavigate('bet_history');
+                        } else {
+                          setSelectedStatement(row);
+                        }
+                      }}>{row.username}</td>
                     {!hideActions && <td className="px-4 py-3">{row.name}</td>}
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${row.status === 'active' ? 'bg-\(--primary\)/10 text-\(--primary\) border border-\(--primary\)/30' : row.status === 'suspended' ? 'bg-[#f0b429]/10 text-[#f0b429] border border-[#f0b429]/30' : 'bg-[#ff3355]/10 text-[#ff3355] border border-[#ff3355]/30'}`}>

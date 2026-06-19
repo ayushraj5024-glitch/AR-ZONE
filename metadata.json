@@ -1,6 +1,6 @@
 {
-  "name": "Modern Enterprise Dashboard",
-  "description": "High-performance full-stack responsive dashboard with REST API.",
-  "requestFramePermissions": [],
+  "name": "Casino & Ludo Multiplayer",
+  "description": "High-performance full-stack responsive dashboard with Ludo Multiplayer and Voice Chat.",
+  "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

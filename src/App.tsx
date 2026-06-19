@@ -22,15 +22,21 @@ import {
   ChevronDown,
   User as UserIcon,
   Bell,
+  Palette,
   AlertTriangle,
   IndianRupee,
   BarChart3,
-  FileText
+  FileText,
+  Wallet,
+  ShieldAlert,
+  History,
+  Megaphone
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { AnimatePresence, motion } from 'motion/react';
 import AgentsTable from './components/AgentsTable';
 import CreateAgent from './components/CreateAgent';
 import CreateStockist from './components/CreateStockist';
@@ -51,8 +57,12 @@ import RoyalCasino from './components/RoyalCasino';
 import RoyalCasinoReport from './components/RoyalCasinoReport';
 import CheckCasinoResult from './components/CheckCasinoResult';
 import BlockMarket from './components/BlockMarket';
+import RiskManagement from './components/RiskManagement';
+import ActivityLogs from './components/ActivityLogs';
+import AnnouncementsAdmin from './components/AnnouncementsAdmin';
+import BetHistory from './components/BetHistory';
 
-type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_stockist' | 'my_clients' | 'blocked_clients' | 'commission_limits' | 'collection_report' | 'company_ledgers' | 'my_stmt' | 'profit_loss' | 'manage_password' | 'live_matches' | 'live_report' | 'completed_matches' | 'live_casino' | 'casino_game' | 'royal_casino' | 'royal_casino_report' | 'check_casino_result' | 'block_market';
+type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_stockist' | 'my_clients' | 'blocked_clients' | 'commission_limits' | 'collection_report' | 'company_ledgers' | 'my_stmt' | 'profit_loss' | 'manage_password' | 'live_matches' | 'live_report' | 'completed_matches' | 'live_casino' | 'casino_game' | 'royal_casino' | 'royal_casino_report' | 'check_casino_result' | 'block_market' | 'risk_management' | 'activity_logs' | 'announcements' | 'bet_history';
 
 export type AgentData = {
   id: string;
@@ -60,9 +70,16 @@ export type AgentData = {
   name: string;
   fixLimit: string;
   myShare: string;
-  maxShare: string;
+  maxShare?: string;
   password?: string;
+  contact?: string;
+  status?: string;
+  mcomm?: string;
+  scomm?: string;
+  mShare?: string;
 };
+
+import ThemeAndNotifications from './components/ThemeAndNotifications';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -80,6 +97,21 @@ export default function App() {
 
   const [stockists, setStockists] = useState<AgentData[]>([]);
 
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [themeColor, setThemeColor] = useState(localStorage.getItem('arzone_theme') || '#00ff88');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary', themeColor);
+    localStorage.setItem('arzone_theme', themeColor);
+  }, [themeColor]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   const isAdminPath = window.location.pathname === '/admin5024';
 
   const handleNavClick = (view?: ViewType) => {
@@ -91,12 +123,11 @@ export default function App() {
 
   useEffect(() => {
     let roleUnsubscribe: (() => void) | null = null;
+    let agentsUnsubscribe: (() => void) | null = null;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsAuthenticated(true);
-        // Set up real-time listener for the user's document
         try {
-          // Keep the initial getDoc as the fallback or wait for snapshot
           roleUnsubscribe = onSnapshot(doc(db, 'users', user.uid), async (userDoc) => {
             let resolvedRole = 'client';
             if (userDoc.exists()) {
@@ -129,6 +160,41 @@ export default function App() {
             setUserRole('client');
             setIsLoadingAuth(false);
           });
+
+          // Fetch agents and stockists
+          import('firebase/firestore').then(({ collection, onSnapshot, query }) => {
+            const q = query(collection(db, 'users'));
+            agentsUnsubscribe = onSnapshot(q, (snapshot) => {
+              const fetchedAgents: AgentData[] = [];
+              const fetchedStockists: AgentData[] = [];
+              snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                if (data.status === 'deleted') return;
+                
+                const agentData: AgentData = {
+                  id: docSnap.id,
+                  userName: data.email || '',
+                  name: data.name || '',
+                  contact: data.contact || '--',
+                  fixLimit: data.fixLimit || data.balance?.toString() || '0', // Mapping balance/limit
+                  status: data.status || 'active',
+                  mcomm: data.mComm || '0%',
+                  scomm: data.sComm || '0%',
+                  myShare: data.myShare || '0%',
+                  mShare: data.mShare || data.share || '0%'
+                };
+
+                if (data.role === 'agent') {
+                  fetchedAgents.push(agentData);
+                } else if (data.role === 'stockist') {
+                  fetchedStockists.push(agentData);
+                }
+              });
+              setAgents(fetchedAgents);
+              setStockists(fetchedStockists);
+            });
+          });
+
         } catch(e) {
            console.error("Error setting up snapshot:", e);
            setIsLoadingAuth(false);
@@ -138,6 +204,10 @@ export default function App() {
           roleUnsubscribe();
           roleUnsubscribe = null;
         }
+        if (agentsUnsubscribe) {
+          agentsUnsubscribe();
+          agentsUnsubscribe = null;
+        }
         setIsAuthenticated(false);
         setUserRole('client');
         setIsLoadingAuth(false);
@@ -146,6 +216,7 @@ export default function App() {
 
     return () => {
       if (roleUnsubscribe) roleUnsubscribe();
+      if (agentsUnsubscribe) agentsUnsubscribe();
       unsubscribe();
     };
   }, []);
@@ -180,9 +251,27 @@ export default function App() {
 
   if (isLoadingAuth) {
     return (
-      <div className="min-h-screen bg-[#05100a] flex items-center justify-center flex-col">
-        <div className="w-12 h-12 border-4 border-[#00ff88]/30 border-t-[#00ff88] rounded-full animate-spin mb-4"></div>
-        <p className="text-[#00ff88] font-orbitron font-bold tracking-widest animate-pulse">AUTHENTICATING...</p>
+      <div className="min-h-screen bg-[#020503] flex items-center justify-center flex-col relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-\(--primary\)/10 via-transparent to-transparent opacity-50 blur-xl"></div>
+         <motion.div 
+           initial={{ opacity: 0, scale: 0.9 }} 
+           animate={{ opacity: 1, scale: 1 }} 
+           transition={{ duration: 0.5, ease: "easeOut" }}
+           className="flex flex-col items-center gap-6 relative z-10"
+         >
+            <motion.span 
+              animate={{ textShadow: ["0px 0px 10px var(--primary)", "0px 0px 30px var(--primary)", "0px 0px 10px var(--primary)"] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="ar-zone-logo text-5xl tracking-widest text-\(--primary\)"
+            >
+              AR ZONE
+            </motion.span>
+            <div className="flex items-center gap-2">
+              <motion.div animate={{ height: [10, 24, 10] }} transition={{ repeat: Infinity, duration: 1, ease: 'easeInOut', delay: 0 }} className="w-1.5 bg-\(--primary\) rounded-full" />
+              <motion.div animate={{ height: [10, 24, 10] }} transition={{ repeat: Infinity, duration: 1, ease: 'easeInOut', delay: 0.15 }} className="w-1.5 bg-\(--primary\) rounded-full" />
+              <motion.div animate={{ height: [10, 24, 10] }} transition={{ repeat: Infinity, duration: 1, ease: 'easeInOut', delay: 0.3 }} className="w-1.5 bg-\(--primary\) rounded-full" />
+            </div>
+         </motion.div>
       </div>
     );
   }
@@ -203,28 +292,28 @@ export default function App() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-[#05100a] text-slate-300 border-r border-[#00ff88]/20 transition-all duration-300 ease-in-out md:relative
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-[#05100a] text-slate-300 border-r border-\(--primary\)/20 transition-all duration-300 ease-in-out md:relative
           ${isSidebarOpen ? 'translate-x-0 w-64 shadow-[0_0_20px_rgba(0,255,136,0.1)] md:shadow-none' : '-translate-x-full w-64 md:translate-x-0 md:w-20'}
         `}
       >
         <div className="h-16 flex items-center justify-between px-4 bg-[#030a06] shrink-0 relative overflow-hidden">
           {/* Subtle background light for professional look */}
           {isSidebarOpen && (
-            <div className="absolute -left-4 top-0 w-32 h-16 bg-[#00ff88]/10 blur-2xl"></div>
+            <div className="absolute -left-4 top-0 w-32 h-16 bg-\(--primary\)/10 blur-2xl"></div>
           )}
           {isSidebarOpen && (
             <div className="flex flex-col justify-center w-full pr-2 relative z-10">
               <span className="font-bobbaluna text-white text-[20px] uppercase tracking-wider whitespace-nowrap leading-none py-1 drop-shadow-[0_2px_4px_rgba(0,255,136,0.3)] mt-1">
                 {userRole === 'admin' ? 'SYSTEM ADMIN' : 'CLIENT PORTAL'}
               </span>
-              <span className="text-[11px] text-[#00ff88] font-medium tracking-wide drop-shadow-md">
+              <span className="text-[11px] text-\(--primary\) font-medium tracking-wide drop-shadow-md">
                 {userRole === 'admin' ? 'Master Account' : 'Welcome'}
               </span>
             </div>
           )}
           <button
             onClick={() => setSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 hover:bg-[#00ff88]/10 rounded border border-transparent hover:border-[#00ff88]/30 text-slate-400 hover:text-[#00ff88] transition-colors"
+            className="p-1.5 hover:bg-\(--primary\)/10 rounded border border-transparent hover:border-\(--primary\)/30 text-slate-400 hover:text-\(--primary\) transition-colors"
           >
             <Menu size={20} />
           </button>
@@ -249,20 +338,20 @@ export default function App() {
                   }}
                   className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
                     (currentView === 'stockists' || currentView === 'agent' || currentView === 'create_agent' || currentView === 'create_stockist') 
-                      ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
-                      : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
+                      ? 'bg-\(--primary\)/10 text-\(--primary\) border border-\(--primary\)/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
+                      : 'text-slate-400 hover:bg-\(--primary\)/5 border border-transparent'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`${(currentView === 'stockists' || currentView === 'agent' || currentView === 'create_agent' || currentView === 'create_stockist') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
+                    <div className={`${(currentView === 'stockists' || currentView === 'agent' || currentView === 'create_agent' || currentView === 'create_stockist') ? 'text-\(--primary\)' : 'text-slate-400 group-hover:text-\(--primary\)'}`}>
                       <Users size={20} />
                     </div>
                     {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage</span>}
                   </div>
                   {isSidebarOpen && (
                     isManageExpanded ? 
-                      <ChevronDown size={16} className="text-[#00ff88]" /> : 
-                      <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
+                      <ChevronDown size={16} className="text-\(--primary\)" /> : 
+                      <ChevronRight size={16} className="text-slate-500 group-hover:text-\(--primary\)" />
                   )}
                 </div>
                 
@@ -272,7 +361,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('stockists')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        (currentView === 'stockists' || currentView === 'create_stockist') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        (currentView === 'stockists' || currentView === 'create_stockist') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <Users size={16} />
@@ -281,7 +370,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('agent')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        (currentView === 'agent' || currentView === 'create_agent') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        (currentView === 'agent' || currentView === 'create_agent') ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <Users size={16} />
@@ -298,8 +387,14 @@ export default function App() {
           <NavItem icon={<Gamepad2 size={20} />} label="Live Casino" isOpen={isSidebarOpen} active={currentView === 'live_casino' || currentView === 'casino_game'} onClick={() => handleNavClick('live_casino')} />
           <NavItem icon={<Crown size={20} />} label="Royal Casino" isOpen={isSidebarOpen} active={currentView === 'royal_casino' || currentView === 'royal_casino_report'} onClick={() => handleNavClick('royal_casino')} />
           <NavItem icon={<ClipboardList size={20} />} label="Check Casino Result" isOpen={isSidebarOpen} active={currentView === 'check_casino_result'} onClick={() => handleNavClick('check_casino_result')} />
+          <NavItem icon={<History size={20} />} label="Bet History" isOpen={isSidebarOpen} active={currentView === 'bet_history'} onClick={() => handleNavClick('bet_history')} />
           {userRole === 'admin' && (
-            <NavItem icon={<Ban size={20} />} label="Block Market" isOpen={isSidebarOpen} active={currentView === 'block_market'} onClick={() => handleNavClick('block_market')} />
+            <>
+              <NavItem icon={<AlertTriangle size={20} />} label="Risk Management" isOpen={isSidebarOpen} active={currentView === 'risk_management'} onClick={() => handleNavClick('risk_management')} />
+              <NavItem icon={<Megaphone size={20} />} label="Broadcasts" isOpen={isSidebarOpen} active={currentView === 'announcements'} onClick={() => handleNavClick('announcements')} />
+              <NavItem icon={<ShieldAlert size={20} />} label="Activity Logs" isOpen={isSidebarOpen} active={currentView === 'activity_logs'} onClick={() => handleNavClick('activity_logs')} />
+              <NavItem icon={<Ban size={20} />} label="Block Market" isOpen={isSidebarOpen} active={currentView === 'block_market'} onClick={() => handleNavClick('block_market')} />
+            </>
           )}
           
           {/* Manage Clients Dropdown */}
@@ -313,20 +408,20 @@ export default function App() {
                   }}
                   className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
                     (currentView === 'my_clients' || currentView === 'blocked_clients' || currentView === 'commission_limits') 
-                      ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
-                      : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
+                      ? 'bg-\(--primary\)/10 text-\(--primary\) border border-\(--primary\)/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
+                      : 'text-slate-400 hover:bg-\(--primary\)/5 border border-transparent'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`${(currentView === 'my_clients' || currentView === 'blocked_clients' || currentView === 'commission_limits') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
+                    <div className={`${(currentView === 'my_clients' || currentView === 'blocked_clients' || currentView === 'commission_limits') ? 'text-\(--primary\)' : 'text-slate-400 group-hover:text-\(--primary\)'}`}>
                       <UserCog size={20} />
                     </div>
                     {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage Clients</span>}
                   </div>
                   {isSidebarOpen && (
                     isManageClientsExpanded ? 
-                      <ChevronDown size={16} className="text-[#00ff88]" /> : 
-                      <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
+                      <ChevronDown size={16} className="text-\(--primary\)" /> : 
+                      <ChevronRight size={16} className="text-slate-500 group-hover:text-\(--primary\)" />
                   )}
                 </div>
                 
@@ -336,7 +431,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('my_clients')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        currentView === 'my_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        currentView === 'my_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <Users size={16} />
@@ -345,7 +440,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('blocked_clients')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        currentView === 'blocked_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        currentView === 'blocked_clients' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <Users size={16} />
@@ -354,7 +449,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('commission_limits')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        currentView === 'commission_limits' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        currentView === 'commission_limits' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <IndianRupee size={16} />
@@ -380,20 +475,20 @@ export default function App() {
                   }}
                   className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group group-hover:text-white ${
                     (currentView === 'collection_report' || currentView === 'company_ledgers' || currentView === 'my_stmt' || currentView === 'profit_loss') 
-                      ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
-                      : 'text-slate-400 hover:bg-[#00ff88]/5 border border-transparent'
+                      ? 'bg-\(--primary\)/10 text-\(--primary\) border border-\(--primary\)/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
+                      : 'text-slate-400 hover:bg-\(--primary\)/5 border border-transparent'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`${(currentView === 'collection_report' || currentView === 'company_ledgers' || currentView === 'my_stmt' || currentView === 'profit_loss') ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
+                    <div className={`${(currentView === 'collection_report' || currentView === 'company_ledgers' || currentView === 'my_stmt' || currentView === 'profit_loss') ? 'text-\(--primary\)' : 'text-slate-400 group-hover:text-\(--primary\)'}`}>
                       <BookOpen size={20} />
                     </div>
                     {isSidebarOpen && <span className="font-semibold text-sm whitespace-nowrap tracking-wide">Manage Ledgers</span>}
                   </div>
                   {isSidebarOpen && (
                     isManageLedgersExpanded ? 
-                      <ChevronDown size={16} className="text-[#00ff88]" /> : 
-                      <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
+                      <ChevronDown size={16} className="text-\(--primary\)" /> : 
+                      <ChevronRight size={16} className="text-slate-500 group-hover:text-\(--primary\)" />
                   )}
                 </div>
                 
@@ -403,7 +498,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('collection_report')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        currentView === 'collection_report' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        currentView === 'collection_report' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <BarChart3 size={16} />
@@ -412,7 +507,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('company_ledgers')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        currentView === 'company_ledgers' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        currentView === 'company_ledgers' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <BookOpen size={16} />
@@ -421,7 +516,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('my_stmt')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        currentView === 'my_stmt' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        currentView === 'my_stmt' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <BarChart3 size={16} />
@@ -430,7 +525,7 @@ export default function App() {
                     <div 
                       onClick={() => handleNavClick('profit_loss')}
                       className={`flex items-center space-x-3 px-3 py-2 rounded cursor-pointer transition-all duration-150 text-sm ${
-                        currentView === 'profit_loss' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-[#00ff88]/10'
+                        currentView === 'profit_loss' ? 'text-[#f0b429] bg-[#f0b429]/10 font-medium' : 'text-slate-400 hover:text-white hover:bg-\(--primary\)/10'
                       }`}
                     >
                       <IndianRupee size={16} />
@@ -460,10 +555,10 @@ export default function App() {
       ) : (
       <main className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden bg-[#020503]">
         {/* Header */}
-        <header className="h-16 bg-[#05100a] border-b border-[#00ff88]/20 flex shrink-0 items-center justify-between px-4 lg:px-8 z-10 sticky top-0 shadow-[0_4px_20px_rgba(0,255,136,0.05)]">
+        <header className="h-16 bg-[#05100a]/80 backdrop-blur-md border-b border-\(--primary\)/20 flex shrink-0 items-center justify-between px-4 lg:px-8 z-10 sticky top-0 shadow-[0_4px_20px_rgba(0,255,136,0.05)] text-slate-200">
           <div className="flex items-center space-x-4">
             <button 
-              className="md:hidden p-2 -ml-2 text-[#00ff88] hover:bg-[#00ff88]/10 rounded border border-transparent hover:border-[#00ff88]/30"
+              className="md:hidden p-2 -ml-2 text-\(--primary\) hover:bg-\(--primary\)/10 rounded border border-transparent hover:border-\(--primary\)/30"
               onClick={() => setSidebarOpen(!isSidebarOpen)}
             >
               <Menu size={20} />
@@ -475,14 +570,16 @@ export default function App() {
             </h1>
           </div>
           
-          <div className="flex items-center space-x-3 sm:space-x-6">
-            <div className="hidden sm:flex items-center space-x-2 text-sm font-semibold tracking-wider text-[#00ff88]">
-              <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_10px_rgba(0,255,136,1)]"></span>
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <div className="hidden lg:flex items-center space-x-2 text-sm font-semibold tracking-wider text-\(--primary\)">
+              <span className="w-2 h-2 rounded-full bg-\(--primary\) animate-pulse shadow-[0_0_10px_rgba(0,255,136,1)]"></span>
               <span className="font-orbitron font-bold">SYSTEM ONLINE</span>
             </div>
             
-            <div className="h-6 w-px bg-[#00ff88]/20 hidden sm:block"></div>
+            <div className="h-6 w-px bg-\(--primary\)/20 hidden lg:block"></div>
             
+            <ThemeAndNotifications />
+
             <button 
               onClick={() => {
                 signOut(auth).then(() => {
@@ -501,30 +598,30 @@ export default function App() {
         <div className="flex-1 overflow-auto bg-[#020503] text-slate-200">
           
           {/* Alert Banner */}
-          <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border-b border-[#00ff88]/20 text-slate-200 px-4 py-3 flex items-center shadow-sm w-full overflow-hidden">
-            <div className="bg-[#00ff88]/20 p-1.5 rounded mr-3 shrink-0 border border-[#00ff88]/30">
-              <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
+          <div className="bg-linear-to-r from-\(--primary\)/10 to-[#020503] border-b border-\(--primary\)/20 text-slate-200 px-4 py-3 flex items-center shadow-sm w-full overflow-hidden">
+            <div className="bg-\(--primary\)/20 p-1.5 rounded mr-3 shrink-0 border border-\(--primary\)/30">
+              <span className="w-2 h-2 rounded-full bg-\(--primary\) animate-pulse block shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
             </div>
             <div className="flex-1 min-w-0 overflow-hidden relative h-6">
-              <div className="absolute top-0 left-0 text-sm font-medium whitespace-nowrap animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-[#00ff88]">
+              <div className="absolute top-0 left-0 text-sm font-medium whitespace-nowrap animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-\(--primary\)">
                 {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
                 <>
                   <span>🎰 <span className="font-bold text-white">Lucky 7</span> <span className="text-[#f0b429]">JACKPOT ALERT!</span> ₹2,50,000 Won by user ****42</span>
-                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span className="text-\(--primary\)/50 font-bold">•</span>
                   <span>🃏 <span className="font-bold text-white">TeenPatti T20</span> <span className="text-[#f0b429]">High Stakes</span> Tables Now Open!</span>
-                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span className="text-\(--primary\)/50 font-bold">•</span>
                   <span>🛩️ <span className="font-bold text-white">Aviator</span> <span className="text-[#f0b429]">New Flight</span> taking off in 10s...</span>
-                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span className="text-\(--primary\)/50 font-bold">•</span>
                   <span>🎲 <span className="font-bold text-white">Royal Casino</span> <span className="text-[#f0b429]">Live Dealers</span> 24/7 Availability</span>
                 </>
               ) : (
                 <>
                   <span>🏏 <span className="font-bold text-white">Somerset</span> <span className="text-[#f0b429]">145/3 (14.3 ov)</span> vs <span className="font-bold text-white">Glamorgan</span></span>
-                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span className="text-\(--primary\)/50 font-bold">•</span>
                   <span>🏏 <span className="font-bold text-white">India</span> <span className="text-[#f0b429]">210/4 (20.0 ov)</span> vs <span className="font-bold text-white">Australia</span> <span className="text-[#f0b429]">185/8 (20.0 ov)</span></span>
-                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span className="text-\(--primary\)/50 font-bold">•</span>
                   <span>🏏 <span className="font-bold text-white">CSK</span> <span className="text-[#f0b429]">165/2 (15.0 ov)</span> vs <span className="font-bold text-white">MI</span></span>
-                  <span className="text-[#00ff88]/50 font-bold">•</span>
+                  <span className="text-\(--primary\)/50 font-bold">•</span>
                   <span>⚽ <span className="font-bold text-white">Real Madrid</span> <span className="text-[#f0b429]">2 - 1</span> <span className="font-bold text-white">Barcelona</span></span>
                 </>
               )}
@@ -532,163 +629,238 @@ export default function App() {
             </div>
             <div className="ml-auto pl-4 hidden sm:block">
               {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
-                <button onClick={() => setCurrentView('live_casino')} className="bg-[#00ff88]/10 border border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88] hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
+                <button onClick={() => setCurrentView('live_casino')} className="bg-\(--primary\)/10 border border-\(--primary\)/50 text-\(--primary\) hover:bg-\(--primary\) hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
                   Play Now
                 </button>
               ) : (
-                <button onClick={() => setCurrentView('live_matches')} className="bg-[#00ff88]/10 border border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88] hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
+                <button onClick={() => setCurrentView('live_matches')} className="bg-\(--primary\)/10 border border-\(--primary\)/50 text-\(--primary\) hover:bg-\(--primary\) hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
                   Live View
                 </button>
               )}
             </div>
           </div>
 
-          {currentView === 'stockists' && (
-            <AgentsTable 
-              title="Stockists" 
-              breadcrumb="Stockists" 
-              buttonLabel="Create Stockists" 
-              data={stockists}
-              onCreateClick={() => setCurrentView('create_stockist')}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              {currentView === 'stockists' && (
+                <AgentsTable 
+                  title="Stockists" 
+                  breadcrumb="Stockists" 
+                  buttonLabel="Create Stockists" 
+                  data={stockists}
+                  onCreateClick={() => setCurrentView('create_stockist')}
+                  onUpdateAgent={async (id, field, value) => {
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    try {
+                      // Note: fixLimit corresponds to balance for limits in some contexts, but we store it as fixLimit
+                      const updateData = field === 'fixLimit' ? { fixLimit: value, balance: Number(value) } : { [field]: value };
+                      await updateDoc(doc(db, 'users', id), updateData);
+                    } catch (error) {
+                      console.error("Error updating stockist:", error);
+                    }
+                  }}
+                />
+              )}
 
-          {currentView === 'agent' && (
-            <AgentsTable 
-              title="Agent" 
-              breadcrumb="Agent" 
-              buttonLabel="Create Agent" 
-              data={agents}
-              onCreateClick={() => setCurrentView('create_agent')}
-            />
-          )}
+              {currentView === 'agent' && (
+                <AgentsTable 
+                  title="Agent" 
+                  breadcrumb="Agent" 
+                  buttonLabel="Create Agent" 
+                  data={agents}
+                  onCreateClick={() => setCurrentView('create_agent')}
+                  onUpdateAgent={async (id, field, value) => {
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    try {
+                      const updateData = field === 'fixLimit' ? { fixLimit: value, balance: Number(value) } : { [field]: value };
+                      await updateDoc(doc(db, 'users', id), updateData);
+                    } catch (error) {
+                      console.error("Error updating agent:", error);
+                    }
+                  }}
+                />
+              )}
 
-          {currentView === 'create_agent' && (
-            <CreateAgent 
-              onCancel={() => setCurrentView('agent')} 
-              onSave={(newAgent) => {
-                setAgents([newAgent, ...agents]);
-                setCurrentView('agent');
-              }}
-            />
-          )}
+              {currentView === 'create_agent' && (
+                <CreateAgent 
+                  onCancel={() => setCurrentView('agent')} 
+                  onSave={async (newAgent) => {
+                    try {
+                      // Attempt to create a standard document for reference
+                      const { doc, setDoc } = await import('firebase/firestore');
+                      // Use a random ID or email format
+                      const agentId = newAgent.userName ? newAgent.userName.replace(/[^a-zA-Z0-9]/g, '') : Date.now().toString();
+                      await setDoc(doc(db, 'users', agentId), {
+                        ...newAgent,
+                        email: newAgent.userName,
+                        role: 'agent',
+                        balance: Number(newAgent.fixLimit) || 0,
+                        createdAt: new Date().toISOString()
+                      });
+                      showToast("Agent Created");
+                      setCurrentView('agent');
+                    } catch (error) {
+                      console.error("Error creating agent in firebase:", error);
+                      alert("Error creating agent");
+                    }
+                  }}
+                />
+              )}
 
-          {currentView === 'create_stockist' && (
-            <CreateStockist 
-              onCancel={() => setCurrentView('stockists')} 
-              onSave={(newStockist) => {
-                setStockists([newStockist, ...stockists]);
-                setCurrentView('stockists');
-              }}
-            />
-          )}
+              {currentView === 'create_stockist' && (
+                <CreateStockist 
+                  onCancel={() => setCurrentView('stockists')} 
+                  onSave={async (newStockist) => {
+                    try {
+                      const { doc, setDoc } = await import('firebase/firestore');
+                      const stockistId = newStockist.userName ? newStockist.userName.replace(/[^a-zA-Z0-9]/g, '') : Date.now().toString();
+                      await setDoc(doc(db, 'users', stockistId), {
+                        ...newStockist,
+                        email: newStockist.userName,
+                        role: 'stockist',
+                        balance: Number(newStockist.fixLimit) || 0,
+                        createdAt: new Date().toISOString()
+                      });
+                      showToast("Stockist Created");
+                      setCurrentView('stockists');
+                    } catch (error) {
+                      console.error("Error creating stockist in firebase:", error);
+                      alert("Error creating stockist");
+                    }
+                  }}
+                />
+              )}
 
-          {currentView === 'my_clients' && (
-            <ClientsTable title="CLIENTS" subTitle="All Users" breadcrumb="CLIENTS" hideActions={false} />
-          )}
+              {currentView === 'my_clients' && (
+                <ClientsTable title="CLIENTS" subTitle="All Users" breadcrumb="CLIENTS" hideActions={false} onNavigate={(v) => setCurrentView(v as ViewType)} />
+              )}
 
-          {currentView === 'blocked_clients' && (
-            <ClientsTable hideCreate={true} title="CLIENTS" subTitle="Blocked Users" breadcrumb="Blocked Clients" hideActions={true} />
-          )}
+              {currentView === 'blocked_clients' && (
+                <ClientsTable hideCreate={true} title="CLIENTS" subTitle="Blocked Users" breadcrumb="Blocked Clients" hideActions={true} />
+              )}
 
-          {currentView === 'commission_limits' && (
-            <CommissionLimits />
-          )}
+              {currentView === 'commission_limits' && (
+                <CommissionLimits />
+              )}
 
-          {currentView === 'collection_report' && (
-            <CollectionReport />
-          )}
+              {currentView === 'collection_report' && (
+                <CollectionReport />
+              )}
 
-          {currentView === 'company_ledgers' && (
-            <LedgerTable title="MY LEDGERS" breadcrumb="MY LEDGERS" />
-          )}
+              {currentView === 'company_ledgers' && (
+                <LedgerTable title="MY LEDGERS" breadcrumb="MY LEDGERS" />
+              )}
 
-          {currentView === 'my_stmt' && (
-            <LedgerTable title="Agent" breadcrumb="Statement" />
-          )}
+              {currentView === 'my_stmt' && (
+                <LedgerTable title="Agent" breadcrumb="Statement" />
+              )}
 
-          {currentView === 'profit_loss' && (
-            <ProfitLoss />
-          )}
+              {currentView === 'profit_loss' && (
+                <ProfitLoss />
+              )}
 
-          {currentView === 'manage_password' && (
-            <ManagePassword />
-          )}
+              {currentView === 'manage_password' && (
+                <ManagePassword />
+              )}
 
-          {currentView === 'live_matches' && (
-            <LiveMatches onViewReport={(match) => {
-              setSelectedMatch(match);
-              setCurrentView('live_report');
-            }} />
-          )}
+              {currentView === 'live_matches' && (
+                <LiveMatches onViewReport={(match) => {
+                  setSelectedMatch(match);
+                  setCurrentView('live_report');
+                }} />
+              )}
 
-          {currentView === 'live_report' && (
-            <LiveMatchReport 
-              matchData={selectedMatch}
-              onNavigateBack={() => {
-                if (selectedMatch?.status?.toLowerCase().includes('ended') || selectedMatch?.status?.toLowerCase().includes('result') || selectedMatch?.status?.toLowerCase().includes('won') || selectedMatch?.status?.toLowerCase().includes('abandoned')) {
-                  setCurrentView('completed_matches');
-                } else {
-                  setCurrentView('live_matches');
-                }
-              }}
-              onGoToDashboard={() => setCurrentView('dashboard')}
-            />
-          )}
+              {currentView === 'live_report' && (
+                <LiveMatchReport 
+                  matchData={selectedMatch}
+                  onNavigateBack={() => {
+                    if (selectedMatch?.status?.toLowerCase().includes('ended') || selectedMatch?.status?.toLowerCase().includes('result') || selectedMatch?.status?.toLowerCase().includes('won') || selectedMatch?.status?.toLowerCase().includes('abandoned')) {
+                      setCurrentView('completed_matches');
+                    } else {
+                      setCurrentView('live_matches');
+                    }
+                  }}
+                  onGoToDashboard={() => setCurrentView('dashboard')}
+                />
+              )}
 
-          {currentView === 'completed_matches' && (
-            <CompletedMatches 
-              title="Completed Matches" 
-              subTitle="All Matches" 
-              breadcrumb="Matches" 
-              hideCreate={true}
-              hideActions={true}
-              onViewReport={(match: Match) => {
-                setSelectedMatch(match);
-                setCurrentView('live_report');
-              }}
-            />
-          )}
+              {currentView === 'completed_matches' && (
+                <CompletedMatches 
+                  title="Completed Matches" 
+                  subTitle="All Matches" 
+                  breadcrumb="Matches" 
+                  hideCreate={true}
+                  hideActions={true}
+                  onViewReport={(match: Match) => {
+                    setSelectedMatch(match);
+                    setCurrentView('live_report');
+                  }}
+                />
+              )}
 
-          {currentView === 'live_casino' && (
-            <LiveCasino 
-              onSelectGame={(id, name) => {
-                setSelectedCasinoGame({ id, name });
-                setCurrentView('casino_game');
-              }} 
-            />
-          )}
+              {currentView === 'live_casino' && (
+                <LiveCasino 
+                  onSelectGame={(id, name) => {
+                    setSelectedCasinoGame({ id, name });
+                    setCurrentView('casino_game');
+                  }} 
+                />
+              )}
 
-          {currentView === 'casino_game' && selectedCasinoGame && (
-             <CasinoGame 
-               gameId={selectedCasinoGame.id}
-               gameName={selectedCasinoGame.name}
-               onBack={() => setCurrentView('live_casino')}
-             />
-          )}
+              {currentView === 'casino_game' && selectedCasinoGame && (
+                 <CasinoGame 
+                   gameId={selectedCasinoGame.id}
+                   gameName={selectedCasinoGame.name}
+                   onBack={() => setCurrentView('live_casino')}
+                 />
+              )}
 
-          {currentView === 'royal_casino' && (
-            <RoyalCasino onOpenReport={() => setCurrentView('royal_casino_report')} />
-          )}
+              {currentView === 'royal_casino' && (
+                <RoyalCasino onOpenReport={() => setCurrentView('royal_casino_report')} />
+              )}
 
-          {currentView === 'royal_casino_report' && (
-            <RoyalCasinoReport />
-          )}
+              {currentView === 'royal_casino_report' && (
+                <RoyalCasinoReport />
+              )}
 
-          {currentView === 'check_casino_result' && (
-            <CheckCasinoResult />
-          )}
+              {currentView === 'check_casino_result' && (
+                <CheckCasinoResult />
+              )}
 
-          {currentView === 'block_market' && (
-            <BlockMarket />
-          )}
+              {currentView === 'block_market' && (
+                <BlockMarket />
+              )}
+
+              {currentView === 'risk_management' && (
+                <RiskManagement />
+              )}
+
+              {currentView === 'activity_logs' && (
+                <ActivityLogs />
+              )}
+
+              {currentView === 'announcements' && (
+                <AnnouncementsAdmin />
+              )}
+
+              {currentView === 'bet_history' && (
+                <BetHistory />
+              )}
+            </motion.div>
+          </AnimatePresence>
           
           {/* Footer */}
-          <footer className="mt-8 border-t border-[#00ff88]/20 bg-[#05100a] py-6 px-4 lg:px-8 text-xs font-medium tracking-wide text-slate-500 flex flex-col sm:flex-row justify-between items-center font-exo">
+          <footer className="mt-8 border-t border-\(--primary\)/20 bg-[#05100a] py-6 px-4 lg:px-8 text-xs font-medium tracking-wide text-slate-500 flex flex-col sm:flex-row justify-between items-center font-exo">
             <div>
-              <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-[#00ff88]/30">|</span> Powered By <span className="text-[#f0b429] font-bold">AR Gaming</span> <span className="mx-2 text-[#00ff88]/30">|</span> Copyright © 2021-2026
+              <span className="ar-zone-logo text-lg">AR ZONE</span> <span className="mx-2 text-\(--primary\)/30">|</span> Powered By <span className="text-[#f0b429] font-bold">AR Gaming</span> <span className="mx-2 text-\(--primary\)/30">|</span> Copyright © 2021-2026
             </div>
-            <div className="mt-2 sm:mt-0 font-orbitron text-[#00ff88]">
+            <div className="mt-2 sm:mt-0 font-orbitron text-\(--primary\)">
               Admin Panel <span className="font-bold">v2.0.0</span>
             </div>
           </footer>
@@ -706,11 +878,11 @@ function NavItem({ icon, label, isOpen, active = false, onClick }: { icon: React
       onClick={onClick}
       className={`flex items-center space-x-3 px-3 py-2.5 rounded cursor-pointer transition-all duration-200 group ${
         active 
-          ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
-          : 'text-slate-400 hover:bg-[#00ff88]/5 hover:text-white border border-transparent'
+          ? 'bg-\(--primary\)/10 text-\(--primary\) border border-\(--primary\)/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]' 
+          : 'text-slate-400 hover:bg-\(--primary\)/5 hover:text-white border border-transparent'
       }`}
     >
-      <div className={`${active ? 'text-[#00ff88]' : 'text-slate-400 group-hover:text-[#00ff88]'}`}>
+      <div className={`${active ? 'text-\(--primary\)' : 'text-slate-400 group-hover:text-\(--primary\)'}`}>
         {icon}
       </div>
       {isOpen && <span className={`font-medium text-sm overflow-hidden text-ellipsis whitespace-nowrap ${active ? 'font-semibold tracking-wide' : ''}`}>{label}</span>}
@@ -721,15 +893,15 @@ function NavItem({ icon, label, isOpen, active = false, onClick }: { icon: React
 // Sidebar Navigation Group (Items with children/dropdown arrow)
 function NavGroup({ icon, label, isOpen }: { icon: React.ReactNode, label: string, isOpen: boolean }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 text-slate-400 hover:bg-[#00ff88]/5 hover:text-white border border-transparent group">
+    <div className="flex items-center justify-between px-3 py-2.5 rounded cursor-pointer transition-all duration-200 text-slate-400 hover:bg-\(--primary\)/5 hover:text-white border border-transparent group">
       <div className="flex items-center space-x-3">
-        <div className="text-slate-400 group-hover:text-[#00ff88]">
+        <div className="text-slate-400 group-hover:text-\(--primary\)">
           {icon}
         </div>
         {isOpen && <span className="font-medium text-sm whitespace-nowrap">{label}</span>}
       </div>
       {isOpen && (
-        <ChevronRight size={16} className="text-slate-500 group-hover:text-[#00ff88]" />
+        <ChevronRight size={16} className="text-slate-500 group-hover:text-\(--primary\)" />
       )}
     </div>
   );
