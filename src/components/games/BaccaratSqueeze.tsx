@@ -276,7 +276,7 @@ export default function BaccaratSqueeze({
             multiplier = 2;
           } else if (currentBet.type === "BANKER" && winnerStr === "B") {
             isWin = true;
-            multiplier = 1.95;
+            multiplier = 1.97;
           } else if (currentBet.type === "TIE" && winnerStr === "T") {
             isWin = true;
             multiplier = 9;

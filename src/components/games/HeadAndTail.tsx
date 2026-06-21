@@ -69,7 +69,7 @@ export default function HeadAndTail({
         if (currentBet) {
              const userWins = currentBet.side === result;
              if (userWins) {
-                onPlay(currentBet.amount, currentBet.amount * 1.9, true, `Bet on ${currentBet.side}`);
+                onPlay(currentBet.amount, currentBet.amount * 1.94, true, `Bet on ${currentBet.side}`);
              } else {
                 onPlay(currentBet.amount, 0, false, `Bet on ${currentBet.side}`);
              }

@@ -60,12 +60,6 @@ const games: Game[] = [
     provider: "Evolution",
     image: imgBaccarat,
   },
-  {
-    id: "ludo_mp",
-    title: "Ludo Multiplayer",
-    provider: "Royal Game",
-    image: "https://images.unsplash.com/photo-1628260412297-a3377e45006f?w=800&auto=format&fit=crop&q=60",
-  },
 ];
 
 export default function LiveCasino({
@@ -102,7 +96,7 @@ export default function LiveCasino({
       <div>
         <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
           <Gamepad2 className="w-6 h-6 text-\(--primary\)" />
-          Live Casino Games
+          Live Casino
         </h2>
         <div className="text-sm text-slate-400 mt-2 flex items-center space-x-2 font-medium">
           <span className="hover:text-slate-200 cursor-pointer transition-colors">

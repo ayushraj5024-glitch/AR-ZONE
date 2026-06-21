@@ -30,7 +30,8 @@ import {
   Wallet,
   ShieldAlert,
   History,
-  Megaphone
+  Megaphone,
+  Dices
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -52,6 +53,7 @@ import LiveMatchReport from './components/LiveMatchReport';
 import CompletedMatches from './components/CompletedMatches';
 import LiveCasino from './components/LiveCasino';
 import CasinoGame from './components/CasinoGame';
+import LiveLudo from './components/LiveLudo';
 import Dashboard from './components/Dashboard';
 import RoyalCasino from './components/RoyalCasino';
 import RoyalCasinoReport from './components/RoyalCasinoReport';
@@ -62,7 +64,7 @@ import ActivityLogs from './components/ActivityLogs';
 import AnnouncementsAdmin from './components/AnnouncementsAdmin';
 import BetHistory from './components/BetHistory';
 
-type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_stockist' | 'my_clients' | 'blocked_clients' | 'commission_limits' | 'collection_report' | 'company_ledgers' | 'my_stmt' | 'profit_loss' | 'manage_password' | 'live_matches' | 'live_report' | 'completed_matches' | 'live_casino' | 'casino_game' | 'royal_casino' | 'royal_casino_report' | 'check_casino_result' | 'block_market' | 'risk_management' | 'activity_logs' | 'announcements' | 'bet_history';
+type ViewType = 'dashboard' | 'stockists' | 'agent' | 'create_agent' | 'create_stockist' | 'my_clients' | 'blocked_clients' | 'commission_limits' | 'collection_report' | 'company_ledgers' | 'my_stmt' | 'profit_loss' | 'manage_password' | 'live_matches' | 'live_report' | 'completed_matches' | 'live_casino' | 'casino_game' | 'live_ludo' | 'royal_casino' | 'royal_casino_report' | 'check_casino_result' | 'block_market' | 'risk_management' | 'activity_logs' | 'announcements' | 'bet_history';
 
 export type AgentData = {
   id: string;
@@ -385,6 +387,7 @@ export default function App() {
           <NavItem icon={<PlayCircle size={20} />} label="Live Matches" isOpen={isSidebarOpen} active={currentView === 'live_matches' || currentView === 'live_report'} onClick={() => handleNavClick('live_matches')} />
           <NavItem icon={<CheckCircle size={20} />} label="Completed Matches" isOpen={isSidebarOpen} active={currentView === 'completed_matches'} onClick={() => handleNavClick('completed_matches')} />
           <NavItem icon={<Gamepad2 size={20} />} label="Live Casino" isOpen={isSidebarOpen} active={currentView === 'live_casino' || currentView === 'casino_game'} onClick={() => handleNavClick('live_casino')} />
+          <NavItem icon={<Dices size={20} />} label="Live Ludo" isOpen={isSidebarOpen} active={currentView === 'live_ludo'} onClick={() => handleNavClick('live_ludo')} />
           <NavItem icon={<Crown size={20} />} label="Royal Casino" isOpen={isSidebarOpen} active={currentView === 'royal_casino' || currentView === 'royal_casino_report'} onClick={() => handleNavClick('royal_casino')} />
           <NavItem icon={<ClipboardList size={20} />} label="Check Casino Result" isOpen={isSidebarOpen} active={currentView === 'check_casino_result'} onClick={() => handleNavClick('check_casino_result')} />
           <NavItem icon={<History size={20} />} label="Bet History" isOpen={isSidebarOpen} active={currentView === 'bet_history'} onClick={() => handleNavClick('bet_history')} />
@@ -604,7 +607,7 @@ export default function App() {
             </div>
             <div className="flex-1 min-w-0 overflow-hidden relative h-6">
               <div className="absolute top-0 left-0 text-sm font-medium whitespace-nowrap animate-[marquee_25s_linear_infinite] font-exo flex items-center gap-8 text-\(--primary\)">
-                {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
+                {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'live_ludo' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
                 <>
                   <span>🎰 <span className="font-bold text-white">Lucky 7</span> <span className="text-[#f0b429]">JACKPOT ALERT!</span> ₹2,50,000 Won by user ****42</span>
                   <span className="text-\(--primary\)/50 font-bold">•</span>
@@ -628,7 +631,7 @@ export default function App() {
               </div>
             </div>
             <div className="ml-auto pl-4 hidden sm:block">
-              {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
+              {(currentView === 'live_casino' || currentView === 'casino_game' || currentView === 'live_ludo' || currentView === 'royal_casino' || currentView === 'royal_casino_report' || currentView === 'check_casino_result') ? (
                 <button onClick={() => setCurrentView('live_casino')} className="bg-\(--primary\)/10 border border-\(--primary\)/50 text-\(--primary\) hover:bg-\(--primary\) hover:text-[#020503] text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider transition-all shadow-sm font-orbitron">
                   Play Now
                 </button>
@@ -811,6 +814,10 @@ export default function App() {
                     setCurrentView('casino_game');
                   }} 
                 />
+              )}
+
+              {currentView === 'live_ludo' && (
+                <LiveLudo />
               )}
 
               {currentView === 'casino_game' && selectedCasinoGame && (

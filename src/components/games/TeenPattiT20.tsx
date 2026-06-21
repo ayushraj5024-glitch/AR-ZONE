@@ -164,7 +164,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
              const userWins = currentBet.player === winner;
              if (userWins) {
                 // Return original bet + profit (1.9x total return) -> profit = amount * 1.9, win = true
-                onPlay(currentBet.amount, currentBet.amount * 1.9, true, `Bet on Player ${currentBet.player}`);
+                onPlay(currentBet.amount, currentBet.amount * 1.94, true, `Bet on Player ${currentBet.player}`);
              } else {
                 // Lost
                 onPlay(currentBet.amount, 0, false, `Bet on Player ${currentBet.player}`);
@@ -195,16 +195,16 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
   };
 
   return (
-    <div className="w-full bg-[#030705] border border-[#00ff88]/20 rounded-2xl overflow-hidden font-sans relative shadow-[0_0_40px_rgba(0,255,136,0.1)] text-white">
+    <div className="w-full bg-[#030705] border border-(--primary)/20 rounded-2xl overflow-hidden font-sans relative shadow-[0_0_40px_rgba(0,255,136,0.1)] text-white">
        
        {/* Top Header - Live Casino Feel */}
-       <div className="bg-[#020503] border-b border-[#00ff88]/10 px-6 py-4 flex justify-between items-center relative overflow-hidden">
-         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#00ff88] to-transparent opacity-50"></div>
+       <div className="bg-[#020503] border-b border-(--primary)/10 px-6 py-4 flex justify-between items-center relative overflow-hidden">
+         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-(--primary) to-transparent opacity-50"></div>
          <div className="flex items-center gap-3">
-            <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${stage === 'BETTING' && timeLeft <= 3 ? 'bg-rose-500' : 'bg-[#00ff88]'}`}></span>
+            <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${stage === 'BETTING' && timeLeft <= 3 ? 'bg-rose-500' : 'bg-(--primary)'}`}></span>
             <h1 className="text-white font-bold tracking-wider uppercase text-sm">{gameName}</h1>
          </div>
-         <div className="bg-[#00ff88]/10 text-[#00ff88] px-3 py-1 rounded text-xs font-bold tracking-widest border border-[#00ff88]/20 shadow-[0_0_10px_rgba(0,255,136,0.1)]">
+         <div className="bg-(--primary)/10 text-(--primary) px-3 py-1 rounded text-xs font-bold tracking-widest border border-(--primary)/20 shadow-[0_0_10px_rgba(0,255,136,0.1)]">
            ROUND #{round.toString().padStart(4, '0')}
          </div>
        </div>
@@ -216,10 +216,10 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-full flex flex-col items-center pointer-events-none">
                {stage === 'BETTING' && (
                   <>
-                     <div className={`font-black text-7xl transition-colors duration-300 ${timeLeft <= 3 ? 'text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.8)] animate-pulse' : 'text-[#00ff88] drop-shadow-[0_0_20px_rgba(0,255,136,0.5)]'}`}>
+                     <div className={`font-black text-7xl transition-colors duration-300 ${timeLeft <= 3 ? 'text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.8)] animate-pulse' : 'text-(--primary) drop-shadow-[0_0_20px_rgba(0,255,136,0.5)]'}`}>
                         {timeLeft}
                      </div>
-                     <div className={`text-sm uppercase tracking-[0.3em] mt-3 font-bold bg-[#020503]/80 backdrop-blur-sm px-6 py-1.5 rounded-full border transition-colors duration-300 shadow-xl ${timeLeft <= 3 ? 'text-rose-500 border-rose-500/30' : 'text-[#00ff88] border-[#00ff88]/30'}`}>
+                     <div className={`text-sm uppercase tracking-[0.3em] mt-3 font-bold bg-[#020503]/80 backdrop-blur-sm px-6 py-1.5 rounded-full border transition-colors duration-300 shadow-xl ${timeLeft <= 3 ? 'text-rose-500 border-rose-500/30' : 'text-(--primary) border-(--primary)/30'}`}>
                         {timeLeft <= 3 ? "Betting Closed" : "Place Your Bets"}
                      </div>
                   </>
@@ -265,10 +265,10 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
        </div>
 
        {/* Betting Controls */}
-       <div className="p-6 bg-[#020503] relative border-t border-[#00ff88]/10">
+       <div className="p-6 bg-[#020503] relative border-t border-(--primary)/10">
            {/* Current Bet Status */}
            {currentBet && (
-               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#00ff88] text-slate-900 text-xs font-black uppercase px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(0,255,136,0.4)] whitespace-nowrap z-20">
+               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-(--primary) text-slate-900 text-xs font-black uppercase px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(0,255,136,0.4)] whitespace-nowrap z-20">
                   Accepted: ₹{currentBet.amount} on Player {currentBet.player}
                </div>
            )}
@@ -283,7 +283,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
                   }`}
                >
                    {currentBet?.player === 'A' && (
-                       <div className="absolute inset-0 border-2 border-[#00ff88] rounded-xl z-20 pointer-events-none shadow-[0_0_15px_rgba(0,255,136,0.3)]"></div>
+                       <div className="absolute inset-0 border-2 border-(--primary) rounded-xl z-20 pointer-events-none shadow-[0_0_15px_rgba(0,255,136,0.3)]"></div>
                    )}
                    <div className="flex flex-col items-center justify-center">
                        <span className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-2xl mb-2 shadow-[0_0_15px_rgba(37,99,235,0.6)] border border-blue-400">A</span>
@@ -301,7 +301,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
                   }`}
                >
                    {currentBet?.player === 'B' && (
-                       <div className="absolute inset-0 border-2 border-[#00ff88] rounded-xl z-20 pointer-events-none shadow-[0_0_15px_rgba(0,255,136,0.3)]"></div>
+                       <div className="absolute inset-0 border-2 border-(--primary) rounded-xl z-20 pointer-events-none shadow-[0_0_15px_rgba(0,255,136,0.3)]"></div>
                    )}
                    <div className="flex flex-col items-center justify-center">
                        <span className="w-12 h-12 bg-rose-600 rounded-full flex items-center justify-center font-black text-2xl mb-2 shadow-[0_0_15px_rgba(225,29,72,0.6)] border border-rose-400">B</span>
@@ -315,7 +315,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
            <div className="mt-6 flex flex-col gap-3">
               <div className="flex justify-between items-center text-xs uppercase tracking-widest text-slate-500 px-2 font-bold">
                  <span>Select Stake</span>
-                 <span className="text-[#00ff88]/70 font-mono">₹{betAmount}</span>
+                 <span className="text-(--primary)/70 font-mono">₹{betAmount}</span>
               </div>
               <div className="flex gap-2">
                  {chips.map(chip => (
@@ -324,7 +324,7 @@ export default function TeenPattiT20({ balance, onPlay, onDeductBet, gameName = 
                      onClick={() => setBetAmount(chip)}
                      className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all border ${
                        betAmount === chip 
-                         ? 'bg-[#00ff88]/10 border-[#00ff88] text-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.2)]' 
+                         ? 'bg-(--primary)/10 border-(--primary) text-(--primary) shadow-[0_0_10px_rgba(0,255,136,0.2)]' 
                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:bg-slate-800'
                      }`}
                    >
