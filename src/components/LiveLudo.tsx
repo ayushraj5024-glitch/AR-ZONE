@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Dices, Users, Home, Trophy, AlertTriangle, MessageSquare, Mic, Volume2, Plus, LogIn, Wallet } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, getDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
-import LudoGrid from './LudoGrid';
+import LudoGrid, { PieceState } from './LudoGrid';
 
 interface JoinRequest {
   userId: string;
@@ -406,12 +406,29 @@ export default function LiveLudo() {
 }
 
 // Subcomponent for the actual Game Board
+const INITIAL_PIECES: PieceState[] = [
+  { id: 'r1', color: 'red', status: 'base', position: 0 },
+  { id: 'r2', color: 'red', status: 'base', position: 0 },
+  { id: 'r3', color: 'red', status: 'base', position: 0 },
+  { id: 'r4', color: 'red', status: 'base', position: 0 },
+  { id: 'g1', color: 'green', status: 'base', position: 0 },
+  { id: 'g2', color: 'green', status: 'base', position: 0 },
+  { id: 'g3', color: 'green', status: 'base', position: 0 },
+  { id: 'g4', color: 'green', status: 'base', position: 0 },
+];
+
+const EMOJIS = ["👍", "👎", "😂", "😡", "😭", "🎲", "🔥", "🎉", "😱", "😎", "💔", "👏", "🏆", "🎮", "🚀", "💀", "👀", "🙌"];
+
 function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => void, roomId: string | null }) {
   const [turn, setTurn] = useState<"red" | "green">("red");
   const [diceValue, setDiceValue] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
   const [roomData, setRoomData] = useState<Room | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
+  
+  const [pieces, setPieces] = useState<PieceState[]>(INITIAL_PIECES);
+  const [chatMessages, setChatMessages] = useState<{sender: string, text: string}[]>([]);
+  const [chatInput, setChatInput] = useState("");
   
   const [countdown, setCountdown] = useState<number | null>(null);
   const hasCountedDown = React.useRef(false);
@@ -420,9 +437,12 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     if (!roomId) return;
     const unsub = onSnapshot(doc(db, "ludo_rooms", roomId), (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data() as Room;
+        const data = docSnap.data() as any;
         setRoomData(data);
         if (data.winner) setWinner(data.winner);
+        if (data.pieces) setPieces(data.pieces);
+        if (data.turn) setTurn(data.turn);
+        if (data.messages) setChatMessages(data.messages);
       } else {
         // Room deleted
         onLeave();
@@ -451,7 +471,10 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     if (!roomId) return;
     try {
       await updateDoc(doc(db, "ludo_rooms", roomId), {
-        status: 'playing'
+        status: 'playing',
+        pieces: INITIAL_PIECES,
+        turn: 'red',
+        messages: [{ sender: 'System', text: 'Game Started!' }]
       });
     } catch (error) {
       console.error("Error starting game:", error);
@@ -464,42 +487,132 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         balance: increment(amount)
       });
-      // Also log transaction (skipping complex transaction logic for simplicity here)
     } catch (error) {
       console.error("Error updating balance:", error);
     }
   };
 
-  const handleWinMock = async () => {
-    // Demo function: end game and award pot
-    if (!roomId || !auth.currentUser) return;
-    try {
-      await updateDoc(doc(db, "ludo_rooms", roomId), {
-        status: 'finished',
-        winner: auth.currentUser.uid
-      });
-      const winAmount = stake * 2 * 0.97;
-      
-      // We explicitly deducted the stake upon creation/join, so we add the full win amount here.
-      await updateBalanceDB(winAmount); 
-      alert(`You Won ₹${winAmount}!`);
-      onLeave();
-    } catch(e) {}
+  const syncState = async (newPieces: PieceState[], nextTurn: "red" | "green", isWin: boolean = false) => {
+     if (!roomId) return;
+     try {
+       const updates: any = { pieces: newPieces, turn: nextTurn };
+       if (isWin) {
+         updates.status = 'finished';
+         updates.winner = auth.currentUser?.uid;
+       }
+       await updateDoc(doc(db, "ludo_rooms", roomId), updates);
+       
+       if (isWin) {
+         const winAmount = stake * 2 * 0.97;
+         await updateBalanceDB(winAmount); 
+         alert(`Congratulations! You Won ₹${winAmount}!`);
+         onLeave();
+       }
+     } catch(e){}
+  };
+
+  const handlePieceClick = (piece: PieceState) => {
+     if (!diceValue) return;
+     const isHostObj = roomData?.hostId === auth.currentUser?.uid;
+     // For testing simplicity, you can play both sides if playing alone, 
+     // but let's restrict if we want true multiplayer constraint:
+     // const myColor = isHostObj ? 'red' : 'green';
+     // if (piece.color !== myColor || turn !== myColor) return;
+     
+     // Allow click if it's the current turn's piece (for local testing flexibility we won't strictly enforce myColor)
+     if (piece.color !== turn) return; 
+
+     const newPieces = [...pieces];
+     const idx = newPieces.findIndex(p => p.id === piece.id);
+     let moved = false;
+
+     if (newPieces[idx].status === 'base') {
+         if (diceValue === 6) {
+             newPieces[idx].status = 'active';
+             newPieces[idx].position = piece.color === 'red' ? 0 : 13;
+             moved = true;
+         }
+     } else if (newPieces[idx].status === 'active') {
+         newPieces[idx].position += diceValue;
+         // Very crude home condition
+         if (newPieces[idx].position >= 51) {
+             newPieces[idx].status = 'home';
+             newPieces[idx].position = 0; // Simple home layout index
+         }
+         moved = true;
+     } else if (newPieces[idx].status === 'home') {
+         if (newPieces[idx].position + diceValue <= 5) {
+             newPieces[idx].position += diceValue;
+             moved = true;
+         }
+     }
+     
+     if (moved) {
+        setPieces(newPieces);
+        
+        let nextTurn = turn;
+        if (diceValue !== 6) {
+            nextTurn = turn === 'red' ? 'green' : 'red';
+        }
+        setDiceValue(null);
+        
+        // Check win condition
+        const myHomePieces = newPieces.filter(p => p.color === turn && p.status === 'home' && p.position === 5).length;
+        const isWin = myHomePieces === 4;
+        
+        syncState(newPieces, nextTurn, isWin);
+     }
   };
 
   const rollDice = () => {
-    if (turn !== "red") return;
+    const isHostObj = roomData?.hostId === auth.currentUser?.uid;
+    const myColor = isHostObj ? 'red' : 'green';
+    
+    // Check if it's actually their turn (for multiplayer)
+    if (roomData && turn !== myColor) {
+      if (roomData.players.length > 1) { // Only enforce if someone else is here
+          alert("It's not your turn!");
+          return;
+      }
+    }
+
     setIsRolling(true);
     setTimeout(() => {
-      setDiceValue(Math.floor(Math.random() * 6) + 1);
+      const val = Math.floor(Math.random() * 6) + 1;
+      
+      // Calculate if there are any valid moves
+      let hasValidMove = false;
+      for (const piece of pieces) {
+         if (piece.color !== turn) continue;
+         if (piece.status === 'base' && val === 6) hasValidMove = true;
+         if (piece.status === 'active') hasValidMove = true;
+         if (piece.status === 'home' && piece.position + val <= 5) hasValidMove = true;
+      }
+
+      if (!hasValidMove) {
+          // Auto switch turn
+          const nextTurn = turn === 'red' ? 'green' : 'red';
+          setDiceValue(null);
+          syncState(pieces, nextTurn, false);
+      } else {
+          setDiceValue(val);
+      }
       setIsRolling(false);
-      // Mock turn switch
-      setTurn("green");
-      setTimeout(() => {
-        setTurn("red"); // back to red
-        setDiceValue(null);
-      }, 3000);
-    }, 800);
+    }, 500);
+  };
+
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || !roomId || !auth.currentUser) return;
+    const isHostObj = roomData?.hostId === auth.currentUser?.uid;
+    const myName = (auth.currentUser.email || "Player").split('@')[0];
+    
+    const newMsg = { sender: myName, text };
+    try {
+      await updateDoc(doc(db, "ludo_rooms", roomId), {
+        messages: [...chatMessages, newMsg]
+      });
+      setChatInput("");
+    } catch(e) {}
   };
 
   const isHost = roomData?.hostId === auth.currentUser?.uid;
@@ -592,77 +705,54 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
             )}
           </div>
         ) : (
-          <div className="w-full max-w-200 flex items-center justify-center p-2 lg:p-6 relative">
-            {/* The main active game area matching the image structure closely */}
+          <div className="w-full max-w-2xl flex items-center justify-center p-2 lg:p-6 relative">
+            {/* The main active game area */}
             <div className="w-full aspect-square relative">
                
                {/* Player 1 (Red - Top Left) */}
-               <div className={`absolute -top-12 -left-12 lg:-top-8 lg:-left-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#8f1212] to-[#4a0606] ${turn === 'red' ? 'border-[#ffce33]' : 'border-[#2a0e0e]'}`}>
+               <div className={`absolute -top-12 -left-12 lg:-top-8 lg:-left-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#8f1212] to-[#4a0606] ${turn === 'red' ? 'border-[#ffce33] scale-110' : 'border-[#2a0e0e] opacity-70'} transition-all`}>
                   <div className="bg-[#cc2b2b] rounded-lg p-1 aspect-square mb-2 relative overflow-hidden border border-black/50">
                      <Users className="w-full h-full text-white/50" />
                      {turn === 'red' && <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full animate-pulse m-1"></div>}
                   </div>
                   <div className="text-center">
-                     <p className="text-white text-[10px] lg:text-xs font-bold uppercase tracking-wider">You</p>
-                     <p className="text-[#ffce33] text-[9px] lg:text-[10px] font-bold font-mono leading-none">₹{stake.toLocaleString()}</p>
+                     <p className="text-white text-[10px] lg:text-xs font-bold uppercase tracking-wider">{isHost ? 'You' : 'Opponent'}</p>
                   </div>
                </div>
 
                {/* Player 2 (Green - Top Right) */}
-               <div className={`absolute -top-12 -right-12 lg:-top-8 lg:-right-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#13662a] to-[#083013] ${turn === 'green' ? 'border-[#ffce33]' : 'border-[#0a1f0f]'}`}>
+               <div className={`absolute -top-12 -right-12 lg:-top-8 lg:-right-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#13662a] to-[#083013] ${turn === 'green' ? 'border-[#ffce33] scale-110' : 'border-[#0a1f0f] opacity-70'} transition-all`}>
                   <div className="bg-[#2d9e47] rounded-lg p-1 aspect-square mb-2 relative overflow-hidden border border-black/50">
                      <Users className="w-full h-full text-white/50" />
                      {turn === 'green' && <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full animate-pulse m-1"></div>}
                   </div>
                   <div className="text-center">
-                     <p className="text-white text-[10px] lg:text-xs font-bold uppercase tracking-wider">Opponent</p>
-                     <p className="text-[#ffce33] text-[9px] lg:text-[10px] font-bold font-mono leading-none">₹{stake.toLocaleString()}</p>
+                     <p className="text-white text-[10px] lg:text-xs font-bold uppercase tracking-wider">{!isHost ? 'You' : 'Opponent'}</p>
                   </div>
                </div>
 
                {/* Center Board Layout */}
                <div className="w-full h-full flex items-center justify-center p-4">
-                  <LudoGrid onWin={handleWinMock} />
-               </div>
-
-               {/* Player 3 (Blue - Bottom Left - Inactive) */}
-               <div className={`absolute -bottom-12 -left-12 lg:-bottom-8 lg:-left-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#103a7a] to-[#061836] border-[#0a1526] opacity-50`}>
-                  <div className="bg-[#2267c7] rounded-lg p-1 aspect-square mb-2 relative overflow-hidden border border-black/50 flex items-center justify-center">
-                     <Users className="w-8 h-8 text-white/30" />
-                  </div>
-                  <div className="text-center">
-                     <p className="text-slate-400 text-[10px] lg:text-xs font-bold uppercase tracking-wider">Empty</p>
-                  </div>
-               </div>
-
-               {/* Player 4 (Yellow - Bottom Right - Inactive) */}
-               <div className={`absolute -bottom-12 -right-12 lg:-bottom-8 lg:-right-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#99700b] to-[#402d02] border-[#291f03] opacity-50`}>
-                  <div className="bg-[#e2a818] rounded-lg p-1 aspect-square mb-2 relative overflow-hidden border border-black/50 flex items-center justify-center">
-                     <Users className="w-8 h-8 text-white/30" />
-                  </div>
-                  <div className="text-center">
-                     <p className="text-slate-400 text-[10px] lg:text-xs font-bold uppercase tracking-wider">Empty</p>
-                  </div>
+                  <LudoGrid pieces={pieces} onPieceClick={handlePieceClick} />
                </div>
 
                {/* Roll Dice Action Area */}
                <div className="absolute -left-16 lg:-left-28 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3">
-                  <div className="w-20 h-20 bg-slate-900 border-2 border-slate-700 rounded-xl flex items-center justify-center shadow-lg transform transition-transform hover:scale-105 cursor-pointer">
+                  <div 
+                     onClick={rollDice}
+                     className={`w-20 h-20 bg-slate-900 border-2 ${turn === (isHost ? 'red' : 'green') ? 'border-[#00ff88] cursor-pointer' : 'border-slate-700 cursor-not-allowed'} rounded-xl flex items-center justify-center shadow-lg transform transition-transform ${isRolling ? 'scale-90 scale-x-[-1]' : 'hover:scale-105'}`}
+                  >
                     {isRolling ? (
-                      <Dices className="w-10 h-10 animate-spin text-slate-400" />
+                      <Dices className="w-10 h-10 text-slate-400" />
                     ) : diceValue ? (
                       <span className="text-4xl font-black text-white">{diceValue}</span>
                     ) : (
-                      <Dices className="w-10 h-10 text-white" />
+                      <Dices className={`w-10 h-10 ${turn === (isHost ? 'red' : 'green') ? 'text-[#00ff88]' : 'text-slate-600'}`} />
                     )}
                   </div>
-                  <button 
-                    onClick={rollDice}
-                    disabled={turn !== 'red' || isRolling}
-                    className="bg-[#cc2b2b] hover:bg-[#a12020] disabled:opacity-50 disabled:grayscale text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-black/50 text-sm tracking-widest border-2 border-white/20 whitespace-nowrap"
-                  >
-                    ROLL
-                  </button>
+                  <div className="bg-black/50 px-3 py-1 text-xs text-center border border-white/10 rounded-full text-slate-400 uppercase tracking-widest">
+                     {turn === 'red' ? <span className="text-red-400">Red Turn</span> : <span className="text-green-400">Green Turn</span>}
+                  </div>
                </div>
             </div>
           </div>
@@ -682,26 +772,55 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
          </div>
 
          {/* Chat Box */}
-         <div className="flex-1 bg-[#0b1711] border border-slate-800 rounded-xl flex flex-col overflow-hidden">
+         <div className="flex-1 bg-[#0b1711] border border-slate-800 rounded-xl flex flex-col overflow-hidden relative">
             <div className="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-               <span className="text-white font-medium flex items-center gap-2"><MessageSquare size={16}/> Livestream Chat</span>
-               <Volume2 size={18} className="text-slate-400 cursor-pointer hover:text-white" />
+               <span className="text-white font-medium flex items-center gap-2"><MessageSquare size={16}/> Voice & Chat</span>
             </div>
-            <div className="flex-1 p-4 overflow-y-auto space-y-3">
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 flex flex-col">
                <div className="text-center text-xs text-slate-500 mb-4 bg-slate-800/30 py-1 rounded">
-                 {isPlaying ? "System: Game Started. You play as Red." : "System: Waiting for opponent..."}
+                 {isPlaying ? "System: Game Started. Good luck!" : "System: Waiting for opponent..."}
                </div>
+               {chatMessages.map((msg, i) => (
+                 <div key={i} className={`flex flex-col ${msg.sender === (auth.currentUser?.email?.split('@')[0]) ? 'items-end' : 'items-start'}`}>
+                   <span className="text-[10px] text-slate-500 mb-1">{msg.sender}</span>
+                   <span className={`px-3 py-2 rounded-xl text-sm ${msg.sender === 'System' ? 'bg-slate-800 text-slate-400 w-full text-center' : msg.sender === (auth.currentUser?.email?.split('@')[0]) ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800 text-white rounded-bl-none'}`}>{msg.text}</span>
+                 </div>
+               ))}
             </div>
+
+            {/* Quick Emoji Bar */}
+            <div className="p-2 border-t border-slate-800 bg-slate-900/30 flex gap-2 overflow-x-auto hide-scrollbar">
+               {EMOJIS.map(emoji => (
+                  <button 
+                    key={emoji} 
+                    onClick={() => sendMessage(emoji)}
+                    className="text-xl hover:bg-slate-700 p-1.5 rounded-lg transition-colors shrink-0"
+                  >
+                    {emoji}
+                  </button>
+               ))}
+            </div>
+
             {/* Input */}
-            <div className="p-3 border-t border-slate-800 bg-slate-900/50 flex gap-2">
-               <input type="text" placeholder="Send a message..." className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" />
-               <button className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg transition-colors">
+            <div className="p-3 border-t border-slate-800 bg-slate-900/50 flex gap-2 bg-linear-to-t from-slate-950 to-transparent">
+               <input 
+                 type="text" 
+                 value={chatInput}
+                 onChange={e => setChatInput(e.target.value)}
+                 onKeyDown={e => e.key === 'Enter' && sendMessage(chatInput)}
+                 placeholder="Say something..." 
+                 className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" 
+               />
+               <button 
+                 onClick={() => alert("Voice feature requires additional permissions and is disabled in preview.")}
+                 className="bg-amber-600/20 hover:bg-amber-500/30 text-amber-500 p-2 rounded-lg transition-colors border border-amber-500/20"
+                 title="Voice Chat (Preview only)"
+               >
                  <Mic size={18} />
                </button>
             </div>
          </div>
       </div>
-
     </div>
   );
 }

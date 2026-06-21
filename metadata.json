@@ -1,6 +1,6 @@
 {
   "name": "Casino & Ludo Multiplayer",
   "description": "High-performance full-stack responsive dashboard with Ludo Multiplayer and Voice Chat.",
-  "requestFramePermissions": ["microphone"],
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
