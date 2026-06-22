@@ -5,23 +5,42 @@ import { auth, db } from '../firebase';
 import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, getDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
 import LudoGrid, { PieceState } from './LudoGrid';
 
+const DiceFace = ({ value }: { value: number }) => {
+  return (
+    <div className="w-full h-full relative flex items-center justify-center rounded-xl lg:rounded-2xl">
+      <div className="absolute inset-0 bg-black/20 rounded-xl lg:rounded-2xl translate-y-2 translate-x-1 blur-[2px]"></div>
+      <div className="absolute inset-0 bg-linear-to-tr from-white/10 to-white/40 rounded-xl lg:rounded-2xl shadow-[inset_0_4px_6px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.3)] border-t border-l border-white/50 backdrop-blur-sm -translate-y-1"></div>
+      <span className="text-4xl lg:text-5xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] z-10 -translate-y-1">{value}</span>
+    </div>
+  );
+};
+
 interface JoinRequest {
   userId: string;
   userName: string;
   status: 'pending' | 'accepted' | 'rejected';
 }
 
-interface Room {
+export interface Room {
   id: string;
   hostId: string;
   hostName: string;
   roomCode?: string;
   stake: number;
   players: string[];
+  maxPlayers: 2 | 4;
   status: 'waiting' | 'ready' | 'playing' | 'finished';
   winner?: string;
   joinRequests?: JoinRequest[];
   createdAt: any;
+  exitedPlayers?: string[];
+  missedTurns?: { [playerId: string]: number };
+  turnStartedAt?: number;
+  isRolling?: boolean;
+  lastDiceRoll?: number | null;
+  pieces?: PieceState[];
+  turn?: 'red' | 'green' | 'yellow' | 'blue';
+  messages?: { sender: string; text: string }[];
 }
 
 export default function LiveLudo() {
@@ -30,6 +49,7 @@ export default function LiveLudo() {
   const [balance, setBalance] = useState(0);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [customStake, setCustomStake] = useState<number>(100);
+  const [createMaxPlayers, setCreateMaxPlayers] = useState<2 | 4>(2);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   
   const [joinCode, setJoinCode] = useState("");
@@ -125,6 +145,7 @@ export default function LiveLudo() {
         roomCode,
         stake: customStake,
         players: [auth.currentUser.uid],
+        maxPlayers: createMaxPlayers,
         status: 'waiting',
         joinRequests: [],
         createdAt: serverTimestamp()
@@ -269,25 +290,38 @@ export default function LiveLudo() {
             <p className="text-sm text-slate-400 mb-6">Create a room, set your stake, and share the code to invite opponents.</p>
           </div>
           
-          <div className="flex items-end gap-3 w-full">
-            <div className="flex-1">
-              <label className="text-xs text-slate-400 font-bold uppercase block mb-2">Stake Amount (₹)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
-                <input 
-                  type="number" 
-                  value={customStake}
-                  onChange={(e) => setCustomStake(Number(e.target.value))}
-                  min="10"
-                  className="bg-[#05100a] border border-slate-700 rounded-lg pl-8 pr-3 py-3 text-white font-bold w-full focus:outline-none focus:border-[#00ff88]/50 focus:ring-1 focus:ring-[#00ff88]/50"
-                />
+          <div className="flex flex-col gap-3 w-full">
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs text-slate-400 font-bold uppercase block mb-2">Stake (₹)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
+                  <input 
+                    type="number" 
+                    value={customStake}
+                    onChange={(e) => setCustomStake(Number(e.target.value))}
+                    min="10"
+                    className="bg-[#05100a] border border-slate-700 rounded-lg pl-8 pr-3 py-3 text-white font-bold w-full focus:outline-none focus:border-[#00ff88]/50 focus:ring-1 focus:ring-[#00ff88]/50"
+                  />
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-slate-400 font-bold uppercase block mb-2">Players</label>
+                <select
+                  value={createMaxPlayers}
+                  onChange={(e) => setCreateMaxPlayers(Number(e.target.value) as 2 | 4)}
+                  className="bg-[#05100a] border border-slate-700 rounded-lg px-3 py-3 text-white font-bold w-full focus:outline-none focus:border-[#00ff88]/50 focus:ring-1 focus:ring-[#00ff88]/50"
+                >
+                  <option value={2}>2 Players</option>
+                  <option value={4}>4 Players</option>
+                </select>
               </div>
             </div>
             <button 
               onClick={handleCreateRoom}
-              className="bg-[#00ff88] text-[#020503] h-12.5 px-8 rounded-lg font-bold hover:bg-[#00ff88]/90 transition-colors flex items-center gap-2"
+              className="bg-[#00ff88] text-[#020503] h-12.5 px-8 flex-1 rounded-lg font-bold hover:bg-[#00ff88]/90 transition-colors flex items-center justify-center gap-2"
             >
-              Create
+              Create Game
             </button>
           </div>
         </div>
@@ -407,31 +441,48 @@ export default function LiveLudo() {
 
 // Subcomponent for the actual Game Board
 const INITIAL_PIECES: PieceState[] = [
-  { id: 'r1', color: 'red', status: 'base', position: 0 },
-  { id: 'r2', color: 'red', status: 'base', position: 0 },
-  { id: 'r3', color: 'red', status: 'base', position: 0 },
-  { id: 'r4', color: 'red', status: 'base', position: 0 },
-  { id: 'g1', color: 'green', status: 'base', position: 0 },
-  { id: 'g2', color: 'green', status: 'base', position: 0 },
-  { id: 'g3', color: 'green', status: 'base', position: 0 },
-  { id: 'g4', color: 'green', status: 'base', position: 0 },
+  { id: 'r1', color: 'red', position: -1 },
+  { id: 'r2', color: 'red', position: -1 },
+  { id: 'r3', color: 'red', position: -1 },
+  { id: 'r4', color: 'red', position: -1 },
+  { id: 'g1', color: 'green', position: -1 },
+  { id: 'g2', color: 'green', position: -1 },
+  { id: 'g3', color: 'green', position: -1 },
+  { id: 'g4', color: 'green', position: -1 },
+  { id: 'y1', color: 'yellow', position: -1 },
+  { id: 'y2', color: 'yellow', position: -1 },
+  { id: 'y3', color: 'yellow', position: -1 },
+  { id: 'y4', color: 'yellow', position: -1 },
+  { id: 'b1', color: 'blue', position: -1 },
+  { id: 'b2', color: 'blue', position: -1 },
+  { id: 'b3', color: 'blue', position: -1 },
+  { id: 'b4', color: 'blue', position: -1 },
 ];
 
 const EMOJIS = ["👍", "👎", "😂", "😡", "😭", "🎲", "🔥", "🎉", "😱", "😎", "💔", "👏", "🏆", "🎮", "🚀", "💀", "👀", "🙌"];
 
 function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => void, roomId: string | null }) {
-  const [turn, setTurn] = useState<"red" | "green">("red");
+  const [turn, setTurn] = useState<"red" | "green" | "yellow" | "blue">("red");
   const [diceValue, setDiceValue] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
+  const isProcessingMoveRef = React.useRef(false);
   const [roomData, setRoomData] = useState<Room | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   
   const [pieces, setPieces] = useState<PieceState[]>(INITIAL_PIECES);
   const [chatMessages, setChatMessages] = useState<{sender: string, text: string}[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [consecutiveSixes, setConsecutiveSixes] = useState(0);
   
   const [countdown, setCountdown] = useState<number | null>(null);
   const hasCountedDown = React.useRef(false);
+  const hasClaimedWin = React.useRef(false);
+
+  const [isMicEnabled, setIsMicEnabled] = useState(false);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  
+  const finalIsRolling = isRolling || roomData?.isRolling;
+  const finalDiceValue = diceValue || roomData?.lastDiceRoll;
 
   useEffect(() => {
     if (!roomId) return;
@@ -444,7 +495,6 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
         if (data.turn) setTurn(data.turn);
         if (data.messages) setChatMessages(data.messages);
       } else {
-        // Room deleted
         onLeave();
       }
     });
@@ -455,8 +505,20 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     if (roomData?.status === 'playing' && !hasCountedDown.current) {
       setCountdown(5);
       hasCountedDown.current = true;
+      requestMicPermission(true);
     }
   }, [roomData?.status]);
+
+  useEffect(() => {
+    if (roomData?.status === 'finished' && roomData.winner === auth.currentUser?.uid && !hasClaimedWin.current) {
+      hasClaimedWin.current = true;
+      const winAmount = stake * (roomData?.players?.length || 2) * 0.97;
+      updateBalanceDB(winAmount).then(() => {
+        alert(`Congratulations! You Won ₹${winAmount}!`);
+        onLeave();
+      });
+    }
+  }, [roomData?.status, roomData?.winner]);
 
   useEffect(() => {
     if (countdown !== null && countdown > 0) {
@@ -467,6 +529,32 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     }
   }, [countdown]);
 
+  const requestMicPermission = async (silentMode = false) => {
+    const savedPermission = localStorage.getItem('ludo_mic_permission');
+    if (silentMode && savedPermission === 'denied') return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setIsMicEnabled(true);
+      setMicStream(stream);
+      localStorage.setItem('ludo_mic_permission', 'granted');
+    } catch (error) {
+      setIsMicEnabled(false);
+      localStorage.setItem('ludo_mic_permission', 'denied');
+      if (!silentMode) alert("Microphone permission denied. Please allow it in your browser settings.");
+    }
+  };
+
+  const toggleMic = () => {
+    if (isMicEnabled && micStream) {
+       micStream.getTracks().forEach(t => t.stop());
+       setMicStream(null);
+       setIsMicEnabled(false);
+    } else {
+       requestMicPermission(false);
+    }
+  };
+
   const startGame = async () => {
     if (!roomId) return;
     try {
@@ -474,6 +562,9 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
         status: 'playing',
         pieces: INITIAL_PIECES,
         turn: 'red',
+        turnStartedAt: Date.now(),
+        exitedPlayers: [],
+        missedTurns: {},
         messages: [{ sender: 'System', text: 'Game Started!' }]
       });
     } catch (error) {
@@ -492,106 +583,281 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     }
   };
 
-  const syncState = async (newPieces: PieceState[], nextTurn: "red" | "green", isWin: boolean = false) => {
+  const getNextTurn = (currentTurn: string, roomPlayers: string[], exitedPlayers: string[] = []): string => {
+     const COLORS = ['red', 'green', 'yellow', 'blue'];
+     const numPlayers = roomPlayers.length || 2;
+     let nextColorIndex = (COLORS.indexOf(currentTurn) + 1) % numPlayers;
+     
+     // Skip exited players, limit to avoid infinite loop
+     for (let i = 0; i < numPlayers; i++) {
+        const checkColor = COLORS[nextColorIndex];
+        const checkPlayerId = roomPlayers[nextColorIndex];
+        if (checkPlayerId && exitedPlayers.includes(checkPlayerId)) {
+            nextColorIndex = (nextColorIndex + 1) % numPlayers;
+        } else {
+            break;
+        }
+     }
+     return COLORS[nextColorIndex];
+  };
+
+  const handleTurnTimeout = async () => {
+      if (!roomId || !roomData) return;
+      const COLORS = ['red', 'green', 'yellow', 'blue'];
+      const currentTurnPlayer = roomData.players[COLORS.indexOf(turn)];
+      if (!currentTurnPlayer) return;
+
+      const newMissedTurns = { ...(roomData.missedTurns || {}) };
+      newMissedTurns[currentTurnPlayer] = (newMissedTurns[currentTurnPlayer] || 0) + 1;
+      
+      const newExitedPlayers = [...(roomData.exitedPlayers || [])];
+      let newStatus = roomData.status;
+      let newWinner = roomData.winner;
+
+      if (newMissedTurns[currentTurnPlayer] >= 3 && !newExitedPlayers.includes(currentTurnPlayer)) {
+          newExitedPlayers.push(currentTurnPlayer);
+          const activePlayers = roomData.players.filter(p => !newExitedPlayers.includes(p));
+          if (activePlayers.length <= 1) {
+             newStatus = 'finished';
+             newWinner = activePlayers[0] || roomData.players[0]; // Remaining player wins
+          }
+      }
+
+      let newPieces = [...pieces];
+      let getAnotherTurn = false;
+      let usedDiceValue = diceValue || Math.floor(Math.random() * 6) + 1;
+      if (usedDiceValue === 6) getAnotherTurn = true;
+      
+      // Auto move logic
+      let movablePieces = newPieces.filter(p => p.color === turn && ((p.position === -1 && usedDiceValue === 6) || (p.position >= 0 && p.position + usedDiceValue <= 56)));
+      if (movablePieces.length > 0) {
+          let p = movablePieces[0]; // just pick the first valid piece
+          if (p.position === -1) {
+              p.position = 0;
+          } else {
+              p.position += usedDiceValue;
+              if (p.position === 56) getAnotherTurn = true;
+          }
+          
+          // Check Knockouts
+          if (p.position >= 0 && p.position <= 50) {
+             const offset = p.color === 'red' ? 0 : p.color === 'green' ? 13 : p.color === 'yellow' ? 26 : 39;
+             const absolutePos = (p.position + offset) % 52;
+             const SAFE_SQUARES = [0, 8, 13, 21, 26, 34, 39, 47];
+             if (!SAFE_SQUARES.includes(absolutePos)) {
+                for (let i = 0; i < newPieces.length; i++) {
+                   const otherP = newPieces[i];
+                   if (otherP.color !== p.color && otherP.position >= 0 && otherP.position <= 50) {
+                      const otherOffset = otherP.color === 'red' ? 0 : otherP.color === 'green' ? 13 : otherP.color === 'yellow' ? 26 : 39;
+                      const otherAbsolutePos = (otherP.position + otherOffset) % 52;
+                      if (otherAbsolutePos === absolutePos) {
+                         otherP.position = -1; // KNOCKED OUT
+                         getAnotherTurn = true;
+                      }
+                   }
+                }
+             }
+          }
+      }
+
+      // Check win condition
+      const myHomePieces = newPieces.filter(piece => piece.color === turn && piece.position === 56).length;
+      if (myHomePieces === 4) {
+          newStatus = 'finished';
+          newWinner = currentTurnPlayer;
+      }
+
+      const nextTurn = (!getAnotherTurn || newMissedTurns[currentTurnPlayer] >= 3) ? getNextTurn(turn, roomData.players, newExitedPlayers) : turn;
+      
+      try {
+         const updates: any = { 
+             turn: nextTurn, 
+             turnStartedAt: Date.now(), 
+             missedTurns: newMissedTurns,
+             exitedPlayers: newExitedPlayers,
+             pieces: newPieces
+         };
+         if (newStatus === 'finished') {
+             updates.status = newStatus;
+             updates.winner = newWinner;
+         }
+         await updateDoc(doc(db, "ludo_rooms", roomId), updates);
+         setDiceValue(null);
+         setIsRolling(false);
+      } catch (e) {}
+  };
+
+  const [timeLeft, setTimeLeft] = useState<number>(15);
+  const timeoutHandledRef = React.useRef(false);
+
+  useEffect(() => {
+    if (roomData?.status !== 'playing' || !roomData?.turnStartedAt) return;
+    
+    timeoutHandledRef.current = false;
+    
+    const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - roomData.turnStartedAt!) / 1000);
+        const remaining = Math.max(0, 15 - elapsed);
+        setTimeLeft(remaining);
+        
+        if (remaining === 0 && !timeoutHandledRef.current) {
+            timeoutHandledRef.current = true;
+            const COLORS = ['red', 'green', 'yellow', 'blue'];
+            const myColor = COLORS[roomData?.players?.indexOf(auth.currentUser?.uid || '') || 0];
+            const isHostActive = roomData?.hostId === auth.currentUser?.uid;
+            
+            // Allow the player whose turn it is to handle it, OR the host as a fallback
+            if (turn === myColor || isHostActive) {
+                handleTurnTimeout();
+            }
+        }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [roomData?.turnStartedAt, roomData?.status, turn]);
+  const syncState = async (newPieces: PieceState[], nextTurn: "red" | "green" | "yellow" | "blue", isWin: boolean = false) => {
      if (!roomId) return;
      try {
-       const updates: any = { pieces: newPieces, turn: nextTurn };
+       const COLORS = ['red', 'green', 'yellow', 'blue'];
+       const currentTurnPlayer = roomData?.players?.[COLORS.indexOf(turn)];
+       const newMissedTurns = { ...(roomData?.missedTurns || {}) };
+       
+       if (currentTurnPlayer) {
+           newMissedTurns[currentTurnPlayer] = 0;
+       }
+
+       const updates: any = { pieces: newPieces, turn: nextTurn, turnStartedAt: Date.now(), missedTurns: newMissedTurns, lastDiceRoll: null, isRolling: false };
        if (isWin) {
          updates.status = 'finished';
          updates.winner = auth.currentUser?.uid;
        }
        await updateDoc(doc(db, "ludo_rooms", roomId), updates);
-       
-       if (isWin) {
-         const winAmount = stake * 2 * 0.97;
-         await updateBalanceDB(winAmount); 
-         alert(`Congratulations! You Won ₹${winAmount}!`);
-         onLeave();
-       }
      } catch(e){}
   };
 
   const handlePieceClick = (piece: PieceState) => {
-     if (!diceValue) return;
-     const isHostObj = roomData?.hostId === auth.currentUser?.uid;
-     // For testing simplicity, you can play both sides if playing alone, 
-     // but let's restrict if we want true multiplayer constraint:
-     // const myColor = isHostObj ? 'red' : 'green';
-     // if (piece.color !== myColor || turn !== myColor) return;
-     
-     // Allow click if it's the current turn's piece (for local testing flexibility we won't strictly enforce myColor)
+     if (!diceValue || isProcessingMoveRef.current) return;
+     if (roomData?.exitedPlayers?.includes(auth.currentUser?.uid || '')) return;
+
+     const COLORS = ['red', 'green', 'yellow', 'blue'];
+     const myColor = COLORS[roomData?.players?.indexOf(auth.currentUser?.uid || '') || 0];
+
      if (piece.color !== turn) return; 
+     if (piece.color !== myColor && (roomData?.players?.length ?? 0) > 1) {
+         // Prevent moving opponents pieces
+         return;
+     }
 
      const newPieces = [...pieces];
      const idx = newPieces.findIndex(p => p.id === piece.id);
+     const p = newPieces[idx];
      let moved = false;
+     let getAnotherTurn = diceValue === 6;
 
-     if (newPieces[idx].status === 'base') {
+     if (p.position === -1) {
          if (diceValue === 6) {
-             newPieces[idx].status = 'active';
-             newPieces[idx].position = piece.color === 'red' ? 0 : 13;
+             p.position = 0;
              moved = true;
          }
-     } else if (newPieces[idx].status === 'active') {
-         newPieces[idx].position += diceValue;
-         // Very crude home condition
-         if (newPieces[idx].position >= 51) {
-             newPieces[idx].status = 'home';
-             newPieces[idx].position = 0; // Simple home layout index
-         }
-         moved = true;
-     } else if (newPieces[idx].status === 'home') {
-         if (newPieces[idx].position + diceValue <= 5) {
-             newPieces[idx].position += diceValue;
+     } else if (p.position >= 0 && p.position <= 50) {
+         if (p.position + diceValue <= 56) {
+             p.position += diceValue;
              moved = true;
+         }
+     } else if (p.position >= 51 && p.position <= 56) {
+         if (p.position + diceValue <= 56) {
+             p.position += diceValue;
+             moved = true;
+             if (p.position === 56) getAnotherTurn = true; // Extra turn for reaching home!
          }
      }
      
      if (moved) {
+        isProcessingMoveRef.current = true;
+        // Check Knockouts
+        if (p.position >= 0 && p.position <= 50) {
+           const offset = p.color === 'red' ? 0 : p.color === 'green' ? 13 : p.color === 'yellow' ? 26 : 39;
+           const absolutePos = (p.position + offset) % 52;
+           const SAFE_SQUARES = [0, 8, 13, 21, 26, 34, 39, 47];
+           if (!SAFE_SQUARES.includes(absolutePos)) {
+              for (let i = 0; i < newPieces.length; i++) {
+                 const otherP = newPieces[i];
+                 if (otherP.color !== p.color && otherP.position >= 0 && otherP.position <= 50) {
+                    const otherOffset = otherP.color === 'red' ? 0 : otherP.color === 'green' ? 13 : otherP.color === 'yellow' ? 26 : 39;
+                    const otherAbsolutePos = (otherP.position + otherOffset) % 52;
+                    if (otherAbsolutePos === absolutePos) {
+                       otherP.position = -1; // KNOCKED OUT
+                       getAnotherTurn = true;
+                    }
+                 }
+              }
+           }
+        }
+
         setPieces(newPieces);
         
         let nextTurn = turn;
-        if (diceValue !== 6) {
-            nextTurn = turn === 'red' ? 'green' : 'red';
+        if (!getAnotherTurn) {
+            nextTurn = getNextTurn(turn, roomData?.players || [], roomData?.exitedPlayers || []) as any;
         }
         setDiceValue(null);
         
         // Check win condition
-        const myHomePieces = newPieces.filter(p => p.color === turn && p.status === 'home' && p.position === 5).length;
+        const myHomePieces = newPieces.filter(piece => piece.color === turn && piece.position === 56).length;
         const isWin = myHomePieces === 4;
         
         syncState(newPieces, nextTurn, isWin);
+        setTimeout(() => { isProcessingMoveRef.current = false; }, 500);
      }
   };
 
   const rollDice = () => {
-    const isHostObj = roomData?.hostId === auth.currentUser?.uid;
-    const myColor = isHostObj ? 'red' : 'green';
+    if (isRolling || diceValue !== null) return;
     
-    // Check if it's actually their turn (for multiplayer)
+    const COLORS = ['red', 'green', 'yellow', 'blue'];
+    const playerIndex = roomData?.players?.indexOf(auth.currentUser?.uid || '') ?? -1;
+    const myColor = COLORS[playerIndex >= 0 ? playerIndex : 0];
+
+    if (roomData?.exitedPlayers?.includes(auth.currentUser?.uid || '')) {
+       return;
+    }
+
     if (roomData && turn !== myColor) {
-      if (roomData.players.length > 1) { // Only enforce if someone else is here
-          alert("It's not your turn!");
+      if ((roomData?.players?.length ?? 0) > 1) { // Only enforce turn switching strictly in multiplayer matches
+          alert("Not your turn!");
           return;
       }
     }
 
     setIsRolling(true);
+    if (roomId) updateDoc(doc(db, "ludo_rooms", roomId), { isRolling: true }).catch(()=>{});
+
     setTimeout(() => {
       const val = Math.floor(Math.random() * 6) + 1;
       
-      // Calculate if there are any valid moves
+      let nextSixes = val === 6 ? consecutiveSixes + 1 : 0;
+      setConsecutiveSixes(nextSixes);
+
+      if (roomId) updateDoc(doc(db, "ludo_rooms", roomId), { isRolling: false, lastDiceRoll: val }).catch(()=>{});
+
+      if (nextSixes === 3) {
+          const COLORS = ['red', 'green', 'yellow', 'blue'];
+          const nextTurn = getNextTurn(turn, roomData?.players || [], roomData?.exitedPlayers || []) as any;
+          setDiceValue(null);
+          setConsecutiveSixes(0);
+          syncState(pieces, nextTurn, false);
+          setIsRolling(false);
+          return;
+      }
+      
       let hasValidMove = false;
       for (const piece of pieces) {
          if (piece.color !== turn) continue;
-         if (piece.status === 'base' && val === 6) hasValidMove = true;
-         if (piece.status === 'active') hasValidMove = true;
-         if (piece.status === 'home' && piece.position + val <= 5) hasValidMove = true;
+         if (piece.position === -1 && val === 6) hasValidMove = true;
+         if (piece.position >= 0 && piece.position + val <= 56) hasValidMove = true;
       }
 
       if (!hasValidMove) {
-          // Auto switch turn
-          const nextTurn = turn === 'red' ? 'green' : 'red';
+          const nextTurn = val === 6 ? turn : getNextTurn(turn, roomData?.players || [], roomData?.exitedPlayers || []) as any;
           setDiceValue(null);
           syncState(pieces, nextTurn, false);
       } else {
@@ -600,6 +866,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       setIsRolling(false);
     }, 500);
   };
+
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || !roomId || !auth.currentUser) return;
@@ -617,6 +884,59 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
 
   const isHost = roomData?.hostId === auth.currentUser?.uid;
   const isPlaying = roomData?.status === 'playing';
+
+  const [opponentName, setOpponentName] = useState('Opponent');
+
+  useEffect(() => {
+     if (roomData && roomData.players) {
+        const otherId = roomData.players.find((id: string) => id !== auth.currentUser?.uid);
+        if (otherId) {
+           getDoc(doc(db, "users", otherId)).then(snap => {
+              if (snap.exists()) {
+                 const data = snap.data();
+                 setOpponentName(data.firstName || data.name || data.email?.split('@')[0] || 'Opponent');
+              } else {
+                 if (isHost) {
+                    const req = roomData.joinRequests?.find((r: any) => r.userId === otherId);
+                    if (req) setOpponentName(req.userName.split('@')[0]);
+                 } else {
+                    setOpponentName(roomData.hostName?.split('@')[0] || 'Opponent');
+                 }
+              }
+           });
+        }
+     }
+  }, [roomData?.players, isHost]);
+
+  const handleQuit = async () => {
+    if (isPlaying && auth.currentUser) {
+      const confirmLeave = window.confirm("If you leave now, you will lose the game and your bet. Are you sure?");
+      if (!confirmLeave) return;
+      
+      const newExitedPlayers = [...(roomData?.exitedPlayers || []), auth.currentUser.uid];
+      const activePlayers = roomData?.players?.filter((p: string) => !newExitedPlayers.includes(p)) || [];
+      
+      if (roomId) {
+        try {
+          const updates: any = { exitedPlayers: newExitedPlayers };
+          if (activePlayers.length <= 1) {
+             updates.status = 'finished';
+             updates.winner = activePlayers[0] || roomData?.players?.[0];
+          } else {
+             // If it was my turn, skip it
+             const COLORS = ['red', 'green', 'yellow', 'blue'];
+             const pIndex = roomData?.players?.indexOf(auth.currentUser.uid);
+             if (pIndex !== undefined && turn === COLORS[pIndex]) {
+                 updates.turn = getNextTurn(turn, roomData.players, newExitedPlayers);
+                 updates.turnStartedAt = Date.now();
+             }
+          }
+          await updateDoc(doc(db, "ludo_rooms", roomId), updates);
+        } catch(e) {}
+      }
+    }
+    onLeave();
+  };
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#020503] p-4 flex flex-col lg:flex-row gap-6 relative">
@@ -642,10 +962,10 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       <div className="flex-1 flex flex-col items-center justify-center">
         {!isPlaying ? (
           <div className="w-full max-w-150 mb-8 bg-[#0b1711] border border-[#00ff88]/30 p-8 rounded-2xl text-center">
-            {roomData?.status === 'ready' ? (
+            {(roomData?.players?.length ?? 0) > 1 ? (
                <>
-                 <h3 className="text-2xl font-bold text-white mb-4">Opponent Joined!</h3>
-                 <p className="text-slate-400 mb-6 font-medium">Ready to start the match for ₹{stake * 2 * 0.97}</p>
+                 <h3 className="text-2xl font-bold text-white mb-2">Players Joined: {roomData?.players?.length} / {roomData?.maxPlayers || 2}</h3>
+                 <p className="text-slate-400 mb-6 font-medium">Ready to start the match for ₹{stake * (roomData?.players?.length ?? 2) * 0.97}</p>
                  {isHost ? (
                     <button onClick={startGame} className="bg-[#00ff88] text-[#020503] px-8 py-3 rounded-xl font-bold text-lg hover:opacity-90 transition-all font-orbitron tracking-wider">START GAME NOW</button>
                  ) : (
@@ -655,14 +975,14 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
             ) : (
                <>
                  <div className="w-16 h-16 border-4 border-[#00ff88]/20 border-t-[#00ff88] rounded-full animate-spin mx-auto mb-4"></div>
-                 <h3 className="text-xl font-bold text-white mb-2">Waiting for opponent to join...</h3>
+                 <h3 className="text-xl font-bold text-white mb-2">Waiting for opponent to join... ({roomData?.players?.length || 1} / {roomData?.maxPlayers || 2})</h3>
                  <p className="text-slate-400 mb-4">Share your room code: <span className="font-mono bg-slate-800 px-2 py-1 rounded text-[#00ff88]">{roomData?.roomCode}</span></p>
                  
-                 {isHost && roomData?.joinRequests && roomData.joinRequests.some(r => r.status === 'pending') && (
+                 {isHost && roomData?.joinRequests && roomData.joinRequests.some((r: any) => r.status === 'pending') && (
                    <div className="mt-6 border-t border-slate-800 pt-6">
                      <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">Join Requests</h4>
                      <div className="space-y-3">
-                       {roomData.joinRequests.filter(r => r.status === 'pending').map((req, i) => (
+                       {roomData.joinRequests.filter((r: any) => r.status === 'pending').map((req: any, i: number) => (
                          <div key={i} className="flex items-center justify-between bg-slate-900 border border-slate-700 p-3 rounded-xl">
                            <div className="flex flex-col text-left">
                              <span className="text-white font-bold">{req.userName.split('@')[0]}</span>
@@ -673,11 +993,12 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                                onClick={async () => {
                                  if (!roomId) return;
                                  try {
-                                   const newRequests = roomData.joinRequests!.map(r => r.userId === req.userId ? { ...r, status: 'accepted' as const } : r);
+                                   const newPlayers = [...(roomData.players || []), req.userId];
+                                   const newRequests = roomData.joinRequests!.map((r: any) => r.userId === req.userId ? { ...r, status: 'accepted' as const } : r);
                                    await updateDoc(doc(db, "ludo_rooms", roomId), {
                                      joinRequests: newRequests,
-                                     players: [...roomData.players, req.userId],
-                                     status: 'ready'
+                                     players: newPlayers,
+                                     status: newPlayers.length >= (roomData.maxPlayers || 2) ? 'ready' : 'waiting'
                                    });
                                  } catch(e) {}
                                }}
@@ -687,7 +1008,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                                onClick={async () => {
                                  if (!roomId) return;
                                  try {
-                                   const newRequests = roomData.joinRequests!.map(r => r.userId === req.userId ? { ...r, status: 'rejected' as const } : r);
+                                   const newRequests = roomData.joinRequests!.map((r: any) => r.userId === req.userId ? { ...r, status: 'rejected' as const } : r);
                                    await updateDoc(doc(db, "ludo_rooms", roomId), {
                                      joinRequests: newRequests
                                    });
@@ -705,55 +1026,76 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
             )}
           </div>
         ) : (
-          <div className="w-full max-w-2xl flex items-center justify-center p-2 lg:p-6 relative">
+          <div className="w-full max-w-2xl flex flex-col items-center justify-center p-2 lg:p-6 mb-8 mt-4 relative">
+            
+            <div className="w-full flex justify-between items-center px-2 mb-4 z-10 relative">
+               {/* Player 1 (Red) */}
+               <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#8f1212] to-[#4a0606] ${turn === 'red' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#2a0e0e] opacity-80'} transition-all`}>
+                  {turn === 'red' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
+                  <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[0] || '') ? 'line-through text-red-400' : ''}`}>
+                    {!roomData?.players?.[0] ? 'EMPTY' : roomData.players[0] === auth.currentUser?.uid ? 'YOU' : 'P1'}
+                  </span>
+                  {roomData?.exitedPlayers?.includes(roomData?.players?.[0] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+               </div>
+
+               {/* Player 2 (Green) */}
+               <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#13662a] to-[#083013] ${turn === 'green' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#0a1f0f] opacity-80'} transition-all`}>
+                  {turn === 'green' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
+                  <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[1] || '') ? 'line-through text-red-400' : ''}`}>
+                    {!roomData?.players?.[1] ? 'EMPTY' : roomData.players[1] === auth.currentUser?.uid ? 'YOU' : 'P2'}
+                  </span>
+                  {roomData?.exitedPlayers?.includes(roomData?.players?.[1] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+               </div>
+            </div>
+
             {/* The main active game area */}
-            <div className="w-full aspect-square relative">
-               
-               {/* Player 1 (Red - Top Left) */}
-               <div className={`absolute -top-12 -left-12 lg:-top-8 lg:-left-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#8f1212] to-[#4a0606] ${turn === 'red' ? 'border-[#ffce33] scale-110' : 'border-[#2a0e0e] opacity-70'} transition-all`}>
-                  <div className="bg-[#cc2b2b] rounded-lg p-1 aspect-square mb-2 relative overflow-hidden border border-black/50">
-                     <Users className="w-full h-full text-white/50" />
-                     {turn === 'red' && <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full animate-pulse m-1"></div>}
-                  </div>
-                  <div className="text-center">
-                     <p className="text-white text-[10px] lg:text-xs font-bold uppercase tracking-wider">{isHost ? 'You' : 'Opponent'}</p>
-                  </div>
-               </div>
-
-               {/* Player 2 (Green - Top Right) */}
-               <div className={`absolute -top-12 -right-12 lg:-top-8 lg:-right-20 w-24 lg:w-32 z-10 p-2 rounded-xl border-2 shadow-2xl bg-linear-to-b from-[#13662a] to-[#083013] ${turn === 'green' ? 'border-[#ffce33] scale-110' : 'border-[#0a1f0f] opacity-70'} transition-all`}>
-                  <div className="bg-[#2d9e47] rounded-lg p-1 aspect-square mb-2 relative overflow-hidden border border-black/50">
-                     <Users className="w-full h-full text-white/50" />
-                     {turn === 'green' && <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full animate-pulse m-1"></div>}
-                  </div>
-                  <div className="text-center">
-                     <p className="text-white text-[10px] lg:text-xs font-bold uppercase tracking-wider">{!isHost ? 'You' : 'Opponent'}</p>
-                  </div>
-               </div>
-
-               {/* Center Board Layout */}
-               <div className="w-full h-full flex items-center justify-center p-4">
+            <div className="w-full aspect-square relative max-w-[90vw]">
+               <div className="w-full h-full flex items-center justify-center">
                   <LudoGrid pieces={pieces} onPieceClick={handlePieceClick} />
                </div>
-
-               {/* Roll Dice Action Area */}
-               <div className="absolute -left-16 lg:-left-28 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3">
-                  <div 
-                     onClick={rollDice}
-                     className={`w-20 h-20 bg-slate-900 border-2 ${turn === (isHost ? 'red' : 'green') ? 'border-[#00ff88] cursor-pointer' : 'border-slate-700 cursor-not-allowed'} rounded-xl flex items-center justify-center shadow-lg transform transition-transform ${isRolling ? 'scale-90 scale-x-[-1]' : 'hover:scale-105'}`}
-                  >
-                    {isRolling ? (
-                      <Dices className="w-10 h-10 text-slate-400" />
-                    ) : diceValue ? (
-                      <span className="text-4xl font-black text-white">{diceValue}</span>
-                    ) : (
-                      <Dices className={`w-10 h-10 ${turn === (isHost ? 'red' : 'green') ? 'text-[#00ff88]' : 'text-slate-600'}`} />
-                    )}
-                  </div>
-                  <div className="bg-black/50 px-3 py-1 text-xs text-center border border-white/10 rounded-full text-slate-400 uppercase tracking-widest">
-                     {turn === 'red' ? <span className="text-red-400">Red Turn</span> : <span className="text-green-400">Green Turn</span>}
+               
+               {/* Roll Dice Action Area Floating */}
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+                  <div className="flex flex-col items-center gap-2 pointer-events-auto">
+                     <div 
+                        onClick={rollDice}
+                        className={`w-16 h-16 lg:w-20 lg:h-20 border-2 rounded-2xl flex items-center justify-center shadow-[0_5px_20px_rgba(0,0,0,0.8)] transform transition-transform ${turn === 'red' ? 'bg-linear-to-br from-[#ef4444] to-[#991b1b] border-[#ffce33]' : turn === 'green' ? 'bg-linear-to-br from-[#22c55e] to-[#14532d] border-[#ffce33]' : turn === 'yellow' ? 'bg-linear-to-br from-[#eab308] to-[#713f12] border-[#ffce33]' : 'bg-linear-to-br from-[#3b82f6] to-[#1e3a8a] border-[#ffce33]'} ${finalIsRolling || roomData?.exitedPlayers?.includes(auth.currentUser?.uid || '') ? 'scale-90 scale-x-[-1] rotate-720! duration-1000 origin-center opacity-80' : 'hover:scale-105 duration-200 cursor-pointer animate-pulse'}`}
+                     >
+                       {!finalIsRolling && finalDiceValue ? (
+                          <DiceFace value={finalDiceValue} />
+                       ) : (
+                         <Dices className={`w-8 h-8 lg:w-10 lg:h-10 text-white drop-shadow-xl ${finalIsRolling ? 'animate-spin' : ''}`} />
+                       )}
+                     </div>
+                     <div className="bg-black/80 px-3 py-1 rounded-full text-[10px] text-white font-bold shadow-xl border border-white/20 uppercase tracking-wider backdrop-blur-md">
+                        {turn} Turn
+                     </div>
                   </div>
                </div>
+            </div>
+
+            <div className="w-full flex justify-between items-center px-2 mt-4 z-10 relative">
+               {/* Player 4 (Blue) */}
+               {roomData?.maxPlayers === 4 ? (
+                 <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#143e7a] to-[#071933] ${turn === 'blue' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#030912] opacity-80'} transition-all`}>
+                    {turn === 'blue' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
+                    <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[3] || '') ? 'line-through text-red-400' : ''}`}>
+                       {!roomData?.players?.[3] ? 'EMPTY' : roomData.players[3] === auth.currentUser?.uid ? 'YOU' : 'P4'}
+                    </span>
+                    {roomData?.exitedPlayers?.includes(roomData?.players?.[3] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+                 </div>
+               ) : <div className="invisible px-4 py-2">EMPTY</div>}
+
+               {/* Player 3 (Yellow) */}
+               {roomData?.maxPlayers === 4 ? (
+                 <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#a3790f] to-[#4d3805] ${turn === 'yellow' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#291e03] opacity-80'} transition-all`}>
+                    {turn === 'yellow' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
+                    <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[2] || '') ? 'line-through text-red-400' : ''}`}>
+                       {!roomData?.players?.[2] ? 'EMPTY' : roomData.players[2] === auth.currentUser?.uid ? 'YOU' : 'P3'}
+                    </span>
+                    {roomData?.exitedPlayers?.includes(roomData?.players?.[2] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+                 </div>
+               ) : <div className="invisible px-4 py-2">EMPTY</div>}
             </div>
           </div>
         )}
@@ -764,9 +1106,9 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
          <div className="bg-[#0b1711] border border-slate-800 rounded-xl p-4 flex justify-between items-center">
             <div>
                <p className="text-xs text-slate-400">Prize Pool</p>
-               <p className="text-xl font-bold text-[#f0b429]">₹ {isPlaying ? stake * 2 * 0.97 : 0}</p>
+               <p className="text-xl font-bold text-[#f0b429]">₹ {isPlaying ? stake * (roomData?.players?.length || 2) * 0.97 : 0}</p>
             </div>
-            <button onClick={onLeave} className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition-colors">
+            <button onClick={handleQuit} className="text-white hover:text-white bg-red-600/80 hover:bg-red-600 px-4 py-1.5 rounded-lg text-sm transition-colors border border-red-50 shadow-md">
               Quit
             </button>
          </div>
@@ -802,21 +1144,22 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
             </div>
 
             {/* Input */}
-            <div className="p-3 border-t border-slate-800 bg-slate-900/50 flex gap-2 bg-linear-to-t from-slate-950 to-transparent">
+            <div className="p-3 border-t border-slate-800 bg-slate-900/50 flex gap-2 bg-linear-to-t from-slate-950 to-transparent items-center">
                <input 
                  type="text" 
                  value={chatInput}
                  onChange={e => setChatInput(e.target.value)}
                  onKeyDown={e => e.key === 'Enter' && sendMessage(chatInput)}
                  placeholder="Say something..." 
-                 className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" 
+                 className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00ff88] transition-colors" 
                />
                <button 
-                 onClick={() => alert("Voice feature requires additional permissions and is disabled in preview.")}
-                 className="bg-amber-600/20 hover:bg-amber-500/30 text-amber-500 p-2 rounded-lg transition-colors border border-amber-500/20"
-                 title="Voice Chat (Preview only)"
+                 onClick={toggleMic}
+                 className={`p-2 rounded-lg transition-colors border shadow-md relative ${isMicEnabled ? 'bg-green-600/20 text-green-500 border-green-500/50' : 'bg-slate-700 text-slate-400 border-slate-600'}`}
+                 title={isMicEnabled ? "Turn Mic Off" : "Turn Mic On"}
                >
                  <Mic size={18} />
+                 {isMicEnabled && <span className="absolute max-w-none -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></span>}
                </button>
             </div>
          </div>
@@ -824,4 +1167,3 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     </div>
   );
 }
-

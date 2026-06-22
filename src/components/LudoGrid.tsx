@@ -32,20 +32,21 @@ const BASE_POSITIONS = {
 export type PieceState = {
   id: string;
   color: 'red' | 'green' | 'yellow' | 'blue';
-  status: 'base' | 'active' | 'home';
   position: number;
 };
 
 export default function LudoGrid({ pieces, onPieceClick }: { pieces?: PieceState[], onPieceClick?: (piece: PieceState) => void }) {
   
   const getPieceCoordinates = (piece: PieceState) => {
-    if (piece.status === 'base') {
+    if (piece.position === -1) {
       const idx = parseInt(piece.id.substring(1)) - 1;
       return BASE_POSITIONS[piece.color][idx];
-    } else if (piece.status === 'active') {
-      return PATH[piece.position % 52];
-    } else if (piece.status === 'home') {
-      return HOME_PATHS[piece.color][piece.position];
+    } else if (piece.position >= 0 && piece.position <= 50) {
+      const offsets = { red: 0, green: 13, yellow: 26, blue: 39 };
+      const absPos = (piece.position + offsets[piece.color]) % 52;
+      return PATH[absPos];
+    } else if (piece.position >= 51 && piece.position <= 56) {
+      return HOME_PATHS[piece.color][piece.position - 51];
     }
     return [1,1];
   };
@@ -96,10 +97,10 @@ export default function LudoGrid({ pieces, onPieceClick }: { pieces?: PieceState
       <div className="bg-[#2267c7] rounded-lg relative flex items-center justify-center border-4 border-[#144487]" style={{ gridArea: '10 / 1 / 16 / 7' }}>
          <div className="w-[70%] h-[70%] bg-[#ececec] rounded-xl flex items-center justify-center p-3 shadow-inner">
             <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-3">
-               <div className="bg-[#2267c7] rounded-full border border-[#144487]"></div>
-               <div className="bg-[#2267c7] rounded-full border border-[#144487]"></div>
-               <div className="bg-[#2267c7] rounded-full border border-[#144487]"></div>
-               <div className="bg-[#2267c7] rounded-full border border-[#144487]"></div>
+               <div className="bg-[#2267c7] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#144487]"></div>
+               <div className="bg-[#2267c7] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#144487]"></div>
+               <div className="bg-[#2267c7] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#144487]"></div>
+               <div className="bg-[#2267c7] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#144487]"></div>
             </div>
          </div>
       </div>
@@ -108,13 +109,19 @@ export default function LudoGrid({ pieces, onPieceClick }: { pieces?: PieceState
       <div className="bg-[#e2a818] rounded-lg relative flex items-center justify-center border-4 border-[#bc8a10]" style={{ gridArea: '10 / 10 / 16 / 16' }}>
          <div className="w-[70%] h-[70%] bg-[#ececec] rounded-xl flex items-center justify-center p-3 shadow-inner">
             <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-3">
-               <div className="bg-[#e2a818] rounded-full border border-[#bc8a10]"></div>
-               <div className="bg-[#e2a818] rounded-full border border-[#bc8a10]"></div>
-               <div className="bg-[#e2a818] rounded-full border border-[#bc8a10]"></div>
-               <div className="bg-[#e2a818] rounded-full border border-[#bc8a10]"></div>
+               <div className="bg-[#e2a818] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#bc8a10]"></div>
+               <div className="bg-[#e2a818] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#bc8a10]"></div>
+               <div className="bg-[#e2a818] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#bc8a10]"></div>
+               <div className="bg-[#e2a818] rounded-full shadow-[inset_0_-4px_8px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.5)] border border-[#bc8a10]"></div>
             </div>
          </div>
       </div>
+
+      {/* Path Layout White Background Fill */}
+      <div className="bg-white border border-black/20" style={{ gridArea: '1 / 7 / 7 / 10' }}></div>
+      <div className="bg-white border border-black/20" style={{ gridArea: '10 / 7 / 16 / 10' }}></div>
+      <div className="bg-white border border-black/20" style={{ gridArea: '7 / 1 / 10 / 7' }}></div>
+      <div className="bg-white border border-black/20" style={{ gridArea: '7 / 10 / 10 / 16' }}></div>
 
       {/* Safe Zones / Path Coloring */}
       {/* Red Home Run */}
@@ -133,11 +140,11 @@ export default function LudoGrid({ pieces, onPieceClick }: { pieces?: PieceState
       <div className="bg-[#e2a818] border border-black/20" style={{ gridArea: '8 / 10 / 9 / 15' }}></div>
       <div className="bg-[#e2a818] border border-black/20 flex items-center justify-center text-white" style={{ gridArea: '9 / 14 / 10 / 15' }}>★</div>
 
-      {/* Safe spots */}
-      <div className="border border-black/20 text-[#2d9e47] font-bold text-xl flex items-center justify-center" style={{ gridArea: '3 / 7 / 4 / 8' }}>★</div>
-      <div className="border border-black/20 text-[#cc2b2b] font-bold text-xl flex items-center justify-center" style={{ gridArea: '9 / 3 / 10 / 4' }}>★</div>
-      <div className="border border-black/20 text-[#e2a818] font-bold text-xl flex items-center justify-center" style={{ gridArea: '7 / 13 / 8 / 14' }}>★</div>
-      <div className="border border-black/20 text-[#2267c7] font-bold text-xl flex items-center justify-center" style={{ gridArea: '13 / 9 / 14 / 10' }}>★</div>
+      {/* 2nd Safe spots */}
+      <div className="bg-[#d8f0e0] border border-black/20 text-[#2d9e47] font-bold text-xl flex items-center justify-center" style={{ gridArea: '3 / 7 / 4 / 8' }}>★</div>
+      <div className="bg-[#f8d7d7] border border-black/20 text-[#cc2b2b] font-bold text-xl flex items-center justify-center" style={{ gridArea: '9 / 3 / 10 / 4' }}>★</div>
+      <div className="bg-[#dce5f8] border border-black/20 text-[#2267c7] font-bold text-xl flex items-center justify-center" style={{ gridArea: '13 / 9 / 14 / 10' }}>★</div>
+      <div className="bg-[#fbf4d8] border border-black/20 text-[#e2a818] font-bold text-xl flex items-center justify-center" style={{ gridArea: '7 / 13 / 8 / 14' }}>★</div>
 
 
       {/* Grid Lines Overlay */}
