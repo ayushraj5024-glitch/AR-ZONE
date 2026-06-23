@@ -1,7 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Activity } from 'lucide-react';
+import { getFirestore, collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 
 export default function ActivityLogs() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const db = getFirestore();
+    const logsQuery = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(logsQuery, (snapshot) => {
+      const data: any[] = [];
+      snapshot.forEach(doc => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+      setLogs(data);
+      setLoading(false);
+    }, (err) => {
+      console.error(err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <div className="p-4 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -34,27 +56,33 @@ export default function ActivityLogs() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-[--primary]/10 hover:bg-[#020503]/50">
-                <td className="px-4 py-3 text-slate-400">2 mins ago</td>
-                <td className="px-4 py-3 font-medium text-[--primary]">admin_main</td>
-                <td className="px-4 py-3"><span className="text-yellow-400 font-bold text-xs uppercase tracking-wider">Settings Change</span></td>
-                <td className="px-4 py-3 text-slate-300">Updated Commission Limits for agent_x</td>
-                <td className="px-4 py-3 text-slate-500 font-mono">192.168.1.45</td>
-              </tr>
-              <tr className="border-b border-[--primary]/10 hover:bg-[#020503]/50">
-                <td className="px-4 py-3 text-slate-400">15 mins ago</td>
-                <td className="px-4 py-3 font-medium text-[--primary]">admin_main</td>
-                <td className="px-4 py-3"><span className="text-emerald-400 font-bold text-xs uppercase tracking-wider">Balance Update</span></td>
-                <td className="px-4 py-3 text-slate-300">Added ₹10,000 to user_789</td>
-                <td className="px-4 py-3 text-slate-500 font-mono">192.168.1.45</td>
-              </tr>
-              <tr className="border-b border-[--primary]/10 hover:bg-[#020503]/50">
-                <td className="px-4 py-3 text-slate-400">1 hour ago</td>
-                <td className="px-4 py-3 font-medium text-[--primary]">system</td>
-                <td className="px-4 py-3"><span className="text-rose-400 font-bold text-xs uppercase tracking-wider">Market Closed</span></td>
-                <td className="px-4 py-3 text-slate-300">Settled IND vs AUS Match Odds</td>
-                <td className="px-4 py-3 text-slate-500 font-mono">-</td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading logs...</td>
+                </tr>
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No activity recorded yet</td>
+                </tr>
+              ) : (
+                logs.map((log) => {
+                  const date = log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString() : new Date().toLocaleString();
+                  const typeColor = log.type === 'deposit' ? 'text-emerald-400' 
+                                  : log.type === 'withdraw' ? 'text-rose-400' 
+                                  : log.type === 'settings' ? 'text-yellow-400' 
+                                  : 'text-[--primary]';
+
+                  return (
+                    <tr key={log.id} className="border-b border-[--primary]/10 hover:bg-[#020503]/50">
+                      <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{date}</td>
+                      <td className="px-4 py-3 font-medium text-[--primary]">{log.user || 'Unknown'}</td>
+                      <td className="px-4 py-3"><span className={`${typeColor} font-bold text-xs uppercase tracking-wider`}>{log.action || 'Action'}</span></td>
+                      <td className="px-4 py-3 text-slate-300">{log.details || '-'}</td>
+                      <td className="px-4 py-3 text-slate-500 font-mono">{log.ip || '-'}</td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>

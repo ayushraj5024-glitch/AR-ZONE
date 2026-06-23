@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wrench, Loader2, Download, Share2 } from 'lucide-react';
 import { exportToCSV, shareToWhatsApp } from '../lib/exportUtils';
 import DateRangeFilter from './DateRangeFilter';
+import { getFirestore, collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 
 interface LedgerTableProps {
   title: string;
@@ -10,20 +11,38 @@ interface LedgerTableProps {
 
 export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
   const [isSearching, setIsSearching] = useState(false);
+  const [ledgerData, setLedgerData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const db = getFirestore();
+    const q = query(collection(db, 'statements'), orderBy('date', 'desc'), limit(100));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const smts: any[] = [];
+      snapshot.forEach((doc) => {
+        smts.push({ id: doc.id, ...doc.data() });
+      });
+      setLedgerData(smts);
+      setLoading(false);
+    }, (err) => {
+      console.error(err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleSearch = () => {
     setIsSearching(true);
     setTimeout(() => setIsSearching(false), 500);
   };
 
-  const ledgerData: any[] = [];
-
   const handleExport = () => {
     exportToCSV(ledgerData, 'Ledger_Report');
   };
 
   const handleShare = () => {
-    shareToWhatsApp(`Ledger Report\nRemaining Balance: ₹1500.00\nDate: ${new Date().toLocaleDateString()}`);
+    shareToWhatsApp(`Ledger Report\nDate: ${new Date().toLocaleDateString()}`);
   };
 
   return (
@@ -95,11 +114,42 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
               )}
             </thead>
             <tbody className="divide-y divide-(--primary)/20">
-              <tr>
-                <td colSpan={title === 'Agent' ? 7 : 6} className="px-4 py-8 text-center text-slate-500">
-                  No records found in current ledger.
-                </td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan={title === 'Agent' ? 7 : 6} className="px-4 py-8 text-center text-slate-500">
+                    Loading records...
+                  </td>
+                </tr>
+              ) : ledgerData.length === 0 ? (
+                <tr>
+                  <td colSpan={title === 'Agent' ? 7 : 6} className="px-4 py-8 text-center text-slate-500">
+                    No records found in current ledger.
+                  </td>
+                </tr>
+              ) : (
+                ledgerData.map((stmt) => (
+                  <tr key={stmt.id} className="hover:bg-[#020503]/50">
+                    <td className="px-4 py-3 whitespace-nowrap">{stmt.date}</td>
+                    <td className="px-4 py-3 text-white font-medium">{stmt.event}</td>
+                    {title === 'Agent' ? (
+                       <>
+                        <td className="px-4 py-3">{stmt.winLoss && Number(stmt.winLoss) > 0 ? stmt.winLoss : 0}</td>
+                        <td className="px-4 py-3">{stmt.winLoss && Number(stmt.winLoss) < 0 ? Math.abs(Number(stmt.winLoss)) : 0}</td>
+                        <td className="px-4 py-3">0</td>
+                        <td className="px-4 py-3">0</td>
+                        <td className="px-4 py-3 font-medium">{stmt.balance}</td>
+                       </>
+                    ) : (
+                       <>
+                        <td className="px-4 py-3 text-[#ff3355]">{stmt.type === 'subtract' || Number(stmt.winLoss) < 0 ? stmt.winLoss : 0}</td>
+                        <td className="px-4 py-3 text-[#00ff88]">{stmt.type === 'add' || Number(stmt.winLoss) > 0 ? stmt.winLoss : 0}</td>
+                        <td className="px-4 py-3 font-medium">{stmt.balance}</td>
+                        <td className="px-4 py-3">{stmt.type || 'Bet'}</td>
+                       </>
+                    )}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

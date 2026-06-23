@@ -1,8 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wrench, Download, Share2 } from 'lucide-react';
 import { exportToCSV, shareToWhatsApp } from '../lib/exportUtils';
+import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
 
 export default function CollectionReport() {
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const db = getFirestore();
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const data: any[] = [];
+      snapshot.forEach(doc => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+      setUsers(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const lenaHai = users.filter(u => Number(u.balance || 0) < 0).map(u => ({ client: u.name || u.username, balance: Number(u.balance) }));
+  const denaHai = users.filter(u => Number(u.balance || 0) > 0).map(u => ({ client: u.name || u.username, balance: Number(u.balance) }));
+  const clearHai = users.filter(u => Number(u.balance || 0) === 0).map(u => ({ client: u.name || u.username, balance: 0 }));
+
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div>
@@ -17,27 +36,28 @@ export default function CollectionReport() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <ReportCard title="PAYMENT RECEIVING FROM (Lena Hai)" />
-        <ReportCard title="PAYMENT PAID TO (Dena Hai)" />
-        <ReportCard title="PAYMENT Clear (Clear Hai)" hasTotal />
+        <ReportCard title="PAYMENT RECEIVING FROM (Lena Hai)" data={lenaHai} />
+        <ReportCard title="PAYMENT PAID TO (Dena Hai)" data={denaHai} />
+        <ReportCard title="PAYMENT Clear (Clear Hai)" data={clearHai} hasTotal />
       </div>
     </div>
   );
 }
 
-function ReportCard({ title, hasTotal = false }: { title: string, hasTotal?: boolean }) {
-  const dummyData = [{ client: hasTotal ? 'Total' : 'demouser', balance: hasTotal ? 0.0 : -500.0 }];
+function ReportCard({ title, data, hasTotal = false }: { title: string, data: any[], hasTotal?: boolean }) {
+  const total = data.reduce((acc, curr) => acc + curr.balance, 0);
 
   const handleExport = () => {
-    exportToCSV(dummyData, `Collection_Report_${title}`);
+    exportToCSV(data, `Collection_Report_${title}`);
   };
 
   const handleShare = () => {
-    shareToWhatsApp(`Collection Report - ${title}\nClient: ${dummyData[0].client}, Balance: ${dummyData[0].balance}`);
+    const text = data.map(d => `${d.client}: ${d.balance}`).join('\n');
+    shareToWhatsApp(`Collection Report - ${title}\n${text}\nTotal: ${total}`);
   };
 
   return (
-    <div className="bg-[#05100a] border text-left border-\(--primary\)/20 rounded-lg shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-[#05100a] border text-left border-[#00ff88]/20 rounded-lg shadow-sm overflow-hidden flex flex-col">
       <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between">
         <h3 className="font-semibold text-sm">{title}</h3>
         <div className="flex items-center gap-2">
@@ -53,23 +73,34 @@ function ReportCard({ title, hasTotal = false }: { title: string, hasTotal?: boo
       
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left text-slate-200">
-          <thead className="text-sm text-slate-300 font-semibold bg-[#05100a] border-b border-\(--primary\)/20">
+          <thead className="text-sm text-slate-300 font-semibold bg-[#05100a] border-b border-[#00ff88]/20">
             <tr>
-              <th className="px-4 py-3 border-r border-\(--primary\)/20">Client</th>
+              <th className="px-4 py-3 border-r border-[#00ff88]/20">Client</th>
               <th className="px-4 py-3">Balance</th>
             </tr>
           </thead>
           <tbody>
-            {hasTotal ? (
+            {data.length === 0 ? (
               <tr>
-                <td className="px-4 py-3 font-semibold border-r border-\(--primary\)/20">Total</td>
-                <td className="px-4 py-3">0.0</td>
+                <td colSpan={2} className="px-4 py-8 text-center text-slate-500">No data found.</td>
               </tr>
             ) : (
-              <tr className="hover:bg-[#020503] transition-colors">
-                <td className="px-4 py-3 font-medium text-white border-r border-\(--primary\)/20">demouser</td>
-                <td className="px-4 py-3 text-rose-500 font-semibold">-500.00</td>
-              </tr>
+              data.map((row, idx) => (
+               <tr key={idx} className="hover:bg-[#020503] transition-colors border-b border-[#00ff88]/10 last:border-0">
+                 <td className="px-4 py-3 font-medium text-white border-r border-[#00ff88]/20">{row.client}</td>
+                 <td className={`px-4 py-3 ${row.balance < 0 ? 'text-[#ff3355]' : 'text-[#00ff88]'}`}>
+                    {row.balance > 0 ? '+' : ''}{row.balance.toFixed(2)}
+                 </td>
+               </tr>
+              ))
+            )}
+            {hasTotal && (
+               <tr className="bg-[#020503] border-t border-[#00ff88]/30 font-bold">
+                 <td className="px-4 py-3 border-r border-[#00ff88]/20 text-white text-right uppercase">Total</td>
+                 <td className={`px-4 py-3 ${total < 0 ? 'text-[#ff3355]' : 'text-[#00ff88]'}`}>
+                    {total > 0 ? '+' : ''}{total.toFixed(2)}
+                 </td>
+               </tr>
             )}
           </tbody>
         </table>

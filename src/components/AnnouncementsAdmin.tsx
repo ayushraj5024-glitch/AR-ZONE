@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Megaphone, Send, CheckCircle2 } from 'lucide-react';
+import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 export default function AnnouncementsAdmin() {
   const [announcement, setAnnouncement] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const [published, setPublished] = useState(false);
-  const [activeBroadcasts, setActiveBroadcasts] = useState<string[]>([]);
+  const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
 
-  const handlePublish = () => {
+  useEffect(() => {
+    const db = getFirestore();
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: any[] = [];
+      snapshot.forEach((doc) => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+      setActiveBroadcasts(data);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handlePublish = async () => {
     if (!announcement.trim()) return;
     setIsPublishing(true);
-    setTimeout(() => {
-      setActiveBroadcasts(prev => [announcement, ...prev]);
+    
+    try {
+      const db = getFirestore();
+      await addDoc(collection(db, 'announcements'), {
+        message: announcement,
+        createdAt: serverTimestamp(),
+      });
+      
       setAnnouncement('');
-      setIsPublishing(false);
       setPublished(true);
       setTimeout(() => setPublished(false), 3000);
-    }, 1000);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to publish');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
@@ -53,7 +78,7 @@ export default function AnnouncementsAdmin() {
                <button 
                  onClick={handlePublish}
                  disabled={isPublishing || !announcement.trim()}
-                 className={`flex items-center space-x-2 bg-[--primary]/20 text-[--primary] hover:bg-[--primary] hover:text-[#020503] font-bold px-6 py-2.5 rounded transition-all uppercase tracking-wider text-sm border border-[--primary]/50 shadow-[0_0_15px_rgba(0,255,136,0.2)] ${isPublishing ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                 className={`flex items-center space-x-2 bg-[#00ff88] text-black hover:bg-[#00cc6a] font-bold px-6 py-2.5 rounded transition-all uppercase tracking-wider text-sm shadow-[0_0_15px_rgba(0,255,136,0.2)] hover:shadow-[0_0_20px_rgba(0,255,136,0.4)] ${isPublishing ? 'opacity-50 cursor-not-allowed' : ''}`}>
                  <Send size={16} />
                  <span>{isPublishing ? 'Publishing...' : 'Publish Broadcast'}</span>
                </button>
@@ -73,11 +98,15 @@ export default function AnnouncementsAdmin() {
             </div>
           ) : (
             <ul className="divide-y divide-[--primary]/10">
-              {activeBroadcasts.map((b, i) => (
-                <li key={i} className="p-4 text-slate-300 font-medium hover:bg-[#020503]">
-                  {b}
-                </li>
-              ))}
+              {activeBroadcasts.map((b) => {
+                const date = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString() : '';
+                return (
+                 <li key={b.id} className="p-4 text-slate-300 font-medium hover:bg-[#020503] flex justify-between items-center">
+                   <span>{b.message}</span>
+                   {date && <span className="text-xs text-slate-500 whitespace-nowrap ml-4">{date}</span>}
+                 </li>
+                )
+              })}
             </ul>
           )}
         </div>
