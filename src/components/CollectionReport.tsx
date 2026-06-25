@@ -61,10 +61,13 @@ function ReportCard({ title, data, hasTotal = false }: { title: string, data: an
       <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between">
         <h3 className="font-semibold text-sm">{title}</h3>
         <div className="flex items-center gap-2">
-          <button onClick={handleExport} className="flex items-center gap-1 bg-[#4d7a7c] hover:bg-[#3d6163] px-2 py-1 rounded text-xs transition-colors">
-            <Download size={14} />
+          <button onClick={() => window.print()} title="Download PDF" className="flex items-center gap-1 bg-[#4d7a7c] hover:bg-[#3d6163] px-2 py-1 rounded text-xs transition-colors">
+            PDF
           </button>
-          <button onClick={handleShare} className="flex items-center gap-1 bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs transition-colors">
+          <button onClick={handleExport} title="Export CSV" className="flex items-center gap-1 bg-[#4d7a7c] hover:bg-[#3d6163] px-2 py-1 rounded text-xs transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={handleShare} title="Share WhatsApp" className="flex items-center gap-1 bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs transition-colors">
             <Share2 size={14} />
           </button>
           <Wrench size={14} className="text-white/70 ml-1" />

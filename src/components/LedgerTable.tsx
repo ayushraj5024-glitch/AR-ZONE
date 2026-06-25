@@ -79,8 +79,11 @@ export default function LedgerTable({ title, breadcrumb }: LedgerTableProps) {
         <div className="bg-[#60999b] text-white px-4 py-3 flex items-center justify-between mt-2">
           <h3 className="font-semibold text-sm">{title === 'Agent' ? 'Statement of Admin' : 'Agent Ledger'}</h3>
           <div className="flex items-center gap-2">
-            <button onClick={handleExport} className="flex items-center gap-1 bg-[#4d7a7c] hover:bg-[#3d6163] px-2 py-1 rounded text-xs transition-colors">
-              <Download size={14} /> Export
+            <button onClick={() => window.print()} title="Download PDF" className="flex items-center gap-1 bg-[#4d7a7c] hover:bg-[#3d6163] px-2 py-1 rounded text-xs transition-colors">
+              PDF
+            </button>
+            <button onClick={handleExport} title="Export CSV" className="flex items-center gap-1 bg-[#4d7a7c] hover:bg-[#3d6163] px-2 py-1 rounded text-xs transition-colors">
+              <Download size={14} /> CSV
             </button>
             <button onClick={handleShare} className="flex items-center gap-1 bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs transition-colors">
               <Share2 size={14} /> WhatsApp

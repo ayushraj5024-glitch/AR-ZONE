@@ -14,6 +14,8 @@ export default function CreateAgent({ onCancel, onSave }: CreateAgentProps) {
   const [fixLimit, setFixLimit] = useState('');
   const [myShare, setMyShare] = useState('');
   const [maxShare, setMaxShare] = useState('');
+  const [mComm, setMComm] = useState('0');
+  const [sComm, setSComm] = useState('0');
   const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -30,6 +32,8 @@ export default function CreateAgent({ onCancel, onSave }: CreateAgentProps) {
         fixLimit: fixLimit || '0',
         myShare: `${myShare || '0'}%`,
         maxShare: `${maxShare || '0'}%`,
+        mcomm: mComm,
+        scomm: sComm,
         password: password || 'defaultPass123'
       });
     }, 800);
@@ -81,11 +85,11 @@ export default function CreateAgent({ onCancel, onSave }: CreateAgentProps) {
             </FormRow>
             
             <FormRow label="AGT Match Commission" note="Match Commission can be set from 0 to 3">
-              <input type="number" defaultValue="0" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" />
+              <input type="number" value={mComm} onChange={e => setMComm(e.target.value)} className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" />
             </FormRow>
             
             <FormRow label="AGT Session Commission" note="Session Commission can be set from 0 to 3">
-              <input type="number" defaultValue="0" className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" />
+              <input type="number" value={sComm} onChange={e => setSComm(e.target.value)} className="w-full px-3 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-[#00ff88]/30 focus:border-[#00ff88] transition-all bg-[rgba(5,16,10,0.5)] text-white shadow-sm border border-[#00ff88]/30" />
             </FormRow>
             
             <FormRow label="Password">

@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Dices, Users, Home, Trophy, AlertTriangle, MessageSquare, Mic, Volume2, Plus, LogIn, Wallet } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Dices, Users, Home, Trophy, AlertTriangle, MessageSquare, Mic, Volume2, MicOff, Plus, LogIn, Wallet } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, getDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
 import LudoGrid, { PieceState } from './LudoGrid';
+import AgoraRTC, { IAgoraRTCClient, IMicrophoneAudioTrack, IAgoraRTCRemoteUser } from 'agora-rtc-sdk-ng';
+
+AgoraRTC.setLogLevel(4);
+
+const AUDIO_DICE_ROLL = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_38f2940263.mp3?filename=dice-roll-46011.mp3");
+const AUDIO_PIECE_MOVE = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_27ce09ce5c.mp3?filename=pop-39222.mp3");
+const AUDIO_KNOCKOUT = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_b2f9f17028.mp3?filename=punch-140236.mp3");
 
 const DiceFace = ({ value }: { value: number }) => {
   return (
@@ -41,6 +48,7 @@ export interface Room {
   pieces?: PieceState[];
   turn?: 'red' | 'green' | 'yellow' | 'blue';
   messages?: { sender: string; text: string }[];
+  lastEmote?: { id: string; emoji: string; userId: string; timestamp?: number };
 }
 
 export default function LiveLudo() {
@@ -128,6 +136,14 @@ export default function LiveLudo() {
 
   const handleCreateRoom = async () => {
     if (!auth.currentUser) return;
+    
+    // Prevent multiple active rooms
+    const hasActiveRoom = rooms.some(r => r.hostId === auth.currentUser?.uid && r.status === 'waiting');
+    if (hasActiveRoom) {
+      alert("You already have a waiting room. Please return to it or cancel it before creating a new one.");
+      return;
+    }
+
     if (customStake < 10) {
       alert("Minimum stake is ₹10");
       return;
@@ -163,6 +179,26 @@ export default function LiveLudo() {
       alert("Failed to create room.");
     }
   };
+
+  const cancelRoomFromLobby = async (roomId: string, stake: number) => {
+    if (!auth.currentUser) return;
+    try {
+      const roomRef = doc(db, "ludo_rooms", roomId);
+      const roomSnap = await getDoc(roomRef);
+      if (roomSnap.exists()) {
+        const roomData = roomSnap.data() as Room;
+        if (roomData.status === 'waiting' && roomData.hostId === auth.currentUser.uid) {
+          await updateDoc(doc(db, "users", auth.currentUser.uid), {
+            balance: increment(stake)
+          });
+          await deleteDoc(roomRef);
+        }
+      }
+    } catch (e) {
+      console.error("Error cancelling room:", e);
+    }
+  };
+
 
   const handleJoinRoom = async (room: Room) => {
     if (!auth.currentUser) return;
@@ -220,24 +256,6 @@ export default function LiveLudo() {
 
   const handleLeaveGame = async () => {
     setIsInRoom(false);
-    if (currentRoomId) {
-      try {
-        const roomRef = doc(db, "ludo_rooms", currentRoomId);
-        const roomSnap = await getDoc(roomRef);
-        if (roomSnap.exists()) {
-          const roomData = roomSnap.data() as Room;
-          // If host leaves an unplayed room, refund stake and delete room
-          if (roomData.status === 'waiting' && roomData.hostId === auth.currentUser?.uid) {
-            await updateDoc(doc(db, "users", auth.currentUser!.uid), {
-              balance: increment(roomStake)
-            });
-            await deleteDoc(roomRef);
-          }
-        }
-      } catch (e) {
-        console.error("Error leaving room:", e);
-      }
-    }
     setCurrentRoomId(null);
   };
 
@@ -424,12 +442,29 @@ export default function LiveLudo() {
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => handleJoinRoom(room)}
-                  className="w-full bg-[#112a1e] border-t border-[#00ff88]/50 text-[#00ff88] py-3 font-bold hover:bg-[#00ff88] hover:text-[#020503] transition-all flex items-center justify-center gap-2"
-                >
-                  <LogIn size={18} /> {room.hostId === auth.currentUser?.uid ? 'Return to Room' : 'Join & Play'}
-                </button>
+                {room.hostId === auth.currentUser?.uid ? (
+                   <div className="flex w-full">
+                     <button 
+                       onClick={(e) => { e.stopPropagation(); cancelRoomFromLobby(room.id, room.stake); }}
+                       className="w-1/3 bg-[#2a1111] border-t border-red-500/50 text-red-500 py-3 font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                     >
+                       Cancel
+                     </button>
+                     <button 
+                       onClick={() => handleJoinRoom(room)}
+                       className="w-2/3 bg-[#112a1e] border-t border-l border-[#00ff88]/50 text-[#00ff88] py-3 font-bold hover:bg-[#00ff88] hover:text-[#020503] transition-all flex items-center justify-center gap-2"
+                     >
+                       <LogIn size={18} /> Return
+                     </button>
+                   </div>
+                ) : (
+                  <button 
+                    onClick={() => handleJoinRoom(room)}
+                    className="w-full bg-[#112a1e] border-t border-[#00ff88]/50 text-[#00ff88] py-3 font-bold hover:bg-[#00ff88] hover:text-[#020503] transition-all flex items-center justify-center gap-2"
+                  >
+                    <LogIn size={18} /> Join & Play
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -459,14 +494,22 @@ const INITIAL_PIECES: PieceState[] = [
   { id: 'b4', color: 'blue', position: -1 },
 ];
 
-const EMOJIS = ["👍", "👎", "😂", "😡", "😭", "🎲", "🔥", "🎉", "😱", "😎", "💔", "👏", "🏆", "🎮", "🚀", "💀", "👀", "🙌"];
+const EMOJIS = [
+  "👍", "👎", "😂", "😡", "😭", "🎲", "🔥", "🎉", "😱", "😎", "💔", "👏", "🏆", "🎮", "🚀", "💀", "👀", "🙌",
+  "🍑", "🍆", "👅", "💦", "😈", "🤡", "💩", "🖕", "🤬", "😏", "🥴", "🤫", "🤪", "🤑", "🥵", "😵", "🤤", "🤭", "🍻", "🍾", "💸", "💣"
+];
 
 function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => void, roomId: string | null }) {
   const [turn, setTurn] = useState<"red" | "green" | "yellow" | "blue">("red");
   const [diceValue, setDiceValue] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [showMicConfirm, setShowMicConfirm] = useState(false);
+  const [showMicError, setShowMicError] = useState(false);
+  const [micErrorMsg, setMicErrorMsg] = useState("");
   const isProcessingMoveRef = React.useRef(false);
   const [roomData, setRoomData] = useState<Room | null>(null);
+  const roomDataRef = React.useRef<Room | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   
   const [pieces, setPieces] = useState<PieceState[]>(INITIAL_PIECES);
@@ -479,10 +522,68 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
   const hasClaimedWin = React.useRef(false);
 
   const [isMicEnabled, setIsMicEnabled] = useState(false);
-  const [micStream, setMicStream] = useState<MediaStream | null>(null);
-  
+  const [agoraClient, setAgoraClient] = useState<IAgoraRTCClient | null>(null);
+  const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
+  const [remoteUsers, setRemoteUsers] = useState<any[]>([]);
+  const [floatingEmotes, setFloatingEmotes] = useState<{id: string, emoji: string, userId: string}[]>([]);
+
   const finalIsRolling = isRolling || roomData?.isRolling;
   const finalDiceValue = diceValue || roomData?.lastDiceRoll;
+
+  useEffect(() => {
+     if (roomData?.lastEmote && roomData.lastEmote.id) {
+         setFloatingEmotes(prev => [...prev, roomData.lastEmote!]);
+         setTimeout(() => {
+             setFloatingEmotes(prev => prev.filter(e => e.id !== roomData.lastEmote?.id));
+         }, 3000);
+     }
+  }, [roomData?.lastEmote?.id]);
+
+  // Initialize Agora
+  useEffect(() => {
+    if (!roomId || !auth.currentUser) return;
+    let client: IAgoraRTCClient;
+    const initAgora = async () => {
+      try {
+        client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        setAgoraClient(client);
+
+        client.on("user-published", async (user: IAgoraRTCRemoteUser, mediaType: "audio" | "video") => {
+          await client.subscribe(user, mediaType);
+          if (mediaType === "audio") {
+            user.audioTrack?.play();
+            setRemoteUsers((prev) => [...prev, user]);
+          }
+        });
+
+        client.on("user-unpublished", (user: IAgoraRTCRemoteUser, mediaType: "audio" | "video") => {
+          if (mediaType === "audio") {
+             setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
+          }
+        });
+
+        const appId = import.meta.env.VITE_AGORA_APP_ID; 
+        if (appId) {
+          try {
+             await client.join(appId, roomId, null, null);
+          } catch (joinErr) {
+             console.warn("Agora join failed. Check VITE_AGORA_APP_ID.");
+          }
+        } else {
+           console.warn("VITE_AGORA_APP_ID not set. Voice chat broadcast is disabled.");
+        }
+      } catch (error) {
+        console.error("Agora init error:", error);
+      }
+    };
+    initAgora();
+
+    return () => {
+      if (client) {
+         client.leave();
+      }
+    };
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -490,11 +591,21 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       if (docSnap.exists()) {
         const data = docSnap.data() as any;
         setRoomData(data);
+        roomDataRef.current = data;
         if (data.winner) setWinner(data.winner);
         if (data.pieces) setPieces(data.pieces);
         if (data.turn) setTurn(data.turn);
         if (data.messages) setChatMessages(data.messages);
       } else {
+        const rData = roomDataRef.current;
+        if (rData && (rData.status === 'waiting' || rData.status === 'ready')) {
+           if (auth.currentUser?.uid && rData.players?.includes(auth.currentUser.uid) && rData.hostId !== auth.currentUser?.uid) {
+              alert("The host has cancelled the room. Your stake has been refunded.");
+              updateBalanceDB(stake);
+           } else if (rData.hostId !== auth.currentUser?.uid) {
+              alert("The host has cancelled the room.");
+           }
+        }
         onLeave();
       }
     });
@@ -505,18 +616,23 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     if (roomData?.status === 'playing' && !hasCountedDown.current) {
       setCountdown(5);
       hasCountedDown.current = true;
-      requestMicPermission(true);
     }
   }, [roomData?.status]);
 
   useEffect(() => {
-    if (roomData?.status === 'finished' && roomData.winner === auth.currentUser?.uid && !hasClaimedWin.current) {
-      hasClaimedWin.current = true;
-      const winAmount = stake * (roomData?.players?.length || 2) * 0.97;
-      updateBalanceDB(winAmount).then(() => {
-        alert(`Congratulations! You Won ₹${winAmount}!`);
+    if (roomData?.status === 'finished') {
+      if (roomData.winner === auth.currentUser?.uid && !hasClaimedWin.current) {
+        hasClaimedWin.current = true;
+        const winAmount = stake * (roomData?.players?.length || 2) * 0.97;
+        updateBalanceDB(winAmount).then(() => {
+          alert(`Congratulations! You Won ₹${winAmount}!`);
+          onLeave();
+        });
+      } else if (roomData.winner !== auth.currentUser?.uid) {
+        // Loser or spectator
+        alert("Game Over! The match has finished.");
         onLeave();
-      });
+      }
     }
   }, [roomData?.status, roomData?.winner]);
 
@@ -534,25 +650,54 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     if (silentMode && savedPermission === 'denied') return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const track = await AgoraRTC.createMicrophoneAudioTrack();
+      setLocalAudioTrack(track);
       setIsMicEnabled(true);
-      setMicStream(stream);
       localStorage.setItem('ludo_mic_permission', 'granted');
-    } catch (error) {
+      if (agoraClient && agoraClient.connectionState === "CONNECTED") {
+         await agoraClient.publish([track]);
+      }
+    } catch (error: any) {
+      console.warn("Mic permission denied or not available", error);
       setIsMicEnabled(false);
       localStorage.setItem('ludo_mic_permission', 'denied');
-      if (!silentMode) alert("Microphone permission denied. Please allow it in your browser settings.");
+      if (!silentMode) {
+          setMicErrorMsg(error?.message || "Permission Denied");
+          setShowMicError(true);
+      }
+    }
+    setShowMicConfirm(false);
+  };
+
+  const toggleMic = async () => {
+    if (isMicEnabled && localAudioTrack) {
+       if (agoraClient && agoraClient.connectionState === "CONNECTED") {
+          try { await agoraClient.unpublish([localAudioTrack]); } catch(e){}
+       }
+       localAudioTrack.close();
+       setLocalAudioTrack(null);
+       setIsMicEnabled(false);
+    } else {
+       const savedPermission = localStorage.getItem('ludo_mic_permission');
+       if (savedPermission === 'granted') {
+         await requestMicPermission(false);
+       } else {
+         setShowMicConfirm(true);
+       }
     }
   };
 
-  const toggleMic = () => {
-    if (isMicEnabled && micStream) {
-       micStream.getTracks().forEach(t => t.stop());
-       setMicStream(null);
-       setIsMicEnabled(false);
-    } else {
-       requestMicPermission(false);
-    }
+  const sendEmote = async (emoji: string) => {
+    if (!roomId || !auth.currentUser) return;
+    try {
+      await updateDoc(doc(db, "ludo_rooms", roomId), {
+        lastEmote: {
+           id: Date.now().toString() + Math.random().toString(),
+           emoji,
+           userId: auth.currentUser.uid
+        }
+      });
+    } catch (e) {}
   };
 
   const startGame = async () => {
@@ -623,7 +768,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
           }
       }
 
-      let newPieces = [...pieces];
+      let newPieces = pieces.map(p => ({ ...p }));
       let getAnotherTurn = false;
       let usedDiceValue = diceValue || Math.floor(Math.random() * 6) + 1;
       if (usedDiceValue === 6) getAnotherTurn = true;
@@ -631,6 +776,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       // Auto move logic
       let movablePieces = newPieces.filter(p => p.color === turn && ((p.position === -1 && usedDiceValue === 6) || (p.position >= 0 && p.position + usedDiceValue <= 56)));
       if (movablePieces.length > 0) {
+          AUDIO_PIECE_MOVE.currentTime = 0;
+          AUDIO_PIECE_MOVE.play().catch(() => {});
           let p = movablePieces[0]; // just pick the first valid piece
           if (p.position === -1) {
               p.position = 0;
@@ -653,6 +800,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                       if (otherAbsolutePos === absolutePos) {
                          otherP.position = -1; // KNOCKED OUT
                          getAnotherTurn = true;
+                         AUDIO_KNOCKOUT.currentTime = 0;
+                         AUDIO_KNOCKOUT.play().catch(() => {});
                       }
                    }
                 }
@@ -747,7 +896,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
          return;
      }
 
-     const newPieces = [...pieces];
+     const newPieces = pieces.map(p => ({ ...p }));
      const idx = newPieces.findIndex(p => p.id === piece.id);
      const p = newPieces[idx];
      let moved = false;
@@ -772,6 +921,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
      }
      
      if (moved) {
+        AUDIO_PIECE_MOVE.currentTime = 0;
+        AUDIO_PIECE_MOVE.play().catch(() => {});
         isProcessingMoveRef.current = true;
         // Check Knockouts
         if (p.position >= 0 && p.position <= 50) {
@@ -787,6 +938,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                     if (otherAbsolutePos === absolutePos) {
                        otherP.position = -1; // KNOCKED OUT
                        getAnotherTurn = true;
+                       AUDIO_KNOCKOUT.currentTime = 0;
+                       AUDIO_KNOCKOUT.play().catch(() => {});
                     }
                  }
               }
@@ -828,6 +981,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       }
     }
 
+    AUDIO_DICE_ROLL.currentTime = 0;
+    AUDIO_DICE_ROLL.play().catch(() => {});
     setIsRolling(true);
     if (roomId) updateDoc(doc(db, "ludo_rooms", roomId), { isRolling: true }).catch(()=>{});
 
@@ -908,34 +1063,77 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
      }
   }, [roomData?.players, isHost]);
 
-  const handleQuit = async () => {
-    if (isPlaying && auth.currentUser) {
-      const confirmLeave = window.confirm("If you leave now, you will lose the game and your bet. Are you sure?");
-      if (!confirmLeave) return;
-      
+  const handleQuitClick = () => {
+    setShowQuitConfirm(true);
+  };
+
+  const executeQuit = async () => {
+    setShowQuitConfirm(false);
+    if (!auth.currentUser || !roomId) {
+      onLeave();
+      return;
+    }
+
+    if (isPlaying) {
       const newExitedPlayers = [...(roomData?.exitedPlayers || []), auth.currentUser.uid];
       const activePlayers = roomData?.players?.filter((p: string) => !newExitedPlayers.includes(p)) || [];
       
-      if (roomId) {
+      try {
+        const updates: any = { exitedPlayers: newExitedPlayers };
+        if (activePlayers.length <= 1) {
+           updates.status = 'finished';
+           updates.winner = activePlayers[0] || roomData?.players?.[0];
+        } else {
+           const COLORS = ['red', 'green', 'yellow', 'blue'];
+           const pIndex = roomData?.players?.indexOf(auth.currentUser.uid);
+           if (pIndex !== undefined && turn === COLORS[pIndex]) {
+               updates.turn = getNextTurn(turn, roomData.players, newExitedPlayers);
+               updates.turnStartedAt = Date.now();
+           }
+        }
+        await updateDoc(doc(db, "ludo_rooms", roomId), updates);
+      } catch(e) {}
+    } else if (roomData?.status === 'waiting' || roomData?.status === 'ready') {
+      if (isHost) {
         try {
-          const updates: any = { exitedPlayers: newExitedPlayers };
-          if (activePlayers.length <= 1) {
-             updates.status = 'finished';
-             updates.winner = activePlayers[0] || roomData?.players?.[0];
-          } else {
-             // If it was my turn, skip it
-             const COLORS = ['red', 'green', 'yellow', 'blue'];
-             const pIndex = roomData?.players?.indexOf(auth.currentUser.uid);
-             if (pIndex !== undefined && turn === COLORS[pIndex]) {
-                 updates.turn = getNextTurn(turn, roomData.players, newExitedPlayers);
-                 updates.turnStartedAt = Date.now();
-             }
-          }
-          await updateDoc(doc(db, "ludo_rooms", roomId), updates);
+          await updateDoc(doc(db, "users", auth.currentUser.uid), { balance: increment(stake) });
+          await deleteDoc(doc(db, "ludo_rooms", roomId));
+        } catch(e) {}
+      } else {
+        try {
+          await updateDoc(doc(db, "users", auth.currentUser.uid), { balance: increment(stake) });
+          const newPlayers = roomData.players.filter((p: string) => p !== auth.currentUser?.uid);
+          await updateDoc(doc(db, "ludo_rooms", roomId), { 
+            players: newPlayers,
+            status: 'waiting'
+          });
         } catch(e) {}
       }
     }
+    
     onLeave();
+  };
+
+  const renderFloatingEmotes = (userId: string | undefined) => {
+     if (!userId) return null;
+     const userEmotes = floatingEmotes.filter(e => e.userId === userId);
+     return (
+        <AnimatePresence>
+          {userEmotes.map((e, idx) => (
+             <motion.div
+               key={e.id}
+               initial={{ opacity: 0, y: 0, scale: 0.5 }}
+               animate={{ opacity: 1, y: -40 - (idx * 20), scale: 1.5 }}
+               exit={{ opacity: 0, y: -80, scale: 0.8 }}
+               transition={{ duration: 1.5 }}
+               className="absolute pointer-events-none text-3xl z-50 drop-shadow-xl"
+               style={{ left: '50%', top: '0%', transform: 'translate(-50%, -50%)' }}
+             >
+               {e.emoji}
+             </motion.div>
+          ))}
+        </AnimatePresence>
+     );
   };
 
   return (
@@ -1030,7 +1228,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
             
             <div className="w-full flex justify-between items-center px-2 mb-4 z-10 relative">
                {/* Player 1 (Red) */}
-               <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#8f1212] to-[#4a0606] ${turn === 'red' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#2a0e0e] opacity-80'} transition-all`}>
+               <div className={`relative px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#8f1212] to-[#4a0606] ${turn === 'red' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#2a0e0e] opacity-80'} transition-all`}>
+                  {renderFloatingEmotes(roomData?.players?.[0])}
                   {turn === 'red' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
                   <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[0] || '') ? 'line-through text-red-400' : ''}`}>
                     {!roomData?.players?.[0] ? 'EMPTY' : roomData.players[0] === auth.currentUser?.uid ? 'YOU' : 'P1'}
@@ -1039,7 +1238,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                </div>
 
                {/* Player 2 (Green) */}
-               <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#13662a] to-[#083013] ${turn === 'green' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#0a1f0f] opacity-80'} transition-all`}>
+               <div className={`relative px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#13662a] to-[#083013] ${turn === 'green' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#0a1f0f] opacity-80'} transition-all`}>
+                  {renderFloatingEmotes(roomData?.players?.[1])}
                   {turn === 'green' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
                   <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[1] || '') ? 'line-through text-red-400' : ''}`}>
                     {!roomData?.players?.[1] ? 'EMPTY' : roomData.players[1] === auth.currentUser?.uid ? 'YOU' : 'P2'}
@@ -1053,31 +1253,13 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                <div className="w-full h-full flex items-center justify-center">
                   <LudoGrid pieces={pieces} onPieceClick={handlePieceClick} />
                </div>
-               
-               {/* Roll Dice Action Area Floating */}
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                  <div className="flex flex-col items-center gap-2 pointer-events-auto">
-                     <div 
-                        onClick={rollDice}
-                        className={`w-16 h-16 lg:w-20 lg:h-20 border-2 rounded-2xl flex items-center justify-center shadow-[0_5px_20px_rgba(0,0,0,0.8)] transform transition-transform ${turn === 'red' ? 'bg-linear-to-br from-[#ef4444] to-[#991b1b] border-[#ffce33]' : turn === 'green' ? 'bg-linear-to-br from-[#22c55e] to-[#14532d] border-[#ffce33]' : turn === 'yellow' ? 'bg-linear-to-br from-[#eab308] to-[#713f12] border-[#ffce33]' : 'bg-linear-to-br from-[#3b82f6] to-[#1e3a8a] border-[#ffce33]'} ${finalIsRolling || roomData?.exitedPlayers?.includes(auth.currentUser?.uid || '') ? 'scale-90 scale-x-[-1] rotate-720! duration-1000 origin-center opacity-80' : 'hover:scale-105 duration-200 cursor-pointer animate-pulse'}`}
-                     >
-                       {!finalIsRolling && finalDiceValue ? (
-                          <DiceFace value={finalDiceValue} />
-                       ) : (
-                         <Dices className={`w-8 h-8 lg:w-10 lg:h-10 text-white drop-shadow-xl ${finalIsRolling ? 'animate-spin' : ''}`} />
-                       )}
-                     </div>
-                     <div className="bg-black/80 px-3 py-1 rounded-full text-[10px] text-white font-bold shadow-xl border border-white/20 uppercase tracking-wider backdrop-blur-md">
-                        {turn} Turn
-                     </div>
-                  </div>
-               </div>
             </div>
 
             <div className="w-full flex justify-between items-center px-2 mt-4 z-10 relative">
                {/* Player 4 (Blue) */}
                {roomData?.maxPlayers === 4 ? (
-                 <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#143e7a] to-[#071933] ${turn === 'blue' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#030912] opacity-80'} transition-all`}>
+                 <div className={`relative px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#143e7a] to-[#071933] ${turn === 'blue' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#030912] opacity-80'} transition-all`}>
+                    {renderFloatingEmotes(roomData?.players?.[3])}
                     {turn === 'blue' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
                     <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[3] || '') ? 'line-through text-red-400' : ''}`}>
                        {!roomData?.players?.[3] ? 'EMPTY' : roomData.players[3] === auth.currentUser?.uid ? 'YOU' : 'P4'}
@@ -1086,9 +1268,27 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                  </div>
                ) : <div className="invisible px-4 py-2">EMPTY</div>}
 
+               {/* Roll Dice Action Area */}
+               <div className="flex flex-col items-center gap-2 pointer-events-auto">
+                  <div 
+                     onClick={rollDice}
+                     className={`w-16 h-16 lg:w-20 lg:h-20 border-2 rounded-2xl flex items-center justify-center shadow-[0_5px_20px_rgba(0,0,0,0.8)] transform transition-transform ${turn === 'red' ? 'bg-linear-to-br from-[#ef4444] to-[#991b1b] border-[#ffce33]' : turn === 'green' ? 'bg-linear-to-br from-[#22c55e] to-[#14532d] border-[#ffce33]' : turn === 'yellow' ? 'bg-linear-to-br from-[#eab308] to-[#713f12] border-[#ffce33]' : 'bg-linear-to-br from-[#3b82f6] to-[#1e3a8a] border-[#ffce33]'} ${finalIsRolling || roomData?.exitedPlayers?.includes(auth.currentUser?.uid || '') ? 'scale-90 scale-x-[-1] rotate-720! duration-1000 origin-center opacity-80' : 'hover:scale-105 duration-200 cursor-pointer animate-pulse'}`}
+                  >
+                    {!finalIsRolling && finalDiceValue ? (
+                       <DiceFace value={finalDiceValue} />
+                    ) : (
+                      <Dices className={`w-8 h-8 lg:w-10 lg:h-10 text-white drop-shadow-xl ${finalIsRolling ? 'animate-spin' : ''}`} />
+                    )}
+                  </div>
+                  <div className="bg-black/80 px-3 py-1 rounded-full text-[10px] text-white font-bold shadow-xl border border-white/20 uppercase tracking-wider backdrop-blur-md">
+                     {turn} Turn
+                  </div>
+               </div>
+
                {/* Player 3 (Yellow) */}
                {roomData?.maxPlayers === 4 ? (
-                 <div className={`px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#a3790f] to-[#4d3805] ${turn === 'yellow' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#291e03] opacity-80'} transition-all`}>
+                 <div className={`relative px-4 py-2 flex flex-col items-center justify-center rounded-xl border-2 shadow-xl bg-linear-to-b from-[#a3790f] to-[#4d3805] ${turn === 'yellow' ? 'border-[#ffce33] scale-110 z-20' : 'border-[#291e03] opacity-80'} transition-all`}>
+                    {renderFloatingEmotes(roomData?.players?.[2])}
                     {turn === 'yellow' && <span className="absolute -top-3 right-0 bg-white text-black font-black text-xs px-2 py-0.5 rounded-full shadow-md animate-bounce">{timeLeft}s</span>}
                     <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[2] || '') ? 'line-through text-red-400' : ''}`}>
                        {!roomData?.players?.[2] ? 'EMPTY' : roomData.players[2] === auth.currentUser?.uid ? 'YOU' : 'P3'}
@@ -1102,19 +1302,9 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       </div>
 
       {/* Right Axis: Chat & Controls */}
-      <div className="w-full lg:w-80 flex flex-col gap-4">
-         <div className="bg-[#0b1711] border border-slate-800 rounded-xl p-4 flex justify-between items-center">
-            <div>
-               <p className="text-xs text-slate-400">Prize Pool</p>
-               <p className="text-xl font-bold text-[#f0b429]">₹ {isPlaying ? stake * (roomData?.players?.length || 2) * 0.97 : 0}</p>
-            </div>
-            <button onClick={handleQuit} className="text-white hover:text-white bg-red-600/80 hover:bg-red-600 px-4 py-1.5 rounded-lg text-sm transition-colors border border-red-50 shadow-md">
-              Quit
-            </button>
-         </div>
-
+      <div className="w-full lg:w-80 flex flex-col gap-4 lg:h-[calc(100vh-96px)]">
          {/* Chat Box */}
-         <div className="flex-1 bg-[#0b1711] border border-slate-800 rounded-xl flex flex-col overflow-hidden relative">
+         <div className="h-72 lg:flex-1 bg-[#0b1711] border border-slate-800 rounded-xl flex flex-col overflow-hidden relative lg:min-h-100">
             <div className="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                <span className="text-white font-medium flex items-center gap-2"><MessageSquare size={16}/> Voice & Chat</span>
             </div>
@@ -1135,7 +1325,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                {EMOJIS.map(emoji => (
                   <button 
                     key={emoji} 
-                    onClick={() => sendMessage(emoji)}
+                    onClick={() => sendEmote(emoji)}
                     className="text-xl hover:bg-slate-700 p-1.5 rounded-lg transition-colors shrink-0"
                   >
                     {emoji}
@@ -1155,15 +1345,101 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                />
                <button 
                  onClick={toggleMic}
-                 className={`p-2 rounded-lg transition-colors border shadow-md relative ${isMicEnabled ? 'bg-green-600/20 text-green-500 border-green-500/50' : 'bg-slate-700 text-slate-400 border-slate-600'}`}
+                 className={`p-2 rounded-lg transition-colors border shadow-md relative ${isMicEnabled ? 'bg-green-600/20 text-green-500 border-green-500/50' : 'bg-red-900/40 text-red-500 border-red-500/30'}`}
                  title={isMicEnabled ? "Turn Mic Off" : "Turn Mic On"}
                >
-                 <Mic size={18} />
+                 {isMicEnabled ? <Mic size={18} /> : <MicOff size={18} />}
                  {isMicEnabled && <span className="absolute max-w-none -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></span>}
                </button>
             </div>
          </div>
+
+         <div className="bg-[#0b1711] border border-slate-800 rounded-xl p-4 flex justify-between items-center shrink-0">
+            <div>
+               <p className="text-xs text-slate-400">Prize Pool</p>
+               <p className="text-xl font-bold text-[#f0b429]">₹ {isPlaying ? stake * (roomData?.players?.length || 2) * 0.97 : 0}</p>
+            </div>
+            <button onClick={handleQuitClick} className="text-white hover:text-white bg-red-600/80 hover:bg-red-600 px-4 py-1.5 rounded-lg text-sm transition-colors border border-red-50 shadow-md">
+              Quit
+            </button>
+         </div>
       </div>
+
+      {showQuitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0b1711] border border-slate-800 p-6 rounded-2xl max-w-sm w-full mx-4 shadow-xl">
+            <h3 className="text-xl font-bold text-white mb-2">Are you sure?</h3>
+            <p className="text-slate-400 mb-6">
+              {isPlaying ? "If you leave now, you will lose the game and your bet." : "Leave this room? Your bet will be refunded."}
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowQuitConfirm(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-800 text-white font-bold hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeQuit}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 transition-colors"
+              >
+                Confirm Quit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMicError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0b1711] border border-red-500/30 p-6 rounded-2xl max-w-sm w-full mx-4 shadow-xl">
+            <h3 className="text-xl font-bold text-red-500 mb-2">Microphone Blocked</h3>
+            <p className="text-slate-400 mb-4 text-sm">
+              Error: {micErrorMsg}
+            </p>
+            <p className="text-white mb-6 text-sm font-medium">
+              If you are in the AI Studio preview, the browser blocks microphone access. <br/><br/>
+              Please <strong>OPEN THE APP IN A NEW TAB</strong> using the arrow icon in the top right corner.
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowMicError(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-800 text-white font-bold hover:bg-slate-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMicConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0b1711] border border-slate-800 p-6 rounded-2xl max-w-sm w-full mx-4 shadow-xl">
+            <h3 className="text-xl font-bold text-white mb-2">Microphone Access</h3>
+            <p className="text-slate-400 mb-6">
+              Do you want to allow microphone access to talk with other players in this room?
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => {
+                  setShowMicConfirm(false);
+                  localStorage.setItem('ludo_mic_permission', 'denied');
+                }}
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-800 text-white font-bold hover:bg-slate-700 transition-colors"
+              >
+                Not Now
+              </button>
+              <button 
+                onClick={() => requestMicPermission(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-[#00ff88] text-[#020503] font-bold hover:bg-[#00ff88]/90 transition-colors"
+              >
+                Allow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

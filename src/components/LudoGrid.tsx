@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 
 const PATH = [
   [7, 2], [7, 3], [7, 4], [7, 5], [7, 6],
@@ -177,20 +178,22 @@ export default function LudoGrid({ pieces, onPieceClick }: { pieces?: PieceState
       {pieces && pieces.map(piece => {
         const [row, col] = getPieceCoordinates(piece);
         return (
-          <div 
+          <motion.div 
             key={piece.id}
-            onClick={(e) => {
+            layout
+            transition={{ type: "spring", stiffness: 300, damping: 25, mass: 1 }}
+            onClick={(e: React.MouseEvent) => {
                e.stopPropagation();
                if(onPieceClick) onPieceClick(piece);
             }}
-            className={`w-6 h-6 rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.6),inset_0_-2px_4px_rgba(0,0,0,0.4)] absolute transform -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer border-2 transition-all duration-300 hover:scale-110 ${getPieceColorClass(piece.color)}`}
+            className={`w-6 h-6 rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.6),inset_0_-2px_4px_rgba(0,0,0,0.4)] absolute transform -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer border-2 hover:scale-110 ${getPieceColorClass(piece.color)}`}
             style={{
                left: `calc(${col - 0.5} * (100% / 15))`,
                top: `calc(${row - 0.5} * (100% / 15))`
             }}
           >
              <div className="absolute inset-0.5 rounded-full border border-white/30"></div>
-          </div>
+          </motion.div>
         );
       })}
     </div>

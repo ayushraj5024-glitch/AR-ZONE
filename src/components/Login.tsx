@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lock, User, ArrowRight, ShieldCheck, Gauge, TrendingUp, Eye, EyeOff } from 'lucide-react';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
+import Background from './Background';
 
 interface LoginProps {
   onLogin: () => void;
@@ -62,110 +63,6 @@ export default function Login({ onLogin, isAdminPath = false }: LoginProps) {
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const [isSendingReset, setIsSendingReset] = useState(false);
-
-  // Canvas Particles
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let particles: Particle[] = [];
-    let animationFrameId: number;
-
-    const resizeCanvas = () => {
-       if (containerRef.current) {
-          canvas!.width = containerRef.current.clientWidth;
-          canvas!.height = containerRef.current.clientHeight;
-       } else {
-         canvas!.width = window.innerWidth;
-         canvas!.height = window.innerHeight;
-       }
-    };
-
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    class Particle {
-      x: number;
-      y: number;
-      vx: number;
-      vy: number;
-      radius: number;
-      color: string;
-
-      constructor() {
-        this.x = Math.random() * canvas!.width;
-        this.y = Math.random() * canvas!.height;
-        this.vx = (Math.random() - 0.5) * 1.5;
-        this.vy = (Math.random() - 0.5) * 1.5;
-        this.radius = Math.random() * 2 + 1;
-        this.color = Math.random() > 0.5 ? '#00ff88' : '#f0b429';
-      }
-
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-
-        if (this.x < 0 || this.x > canvas!.width) this.vx = -this.vx;
-        if (this.y < 0 || this.y > canvas!.height) this.vy = -this.vy;
-      }
-
-      draw() {
-        if (!ctx) return;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = this.color;
-        
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-    }
-
-    const initParticles = () => {
-      particles = [];
-      for (let i = 0; i < 80; i++) {
-        particles.push(new Particle());
-      }
-    };
-
-    const animate = () => {
-      if (!ctx) return;
-      ctx.clearRect(0, 0, canvas!.width, canvas!.height);
-
-      for (let i = 0; i < particles.length; i++) {
-        particles[i].update();
-        particles[i].draw();
-
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < 100) {
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(0, 255, 136, ${1 - distance / 100})`;
-            ctx.lineWidth = 0.5;
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.stroke();
-          }
-        }
-      }
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    initParticles();
-    animate();
-
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,16 +129,12 @@ export default function Login({ onLogin, isAdminPath = false }: LoginProps) {
   };
 
   return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-dvh bg-[#05100a] text-slate-200 flex items-center justify-center p-4 lg:p-12 overflow-hidden font-exo touch-none overscroll-none" style={{ '--gold': '#f0b429', '--gold2': '#ffda6a', '--green': '#00ff88', '--green2': '#00cc6a', '--blue': '#00aaff', '--red': '#ff3355' } as React.CSSProperties}>
+    <div ref={containerRef} className="fixed inset-0 w-full h-dvh bg-[#05100a] text-slate-200 flex items-center justify-center p-4 lg:p-12 overflow-hidden font-exo touch-none overscroll-none" style={{ '--gold': '#f0b429', '--gold2': '#ffda6a', '--green': 'var(--primary)', '--green2': '#00cc6a', '--blue': '#00aaff', '--red': '#ff3355' } as React.CSSProperties}>
       <style>{LoginStyles}</style>
 
       {/* Background Elements */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <canvas ref={canvasRef} className="absolute inset-0 z-0" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,136,0.03)_1px,transparent_1px)] bg-size-[40px_40px]"></div>
-        <div className="absolute top-1/4 left-1/4 w-150 h-150 bg-[#00ff88]/5 rounded-full blur-[150px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-125 h-125 bg-[#f0b429]/5 rounded-full blur-[150px]"></div>
-        <div className="absolute inset-0 crt-scanlines z-10"></div>
+        <Background />
         {/* Corner brackets */}
         <div className="fixed inset-4 z-10 pointer-events-none">
            <div className="absolute bracket-tl"></div>
