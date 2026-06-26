@@ -62,6 +62,22 @@ export default function LudoGrid({ pieces, onPieceClick }: { pieces?: PieceState
      }
   };
 
+  const [hoveredPiece, setHoveredPiece] = React.useState<string | null>(null);
+
+  // Group pieces by coordinate to apply offsets if multiple pieces are on the same cell
+  const coordinateMap: { [key: string]: PieceState[] } = {};
+  
+  if (pieces) {
+    pieces.forEach(piece => {
+      const coords = getPieceCoordinates(piece);
+      const key = `${coords[0]},${coords[1]}`;
+      if (!coordinateMap[key]) {
+        coordinateMap[key] = [];
+      }
+      coordinateMap[key].push(piece);
+    });
+  }
+
   return (
     <div 
       className="w-full aspect-square bg-[#ececec] rounded-xl border-8 border-[#0c1f36] p-1 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden" 
@@ -177,19 +193,54 @@ export default function LudoGrid({ pieces, onPieceClick }: { pieces?: PieceState
       {/* Render Pieces */}
       {pieces && pieces.map(piece => {
         const [row, col] = getPieceCoordinates(piece);
+        const key = `${row},${col}`;
+        const group = coordinateMap[key] || [];
+        const count = group.length;
+        const idx = group.findIndex(p => p.id === piece.id);
+
+        let dx = 0;
+        let dy = 0;
+        let scale = 1;
+
+        // Apply visual offsets if multiple pieces occupy the same cell on the active board path
+        if (count > 1 && piece.position !== -1) {
+          scale = 0.75; // slightly smaller so multiple pieces fit beautifully together
+          if (count === 2) {
+            // Place on diagonal opposites
+            const angle = (idx * Math.PI) + Math.PI / 4;
+            dx = Math.cos(angle) * 6; // 6px offset
+            dy = Math.sin(angle) * 6;
+          } else if (count === 3) {
+            // Triangular spacing
+            const angle = (idx * (2 * Math.PI) / 3) - Math.PI / 2;
+            dx = Math.cos(angle) * 7;
+            dy = Math.sin(angle) * 7;
+          } else {
+            // Quadrant-based corners spacing
+            const angle = (idx * (2 * Math.PI) / Math.min(count, 8));
+            dx = Math.cos(angle) * 8;
+            dy = Math.sin(angle) * 8;
+          }
+        }
+
+        const isHovered = hoveredPiece === piece.id;
+
         return (
           <motion.div 
             key={piece.id}
             layout
             transition={{ type: "spring", stiffness: 300, damping: 25, mass: 1 }}
+            onMouseEnter={() => setHoveredPiece(piece.id)}
+            onMouseLeave={() => setHoveredPiece(null)}
             onClick={(e: React.MouseEvent) => {
                e.stopPropagation();
                if(onPieceClick) onPieceClick(piece);
             }}
-            className={`w-6 h-6 rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.6),inset_0_-2px_4px_rgba(0,0,0,0.4)] absolute transform -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer border-2 hover:scale-110 ${getPieceColorClass(piece.color)}`}
+            className={`w-6 h-6 rounded-full shadow-[0_4px_6px_rgba(0,0,0,0.6),inset_0_-2px_4px_rgba(0,0,0,0.4)] absolute cursor-pointer border-2 transition-all duration-150 ${isHovered ? 'z-50' : 'z-20'} ${getPieceColorClass(piece.color)}`}
             style={{
                left: `calc(${col - 0.5} * (100% / 15))`,
-               top: `calc(${row - 0.5} * (100% / 15))`
+               top: `calc(${row - 0.5} * (100% / 15))`,
+               transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(${isHovered ? scale * 1.25 : scale})`
             }}
           >
              <div className="absolute inset-0.5 rounded-full border border-white/30"></div>

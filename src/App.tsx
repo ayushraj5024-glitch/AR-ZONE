@@ -85,6 +85,7 @@ export type AgentData = {
 };
 
 import ThemeAndNotifications from './components/ThemeAndNotifications';
+import Background from './components/Background';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -286,7 +287,12 @@ export default function App() {
   }
 
   return (
-    <div className="h-dvh w-full overflow-hidden bg-[#020503] flex font-exo text-slate-200">
+    <div className="h-dvh w-full overflow-hidden bg-[#020503] flex font-exo text-slate-200 relative">
+      {/* Global Animated Background Effects */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Background />
+      </div>
+
       {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div 
@@ -547,8 +553,9 @@ export default function App() {
 
       {/* Main Content */}
       {currentView === 'dashboard' ? (
-        <main className="flex-1 min-w-0 h-dvh overflow-hidden">
+        <main className="flex-1 min-w-0 h-dvh overflow-hidden relative z-10 bg-[#020503]/20">
            <Dashboard 
+             userRole={userRole}
              onMenuClick={() => setSidebarOpen(!isSidebarOpen)} 
              onLogout={() => {
                signOut(auth).then(() => {
@@ -559,7 +566,7 @@ export default function App() {
            />
         </main>
       ) : (
-      <main className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden bg-[#020503]">
+      <main className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden bg-[#020503]/55 backdrop-blur-[1px] relative z-10">
         {/* Header */}
         <header className="h-16 bg-[#05100a]/80 backdrop-blur-md border-b border-[#00ff88]/20 flex shrink-0 items-center justify-between px-4 lg:px-8 z-10 sticky top-0 shadow-[0_4px_20px_rgba(0,255,136,0.05)] text-slate-200">
           <div className="flex items-center space-x-4">
@@ -601,7 +608,7 @@ export default function App() {
         </header>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-auto bg-[#020503] text-slate-200">
+        <div className="flex-1 overflow-auto bg-transparent text-slate-200">
           
           {/* Alert Banner */}
           <div className="bg-linear-to-r from-[#00ff88]/10 to-[#020503] border-b border-[#00ff88]/20 text-slate-200 px-4 py-3 flex items-center shadow-sm w-full overflow-hidden">

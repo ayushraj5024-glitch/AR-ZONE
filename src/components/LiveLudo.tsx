@@ -562,15 +562,15 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
           }
         });
 
-        const appId = import.meta.env.VITE_AGORA_APP_ID; 
+        const appId = import.meta.env.VITE_AGORA_APP_ID || "20b7c2a2d3df4afcb29d29a5020585f6"; 
         if (appId) {
           try {
              await client.join(appId, roomId, null, null);
           } catch (joinErr) {
-             console.warn("Agora join failed. Check VITE_AGORA_APP_ID.");
+             console.warn("Agora join failed. Check VITE_AGORA_APP_ID or fallback validity.", joinErr);
           }
         } else {
-           console.warn("VITE_AGORA_APP_ID not set. Voice chat broadcast is disabled.");
+           console.warn("Agora App ID not configured.");
         }
       } catch (error) {
         console.error("Agora init error:", error);

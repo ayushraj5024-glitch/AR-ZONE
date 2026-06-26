@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Palette, Settings2, Activity, Zap, Radio, Check, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { getFirestore, collection, onSnapshot, query, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, orderBy, limit, Timestamp, doc, setDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 interface Notification {
@@ -28,6 +28,37 @@ export default function ThemeAndNotifications() {
   ];
 
   const currentTheme = localStorage.getItem('arzone_theme') || '#00ff88';
+
+  const [bgType, setBgType] = useState<string>(() => {
+    return localStorage.getItem('arzone_bg_type') || 'particles';
+  });
+
+  useEffect(() => {
+    const db = getFirestore();
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'background'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && data.bgType) {
+          setBgType(data.bgType);
+        }
+      }
+    }, (error) => {
+      console.warn("Error listening to global background settings in theme picker:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const changeBgType = async (type: string) => {
+    setBgType(type);
+    localStorage.setItem('arzone_bg_type', type);
+    window.dispatchEvent(new CustomEvent('bgTypeChanged', { detail: type }));
+    try {
+      const db = getFirestore();
+      await setDoc(doc(db, 'settings', 'background'), { bgType: type }, { merge: true });
+    } catch (err) {
+      console.error("Failed to update global background in Firestore:", err);
+    }
+  };
 
   useEffect(() => {
     const db = getFirestore();
@@ -170,6 +201,44 @@ export default function ThemeAndNotifications() {
                       )}
                     </button>
 
+                  );
+                })}
+              </div>
+              
+              {/* Background Effects Section */}
+              <div className="bg-linear-to-r from-(--primary)/20 via-(--primary)/5 to-transparent px-5 py-3 border-t border-b border-(--primary)/20 relative overflow-hidden">
+                <div className="relative text-[10px] text-slate-400 font-exo uppercase tracking-widest flex items-center gap-2">
+                  <span>Background Effects</span>
+                  <div className="h-px bg-(--primary)/50 grow"></div>
+                </div>
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-2 bg-[#05100a]/30">
+                {[
+                  { id: 'particles', name: 'Particles', icon: '⭐' },
+                  { id: 'matrix', name: 'Matrix', icon: '📟' },
+                  { id: 'cybergrid', name: 'Cyber Grid', icon: '🌐' },
+                  { id: 'hyperdrive', name: 'Hyperdrive', icon: '🚀' },
+                  { id: 'nebula', name: 'Nebula', icon: '🌌' },
+                  { id: 'none', name: 'Off', icon: '❌' }
+                ].map(b => {
+                  const isActive = bgType === b.id;
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => changeBgType(b.id)}
+                      className={`relative flex items-center gap-2 p-2.5 border transition-all duration-300 group overflow-hidden
+                        ${isActive 
+                          ? 'bg-[#0a1a12] border-(--primary)/50 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)] text-white' 
+                          : 'bg-black/40 border-white/5 hover:border-white/20 hover:bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      style={{ borderRadius: '0.375rem', clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)' }}
+                    >
+                      <span className="text-sm shrink-0">{b.icon}</span>
+                      <span className="text-[10px] font-exo font-bold tracking-wider uppercase truncate">{b.name}</span>
+                      {isActive && (
+                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-(--primary) shadow-[0_0_6px_var(--primary)]"></div>
+                      )}
+                    </button>
                   );
                 })}
               </div>

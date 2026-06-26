@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Shield, LogOut, AlertTriangle, ChevronRight, Activity, Download, Bell, Plus, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, onSnapshot, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, collection, getDocs, query, orderBy, limit, setDoc } from 'firebase/firestore';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import ThemeAndNotifications from './ThemeAndNotifications';
@@ -77,7 +77,7 @@ const DashboardStyles = `
   }
 `;
 
-export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMenuClick?: () => void, onLogout?: () => void, onNavigate?: (view: any) => void }) {
+export default function Dashboard({ onMenuClick, onLogout, onNavigate, userRole = 'client' }: { onMenuClick?: () => void, onLogout?: () => void, onNavigate?: (view: any) => void, userRole?: 'admin' | 'client' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -87,10 +87,34 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
     return localStorage.getItem('arzone_bg_type') || 'particles';
   });
 
-  const handleBgChange = (type: string) => {
+  // Sync background selection from Firestore so local dropdown state stays perfectly updated
+  useEffect(() => {
+    const db = getFirestore();
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'background'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && data.bgType) {
+          setBgType(data.bgType);
+        }
+      }
+    }, (error) => {
+      console.warn("Error listening to global background settings:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleBgChange = async (type: string) => {
     setBgType(type);
     localStorage.setItem('arzone_bg_type', type);
     window.dispatchEvent(new CustomEvent('bgTypeChanged', { detail: type }));
+    
+    // Save to Firestore globally so all clients and screens update in real-time
+    try {
+      const db = getFirestore();
+      await setDoc(doc(db, 'settings', 'background'), { bgType: type }, { merge: true });
+    } catch (err) {
+      console.error("Failed to update global background in Firestore:", err);
+    }
   };
 
   // Parse time
@@ -220,7 +244,6 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
 
       {/* Background Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <Background />
         {/* Corner brackets */}
         <div className="fixed inset-4 z-10 pointer-events-none">
            <div className="absolute bracket-tl"></div>
@@ -250,6 +273,24 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
                <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
                SYSTEM ONLINE
              </div>
+             {userRole === 'admin' && (
+               <div className="flex items-center gap-1.5 text-xs font-bold border border-[#f0b429]/40 bg-[#05100a] hover:border-[#f0b429] px-2 py-1.5 rounded relative transition-colors shadow-[0_0_10px_rgba(240,180,41,0.05)] cursor-pointer">
+                 <span className="text-[#f0b429] hidden xs:inline tracking-wider font-orbitron uppercase text-[10px]">BG:</span>
+                 <select 
+                   value={bgType} 
+                   onChange={(e) => handleBgChange(e.target.value)}
+                   className="bg-transparent text-[#f0b429] outline-none cursor-pointer font-bold font-orbitron text-xs pr-1"
+                   title="Change Background Style Globally"
+                 >
+                   <option value="particles" className="bg-[#05100a] text-slate-200">⭐ Particles</option>
+                   <option value="matrix" className="bg-[#05100a] text-[#00ff88]">📟 Matrix</option>
+                   <option value="cybergrid" className="bg-[#05100a] text-[#00aaff]">🌐 Cyber Grid 3D</option>
+                   <option value="hyperdrive" className="bg-[#05100a] text-[#ffda6a]">🚀 Hyperdrive</option>
+                   <option value="nebula" className="bg-[#05100a] text-rose-400">🌌 Nebula Storm</option>
+                   <option value="none" className="bg-[#05100a] text-slate-400">❌ Off</option>
+                 </select>
+               </div>
+             )}
              <ThemeAndNotifications />
              <button onClick={onLogout} className="group flex items-center gap-2 px-4 py-2 rounded border border-slate-700 hover:border-[#ff3355] text-white hover:text-[#ff3355] font-exo font-semibold text-sm transition-all shadow-sm">
                <span className="hidden sm:inline">SIGN OUT</span>
@@ -288,19 +329,6 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate }: { onMen
           </div>
 
           <div className="absolute right-4 flex items-center gap-3 z-20">
-            <select 
-              value={bgType} 
-              onChange={(e) => handleBgChange(e.target.value)}
-              className="text-xs font-bold text-[#f0b429] border border-[#f0b429]/50 bg-[#05100a] px-2 py-1 rounded hover:bg-[#f0b429]/20 transition-colors outline-none cursor-pointer hidden sm:block appearance-none text-center"
-              title="Change Background Animation"
-            >
-              <option value="particles">Particles</option>
-              <option value="matrix">Matrix</option>
-              <option value="waves">Waves</option>
-              <option value="nexus">Nexus 3D</option>
-              <option value="quantum">Quantum Grid</option>
-              <option value="none">None</option>
-            </select>
             <button onClick={() => onNavigate?.('live_matches')} className="text-xs font-bold text-[#00ff88] border border-[#00ff88]/50 bg-[#05100a] px-3 py-1 rounded hover:bg-[#00ff88]/20 transition-colors whitespace-nowrap">
               LIVE VIEW
             </button>
