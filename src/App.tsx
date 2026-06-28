@@ -568,22 +568,22 @@ export default function App() {
       ) : (
       <main className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden bg-[#020503]/55 backdrop-blur-[1px] relative z-10">
         {/* Header */}
-        <header className="h-16 bg-[#05100a]/80 backdrop-blur-md border-b border-[#00ff88]/20 flex shrink-0 items-center justify-between px-4 lg:px-8 z-10 sticky top-0 shadow-[0_4px_20px_rgba(0,255,136,0.05)] text-slate-200">
-          <div className="flex items-center space-x-4">
+        <header className="h-16 bg-[#05100a]/80 backdrop-blur-md border-b border-[#00ff88]/20 flex shrink-0 items-center justify-between px-3 sm:px-4 lg:px-8 z-10 sticky top-0 shadow-[0_4px_20px_rgba(0,255,136,0.05)] text-slate-200">
+          <div className="flex items-center space-x-1.5 sm:space-x-4 min-w-0">
             <button 
-              className="md:hidden p-2 -ml-2 text-[#00ff88] hover:bg-[#00ff88]/10 rounded border border-transparent hover:border-[#00ff88]/30"
+              className="md:hidden p-1.5 -ml-1 text-[#00ff88] hover:bg-[#00ff88]/10 rounded border border-transparent hover:border-[#00ff88]/30 shrink-0"
               onClick={() => setSidebarOpen(!isSidebarOpen)}
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
-            <h1 className="flex items-center space-x-2">
-              <span className="ar-zone-logo text-3xl pb-1 tracking-normal">
+            <h1 className="flex items-center space-x-2 truncate">
+              <span className="ar-zone-logo text-xl sm:text-2xl md:text-3xl pb-0.5 tracking-normal select-none">
                 AR ZONE
               </span>
             </h1>
           </div>
           
-          <div className="flex items-center space-x-3 sm:space-x-4">
+          <div className="flex items-center space-x-1.5 sm:space-x-4 shrink-0">
             <div className="hidden lg:flex items-center space-x-2 text-sm font-semibold tracking-wider text-[#00ff88]">
               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_10px_rgba(0,255,136,1)]"></span>
               <span className="font-orbitron font-bold">SYSTEM ONLINE</span>
@@ -599,9 +599,10 @@ export default function App() {
                   setIsAuthenticated(false);
                 });
               }}
-              className="flex items-center space-x-2 text-sm font-bold font-orbitron uppercase text-[#ff3355] hover:text-[#ff3355]/80 hover:bg-[#ff3355]/10 px-3 py-1.5 rounded transition-all border border-transparent hover:border-[#ff3355]/30"
+              className="flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded border border-transparent hover:border-[#ff3355]/30 hover:bg-[#ff3355]/10 text-[#ff3355] font-orbitron font-bold text-xs sm:text-sm transition-all shrink-0"
+              title="Sign out"
             >
-              <LogOut size={18} />
+              <LogOut size={15} className="sm:w-4.5 sm:h-4.5" />
               <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>

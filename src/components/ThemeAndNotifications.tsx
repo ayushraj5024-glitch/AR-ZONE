@@ -123,12 +123,12 @@ export default function ThemeAndNotifications() {
   };
 
   return (
-    <div className="flex items-center gap-2 md:gap-4 mr-2 md:mr-6">
+    <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
       {/* Theme Picker */}
       <div className="relative">
         <button 
           onClick={() => { setThemeOpen(!themeOpen); setNotificationsOpen(false); }}
-          className={`relative p-2.5 rounded-xl transition-all duration-300 border backdrop-blur-md flex items-center justify-center
+          className={`relative p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all duration-300 border backdrop-blur-md flex items-center justify-center shrink-0
             ${themeOpen 
               ? 'bg-(--primary)/10 text-(--primary) border-(--primary)/40 shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]' 
               : 'bg-black/20 text-slate-400 border-white/5 hover:text-(--primary) hover:bg-(--primary)/5 hover:border-(--primary)/20'
@@ -251,7 +251,7 @@ export default function ThemeAndNotifications() {
       <div className="relative">
         <button 
           onClick={() => { setNotificationsOpen(!notificationsOpen); setThemeOpen(false); }}
-          className={`relative p-2.5 rounded-xl transition-all duration-300 border backdrop-blur-md flex items-center justify-center
+          className={`relative p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all duration-300 border backdrop-blur-md flex items-center justify-center shrink-0
             ${notificationsOpen 
               ? 'bg-(--primary)/10 text-(--primary) border-(--primary)/40 shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]' 
               : 'bg-black/20 text-slate-400 border-white/5 hover:text-(--primary) hover:bg-(--primary)/5 hover:border-(--primary)/20'

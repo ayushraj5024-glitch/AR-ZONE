@@ -255,46 +255,64 @@ export default function Dashboard({ onMenuClick, onLogout, onNavigate, userRole 
 
       <div className="relative z-20 flex flex-col min-h-full">
         {/* Navbar */}
-        <nav className="sticky top-0 z-30 px-6 py-3 border-b border-[#00ff88]/30 bg-[#05100a]/90 backdrop-blur-[20px] flex items-center justify-between shadow-[0_4px_30px_rgba(0,255,136,0.1)]">
-           <div className="flex items-center gap-4">
-             <button onClick={onMenuClick} className="md:hidden text-[#00ff88] hover:text-white transition-colors">
-               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        <nav className="sticky top-0 z-30 px-3 sm:px-6 py-2 sm:py-3 border-b border-[#00ff88]/30 bg-[#05100a]/90 backdrop-blur-[20px] flex items-center justify-between shadow-[0_4px_30px_rgba(0,255,136,0.1)]">
+           <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
+             <button onClick={onMenuClick} className="md:hidden text-[#00ff88] hover:text-white transition-colors p-1.5 -ml-1 shrink-0">
+               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
              </button>
-             <span className="ar-zone-logo text-3xl pb-1 tracking-normal">AR ZONE</span>
+             <span className="ar-zone-logo text-xl sm:text-2xl md:text-3xl pb-0.5 tracking-normal select-none truncate">AR ZONE</span>
            </div>
 
-           <div className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00ff88]/40 bg-[#00ff88]/5 text-[#00ff88] text-sm font-bold shadow-[0_0_15px_rgba(0,255,136,0.15)]">
+           <div className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00ff88]/40 bg-[#00ff88]/5 text-[#00ff88] text-sm font-bold shadow-[0_0_15px_rgba(0,255,136,0.15)] shrink-0">
              <Shield size={16} />
              <span>HIGH SECURITY</span>
            </div>
 
-           <div className="flex items-center gap-3 sm:gap-6">
+           <div className="flex items-center gap-1.5 sm:gap-4 md:gap-6 shrink-0">
              <div className="hidden lg:flex items-center gap-2 text-slate-300 text-sm font-medium">
                <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_rgba(0,255,136,1)]"></span>
                SYSTEM ONLINE
              </div>
              {userRole === 'admin' && (
-               <div className="flex items-center gap-1.5 text-xs font-bold border border-[#f0b429]/40 bg-[#05100a] hover:border-[#f0b429] px-2 py-1.5 rounded relative transition-colors shadow-[0_0_10px_rgba(240,180,41,0.05)] cursor-pointer">
-                 <span className="text-[#f0b429] hidden xs:inline tracking-wider font-orbitron uppercase text-[10px]">BG:</span>
-                 <select 
-                   value={bgType} 
-                   onChange={(e) => handleBgChange(e.target.value)}
-                   className="bg-transparent text-[#f0b429] outline-none cursor-pointer font-bold font-orbitron text-xs pr-1"
-                   title="Change Background Style Globally"
-                 >
-                   <option value="particles" className="bg-[#05100a] text-slate-200">⭐ Particles</option>
-                   <option value="matrix" className="bg-[#05100a] text-[#00ff88]">📟 Matrix</option>
-                   <option value="cybergrid" className="bg-[#05100a] text-[#00aaff]">🌐 Cyber Grid 3D</option>
-                   <option value="hyperdrive" className="bg-[#05100a] text-[#ffda6a]">🚀 Hyperdrive</option>
-                   <option value="nebula" className="bg-[#05100a] text-rose-400">🌌 Nebula Storm</option>
-                   <option value="none" className="bg-[#05100a] text-slate-400">❌ Off</option>
-                 </select>
+               <div className="flex items-center gap-1.5 text-xs font-bold border border-[#f0b429]/40 bg-[#05100a] hover:border-[#f0b429] px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded relative transition-colors shadow-[0_0_10px_rgba(240,180,41,0.05)] cursor-pointer shrink-0">
+                 <span className="text-[#f0b429] hidden sm:inline tracking-wider font-orbitron uppercase text-[10px] select-none">BG:</span>
+                 <div className="relative flex items-center justify-center">
+                   <span className="text-base sm:text-xs">
+                     {bgType === 'particles' && '⭐'}
+                     {bgType === 'matrix' && '📟'}
+                     {bgType === 'cybergrid' && '🌐'}
+                     {bgType === 'hyperdrive' && '🚀'}
+                     {bgType === 'nebula' && '🌌'}
+                     {bgType === 'none' && '❌'}
+                   </span>
+                   <span className="hidden md:inline-block text-[#f0b429] font-bold font-orbitron text-xs ml-1 select-none">
+                     {bgType === 'particles' && 'Particles'}
+                     {bgType === 'matrix' && 'Matrix'}
+                     {bgType === 'cybergrid' && 'Cyber Grid'}
+                     {bgType === 'hyperdrive' && 'Hyperdrive'}
+                     {bgType === 'nebula' && 'Nebula'}
+                     {bgType === 'none' && 'Off'}
+                   </span>
+                   <select 
+                     value={bgType} 
+                     onChange={(e) => handleBgChange(e.target.value)}
+                     className="absolute inset-0 opacity-0 w-full h-full cursor-pointer bg-black text-white"
+                     title="Change Background Style Globally"
+                   >
+                     <option value="particles" className="bg-[#05100a] text-slate-200">⭐ Particles</option>
+                     <option value="matrix" className="bg-[#05100a] text-[#00ff88]">📟 Matrix</option>
+                     <option value="cybergrid" className="bg-[#05100a] text-[#00aaff]">🌐 Cyber Grid 3D</option>
+                     <option value="hyperdrive" className="bg-[#05100a] text-[#ffda6a]">🚀 Hyperdrive</option>
+                     <option value="nebula" className="bg-[#05100a] text-rose-400">🌌 Nebula Storm</option>
+                     <option value="none" className="bg-[#05100a] text-slate-400">❌ Off</option>
+                   </select>
+                 </div>
                </div>
              )}
              <ThemeAndNotifications />
-             <button onClick={onLogout} className="group flex items-center gap-2 px-4 py-2 rounded border border-slate-700 hover:border-[#ff3355] text-white hover:text-[#ff3355] font-exo font-semibold text-sm transition-all shadow-sm">
+             <button onClick={onLogout} className="group flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded border border-slate-700/50 hover:border-[#ff3355]/50 hover:bg-[#ff3355]/10 text-white hover:text-[#ff3355] font-exo font-semibold text-xs sm:text-sm transition-all shadow-sm shrink-0">
                <span className="hidden sm:inline">SIGN OUT</span>
-               <LogOut size={16} className="group-hover:text-[#ff3355] transition-colors" />
+               <LogOut size={15} className="group-hover:text-[#ff3355] transition-colors sm:w-4 sm:h-4" />
              </button>
            </div>
         </nav>

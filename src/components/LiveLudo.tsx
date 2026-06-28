@@ -566,6 +566,9 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
         if (appId) {
           try {
              await client.join(appId, roomId, null, null);
+             if (localAudioTrack && isMicEnabled) {
+                await client.publish([localAudioTrack]);
+             }
           } catch (joinErr) {
              console.warn("Agora join failed. Check VITE_AGORA_APP_ID or fallback validity.", joinErr);
           }
@@ -583,7 +586,29 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
          client.leave();
       }
     };
-  }, [roomId]);
+  }, [roomId, localAudioTrack, isMicEnabled]);
+
+  // Publish local audio track when both the client and track are ready
+  useEffect(() => {
+    let active = true;
+    const publishTrack = async () => {
+      if (agoraClient && agoraClient.connectionState === "CONNECTED" && localAudioTrack && isMicEnabled) {
+        try {
+          const isAlreadyPublished = agoraClient.localTracks.includes(localAudioTrack);
+          if (!isAlreadyPublished && active) {
+            console.log("Auto-publishing local audio track...");
+            await agoraClient.publish([localAudioTrack]);
+          }
+        } catch (error) {
+          console.warn("Agora auto-publish track error:", error);
+        }
+      }
+    };
+    publishTrack();
+    return () => {
+      active = false;
+    };
+  }, [agoraClient, localAudioTrack, isMicEnabled]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -770,15 +795,19 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
 
       let newPieces = pieces.map(p => ({ ...p }));
       let getAnotherTurn = false;
-      let usedDiceValue = diceValue || Math.floor(Math.random() * 6) + 1;
+      
+      const hasRolled = (diceValue !== null && diceValue !== undefined) || (roomData?.lastDiceRoll !== null && roomData?.lastDiceRoll !== undefined);
+      const usedDiceValue = diceValue || roomData?.lastDiceRoll || Math.floor(Math.random() * 6) + 1;
       if (usedDiceValue === 6) getAnotherTurn = true;
       
       // Auto move logic
       let movablePieces = newPieces.filter(p => p.color === turn && ((p.position === -1 && usedDiceValue === 6) || (p.position >= 0 && p.position + usedDiceValue <= 56)));
+      let movedPieceName = "None";
       if (movablePieces.length > 0) {
           AUDIO_PIECE_MOVE.currentTime = 0;
           AUDIO_PIECE_MOVE.play().catch(() => {});
           let p = movablePieces[0]; // just pick the first valid piece
+          movedPieceName = `Piece ${p.id + 1}`;
           if (p.position === -1) {
               p.position = 0;
           } else {
@@ -824,12 +853,26 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
              turnStartedAt: Date.now(), 
              missedTurns: newMissedTurns,
              exitedPlayers: newExitedPlayers,
-             pieces: newPieces
+             pieces: newPieces,
+             lastDiceRoll: null, // Clear dice roll for next turn
+             isRolling: false
          };
          if (newStatus === 'finished') {
              updates.status = newStatus;
              updates.winner = newWinner;
          }
+         
+         const senderName = `P${COLORS.indexOf(turn) + 1}`;
+         const textMsg = hasRolled 
+             ? `${senderName} rolled ${usedDiceValue} but missed time. System auto-moved ${movedPieceName}.`
+             : `${senderName} inactive. System auto-rolled ${usedDiceValue} and moved ${movedPieceName}.`;
+
+         const systemMsg = {
+             sender: "System",
+             text: textMsg
+         };
+         updates.messages = [...(roomData.messages || []), systemMsg];
+
          await updateDoc(doc(db, "ludo_rooms", roomId), updates);
          setDiceValue(null);
          setIsRolling(false);
@@ -845,18 +888,21 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     timeoutHandledRef.current = false;
     
     const interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - roomData.turnStartedAt!) / 1000);
-        const remaining = Math.max(0, 15 - elapsed);
+        const elapsed = (Date.now() - roomData.turnStartedAt!) / 1000;
+        const remaining = Math.max(0, 15 - Math.floor(elapsed));
         setTimeLeft(remaining);
         
-        if (remaining === 0 && !timeoutHandledRef.current) {
-            timeoutHandledRef.current = true;
+        if (!timeoutHandledRef.current) {
             const COLORS = ['red', 'green', 'yellow', 'blue'];
             const myColor = COLORS[roomData?.players?.indexOf(auth.currentUser?.uid || '') || 0];
             const isHostActive = roomData?.hostId === auth.currentUser?.uid;
-            
-            // Allow the player whose turn it is to handle it, OR the host as a fallback
-            if (turn === myColor || isHostActive) {
+            const isActivePlayer = turn === myColor;
+
+            if (isActivePlayer && elapsed >= 15.0) {
+                timeoutHandledRef.current = true;
+                handleTurnTimeout();
+            } else if (isHostActive && !isActivePlayer && elapsed >= 16.5) {
+                timeoutHandledRef.current = true;
                 handleTurnTimeout();
             }
         }
@@ -1137,7 +1183,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-[#020503] p-4 flex flex-col lg:flex-row gap-6 relative">
+    <div className="min-h-[calc(100vh-64px)] bg-transparent p-4 flex flex-col lg:flex-row gap-6 relative">
       
       {countdown !== null && (
         <div className="absolute inset-0 z-50 bg-[#020503]/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl">
@@ -1213,15 +1259,15 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                                  } catch(e) {}
                                }}
                                className="bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50 text-sm font-bold px-4 py-1.5 rounded-lg"
-                             >Reject</button>
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-                 )}
-               </>
-            )}
+                              >Reject</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+             )}
           </div>
         ) : (
           <div className="w-full max-w-2xl flex flex-col items-center justify-center p-2 lg:p-6 mb-8 mt-4 relative">
@@ -1234,7 +1280,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                   <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[0] || '') ? 'line-through text-red-400' : ''}`}>
                     {!roomData?.players?.[0] ? 'EMPTY' : roomData.players[0] === auth.currentUser?.uid ? 'YOU' : 'P1'}
                   </span>
-                  {roomData?.exitedPlayers?.includes(roomData?.players?.[0] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+                  {roomData?.exitedPlayers?.includes(roomData?.players?.[0] || '') && <span className="text-[10px] text-red-300 font-bold">OFFLINE</span>}
                </div>
 
                {/* Player 2 (Green) */}
@@ -1244,7 +1290,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                   <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[1] || '') ? 'line-through text-red-400' : ''}`}>
                     {!roomData?.players?.[1] ? 'EMPTY' : roomData.players[1] === auth.currentUser?.uid ? 'YOU' : 'P2'}
                   </span>
-                  {roomData?.exitedPlayers?.includes(roomData?.players?.[1] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+                  {roomData?.exitedPlayers?.includes(roomData?.players?.[1] || '') && <span className="text-[10px] text-red-300 font-bold">OFFLINE</span>}
                </div>
             </div>
 
@@ -1264,7 +1310,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                     <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[3] || '') ? 'line-through text-red-400' : ''}`}>
                        {!roomData?.players?.[3] ? 'EMPTY' : roomData.players[3] === auth.currentUser?.uid ? 'YOU' : 'P4'}
                     </span>
-                    {roomData?.exitedPlayers?.includes(roomData?.players?.[3] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+                    {roomData?.exitedPlayers?.includes(roomData?.players?.[3] || '') && <span className="text-[10px] text-red-300 font-bold">OFFLINE</span>}
                  </div>
                ) : <div className="invisible px-4 py-2">EMPTY</div>}
 
@@ -1277,7 +1323,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                     {!finalIsRolling && finalDiceValue ? (
                        <DiceFace value={finalDiceValue} />
                     ) : (
-                      <Dices className={`w-8 h-8 lg:w-10 lg:h-10 text-white drop-shadow-xl ${finalIsRolling ? 'animate-spin' : ''}`} />
+                       <Dices className={`w-8 h-8 lg:w-10 lg:h-10 text-white drop-shadow-xl ${finalIsRolling ? 'animate-spin' : ''}`} />
                     )}
                   </div>
                   <div className="bg-black/80 px-3 py-1 rounded-full text-[10px] text-white font-bold shadow-xl border border-white/20 uppercase tracking-wider backdrop-blur-md">
@@ -1293,7 +1339,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                     <span className={`text-white font-bold tracking-wider ${roomData?.exitedPlayers?.includes(roomData?.players?.[2] || '') ? 'line-through text-red-400' : ''}`}>
                        {!roomData?.players?.[2] ? 'EMPTY' : roomData.players[2] === auth.currentUser?.uid ? 'YOU' : 'P3'}
                     </span>
-                    {roomData?.exitedPlayers?.includes(roomData?.players?.[2] || '') && <span className="text-[10px] text-red-300 font-bold">QUIT</span>}
+                    {roomData?.exitedPlayers?.includes(roomData?.players?.[2] || '') && <span className="text-[10px] text-red-300 font-bold">OFFLINE</span>}
                  </div>
                ) : <div className="invisible px-4 py-2">EMPTY</div>}
             </div>
