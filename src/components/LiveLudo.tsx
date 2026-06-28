@@ -5,12 +5,9 @@ import { auth, db } from '../firebase';
 import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, getDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
 import LudoGrid, { PieceState } from './LudoGrid';
 import AgoraRTC, { IAgoraRTCClient, IMicrophoneAudioTrack, IAgoraRTCRemoteUser } from 'agora-rtc-sdk-ng';
+import { ludoAudio } from '../utils/ludoAudio';
 
 AgoraRTC.setLogLevel(4);
-
-const AUDIO_DICE_ROLL = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_38f2940263.mp3?filename=dice-roll-46011.mp3");
-const AUDIO_PIECE_MOVE = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_27ce09ce5c.mp3?filename=pop-39222.mp3");
-const AUDIO_KNOCKOUT = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_b2f9f17028.mp3?filename=punch-140236.mp3");
 
 const DiceFace = ({ value }: { value: number }) => {
   return (
@@ -527,6 +524,128 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
   const [remoteUsers, setRemoteUsers] = useState<any[]>([]);
   const [floatingEmotes, setFloatingEmotes] = useState<{id: string, emoji: string, userId: string}[]>([]);
 
+  // Advanced Sound System State & Listeners
+  const [audioVersion, setAudioVersion] = useState(0);
+  const audioState = {
+    bgmMuted: ludoAudio.isMutedBGM,
+    sfxMuted: ludoAudio.isMutedSFX,
+    bgmVolume: ludoAudio.bgmVolume,
+    sfxVolume: ludoAudio.sfxVolume
+  };
+
+  useEffect(() => {
+    const unsubscribe = ludoAudio.subscribe(() => {
+      setAudioVersion(v => v + 1);
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    ludoAudio.startBGM();
+    return () => {
+      ludoAudio.stopBGM();
+    };
+  }, []);
+
+  const prevTurnRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (roomData && roomData.status === 'playing') {
+      const COLORS = ['red', 'green', 'yellow', 'blue'];
+      const playerIndex = roomData.players?.indexOf(auth.currentUser?.uid || '') ?? -1;
+      const myColor = COLORS[playerIndex >= 0 ? playerIndex : 0];
+      if (roomData.turn === myColor && prevTurnRef.current !== myColor) {
+        ludoAudio.playYourTurn();
+      }
+      prevTurnRef.current = roomData.turn || null;
+    }
+  }, [roomData?.turn, roomData?.status]);
+
+  const prevPlayersCountRef = React.useRef<number>(0);
+  useEffect(() => {
+    if (roomData) {
+      const currentCount = roomData.players?.length || 0;
+      if (currentCount > prevPlayersCountRef.current && prevPlayersCountRef.current > 0) {
+        ludoAudio.playPlayerJoin();
+      }
+      prevPlayersCountRef.current = currentCount;
+    }
+  }, [roomData?.players?.length]);
+
+  // Real-time Mic Diagnostics State & Visualizer logic
+  const [micTestActive, setMicTestActive] = useState(false);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const [micVolume, setMicVolume] = useState(0);
+  const testCtxRef = React.useRef<AudioContext | null>(null);
+  const animationFrameRef = React.useRef<number | null>(null);
+
+  const startMicTest = async () => {
+    if (micTestActive) {
+      stopMicTest();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      setMicStream(stream);
+      setMicTestActive(true);
+
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const testCtx = new AudioCtx();
+      testCtxRef.current = testCtx;
+      const source = testCtx.createMediaStreamSource(stream);
+      const analyser = testCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const updateVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        setMicVolume(Math.min(100, Math.round(average * 2.5)));
+        animationFrameRef.current = requestAnimationFrame(updateVolume);
+      };
+      updateVolume();
+    } catch (err: any) {
+      console.error("Mic test failed", err);
+      alert("Microphone access is blocked or not available in this browser: " + err.message);
+    }
+  };
+
+  const stopMicTest = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    if (micStream) {
+      micStream.getTracks().forEach(track => track.stop());
+    }
+    if (testCtxRef.current) {
+      testCtxRef.current.close().catch(() => {});
+      testCtxRef.current = null;
+    }
+    setMicStream(null);
+    setMicTestActive(false);
+    setMicVolume(0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+      if (testCtxRef.current) {
+        testCtxRef.current.close().catch(() => {});
+      }
+    };
+  }, [micStream]);
+
   const finalIsRolling = isRolling || roomData?.isRolling;
   const finalDiceValue = diceValue || roomData?.lastDiceRoll;
 
@@ -648,6 +767,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
     if (roomData?.status === 'finished') {
       if (roomData.winner === auth.currentUser?.uid && !hasClaimedWin.current) {
         hasClaimedWin.current = true;
+        ludoAudio.playWin();
         const winAmount = stake * (roomData?.players?.length || 2) * 0.97;
         updateBalanceDB(winAmount).then(() => {
           alert(`Congratulations! You Won ₹${winAmount}!`);
@@ -655,6 +775,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
         });
       } else if (roomData.winner !== auth.currentUser?.uid) {
         // Loser or spectator
+        ludoAudio.playLose();
         alert("Game Over! The match has finished.");
         onLeave();
       }
@@ -804,17 +925,20 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       let movablePieces = newPieces.filter(p => p.color === turn && ((p.position === -1 && usedDiceValue === 6) || (p.position >= 0 && p.position + usedDiceValue <= 56)));
       let movedPieceName = "None";
       if (movablePieces.length > 0) {
-          AUDIO_PIECE_MOVE.currentTime = 0;
-          AUDIO_PIECE_MOVE.play().catch(() => {});
           let p = movablePieces[0]; // just pick the first valid piece
           movedPieceName = `Piece ${p.id + 1}`;
+          let reachedHome = false;
           if (p.position === -1) {
               p.position = 0;
           } else {
               p.position += usedDiceValue;
-              if (p.position === 56) getAnotherTurn = true;
+              if (p.position === 56) {
+                  getAnotherTurn = true;
+                  reachedHome = true;
+              }
           }
           
+          let isKnockout = false;
           // Check Knockouts
           if (p.position >= 0 && p.position <= 50) {
              const offset = p.color === 'red' ? 0 : p.color === 'green' ? 13 : p.color === 'yellow' ? 26 : 39;
@@ -829,10 +953,29 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                       if (otherAbsolutePos === absolutePos) {
                          otherP.position = -1; // KNOCKED OUT
                          getAnotherTurn = true;
-                         AUDIO_KNOCKOUT.currentTime = 0;
-                         AUDIO_KNOCKOUT.play().catch(() => {});
+                         isKnockout = true;
+                         ludoAudio.playKnockout();
                       }
                    }
+                }
+             }
+          }
+
+          if (!isKnockout) {
+             if (reachedHome) {
+                ludoAudio.playHomeReach();
+             } else {
+                let isSafe = false;
+                if (p.position >= 0 && p.position <= 50) {
+                   const offset = p.color === 'red' ? 0 : p.color === 'green' ? 13 : p.color === 'yellow' ? 26 : 39;
+                   const absolutePos = (p.position + offset) % 52;
+                   const SAFE_SQUARES = [0, 8, 13, 21, 26, 34, 39, 47];
+                   if (SAFE_SQUARES.includes(absolutePos)) isSafe = true;
+                }
+                if (isSafe) {
+                   ludoAudio.playSafeZone();
+                } else {
+                   ludoAudio.playPieceMove();
                 }
              }
           }
@@ -967,8 +1110,7 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
      }
      
      if (moved) {
-        AUDIO_PIECE_MOVE.currentTime = 0;
-        AUDIO_PIECE_MOVE.play().catch(() => {});
+        ludoAudio.playPieceMove();
         isProcessingMoveRef.current = true;
         // Check Knockouts
         if (p.position >= 0 && p.position <= 50) {
@@ -984,8 +1126,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                     if (otherAbsolutePos === absolutePos) {
                        otherP.position = -1; // KNOCKED OUT
                        getAnotherTurn = true;
-                       AUDIO_KNOCKOUT.currentTime = 0;
-                       AUDIO_KNOCKOUT.play().catch(() => {});
+                       ludoAudio.playKnockout();
+                       
                     }
                  }
               }
@@ -1027,8 +1169,8 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       }
     }
 
-    AUDIO_DICE_ROLL.currentTime = 0;
-    AUDIO_DICE_ROLL.play().catch(() => {});
+    ludoAudio.playDiceRoll();
+    
     setIsRolling(true);
     if (roomId) updateDoc(doc(db, "ludo_rooms", roomId), { isRolling: true }).catch(()=>{});
 
@@ -1397,6 +1539,112 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
                  {isMicEnabled ? <Mic size={18} /> : <MicOff size={18} />}
                  {isMicEnabled && <span className="absolute max-w-none -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></span>}
                </button>
+            </div>
+         </div>
+
+         {/* Audio Settings & Live Microphone Diagnostics Visualizer */}
+         <div className="bg-[#0b1711] border border-slate-800 rounded-xl p-4 flex flex-col gap-3.5 shrink-0 shadow-lg">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+               <span className="text-white font-medium flex items-center gap-2 text-sm">
+                  <Volume2 size={16} className="text-[#00ff88]" /> Sound & Music Settings
+               </span>
+            </div>
+            
+            {/* BGM Controls */}
+            <div className="flex flex-col gap-1.5">
+               <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-300">🎵 Ambient Background Music</span>
+                  <button 
+                     onClick={() => {
+                        ludoAudio.toggleBGM();
+                        setAudioVersion(v => v + 1);
+                     }} 
+                     className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${!audioState.bgmMuted ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}
+                  >
+                     {!audioState.bgmMuted ? 'PLAYING' : 'MUTED'}
+                  </button>
+               </div>
+               <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  value={audioState.bgmVolume} 
+                  onChange={(e) => {
+                     const v = parseFloat(e.target.value);
+                     ludoAudio.setBGMVolume(v);
+                     setAudioVersion(ver => ver + 1);
+                  }}
+                  className="w-full accent-[#00ff88] h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+               />
+            </div>
+
+            {/* SFX Controls */}
+            <div className="flex flex-col gap-1.5 border-t border-slate-800/50 pt-2.5">
+               <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-300">🔊 Game Sounds (SFX)</span>
+                  <button 
+                     onClick={() => {
+                        ludoAudio.toggleSFX();
+                        setAudioVersion(v => v + 1);
+                        ludoAudio.playPieceMove();
+                     }} 
+                     className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${!audioState.sfxMuted ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}
+                  >
+                     {!audioState.sfxMuted ? 'ON' : 'MUTED'}
+                  </button>
+               </div>
+               <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  value={audioState.sfxVolume} 
+                  onChange={(e) => {
+                     const v = parseFloat(e.target.value);
+                     ludoAudio.setSFXVolume(v);
+                     setAudioVersion(ver => ver + 1);
+                  }}
+                  className="w-full accent-[#00ff88] h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+               />
+            </div>
+
+            {/* Live Microphone Diagnostic Tool */}
+            <div className="flex flex-col gap-2 border-t border-slate-800/50 pt-2.5">
+               <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-300 flex items-center gap-1.5">
+                     <Mic size={13} className="text-[#00ff88]" /> Cross-Device Mic Check
+                  </span>
+                  <button 
+                     onClick={startMicTest}
+                     className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all border ${micTestActive ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}
+                  >
+                     {micTestActive ? 'STOP TEST' : 'START TEST'}
+                  </button>
+               </div>
+               
+               {micTestActive ? (
+                  <div className="flex flex-col gap-1.5 bg-slate-900/60 p-2 rounded-lg border border-slate-800/40">
+                     <div className="flex justify-between items-center text-[10px]">
+                        <span className="text-slate-400">Speak into mic:</span>
+                        <span className="text-green-400 font-mono font-semibold">{micVolume}% Input</span>
+                     </div>
+                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden relative border border-slate-700">
+                        <div 
+                           className="bg-linear-to-r from-green-500 via-emerald-400 to-teal-400 h-full transition-all duration-75"
+                           style={{ width: `${micVolume}%` }}
+                        />
+                     </div>
+                     <p className="text-[9px] text-slate-400 leading-tight">
+                        *If the green level meter fluctuates when you speak, your mic works perfectly!
+                     </p>
+                  </div>
+               ) : (
+                  <div className="text-[10px] text-slate-400 leading-normal bg-slate-900/30 p-2 rounded border border-slate-800/20 flex flex-col gap-1">
+                     <span>Click <strong>Start Test</strong> to check your microphone hardware natively on this device.</span>
+                     <span className="text-[9px] text-slate-500">*If blocked, ensure browser/site permissions allow Microphone.</span>
+                  </div>
+               )}
             </div>
          </div>
 
