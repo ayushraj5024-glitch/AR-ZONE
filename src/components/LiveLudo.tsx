@@ -524,6 +524,62 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
   const [remoteUsers, setRemoteUsers] = useState<any[]>([]);
   const [floatingEmotes, setFloatingEmotes] = useState<{id: string, emoji: string, userId: string}[]>([]);
 
+  // Unlock audio contexts on iOS/Android browsers with user gestures
+  useEffect(() => {
+    const handleGesture = () => {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+      }
+      document.removeEventListener('click', handleGesture);
+      document.removeEventListener('touchstart', handleGesture);
+    };
+    document.addEventListener('click', handleGesture);
+    document.addEventListener('touchstart', handleGesture);
+    return () => {
+      document.removeEventListener('click', handleGesture);
+      document.removeEventListener('touchstart', handleGesture);
+    };
+  }, []);
+
+  // Automatic piece movement if dice is rolled but user doesn't select a piece within 6 seconds
+  useEffect(() => {
+    const isPlayingGame = roomData?.status === 'playing';
+    if (!isPlayingGame || isRolling || diceValue === null || !roomId || !roomData) return;
+
+    const COLORS = ['red', 'green', 'yellow', 'blue'];
+    const myColor = COLORS[roomData?.players?.indexOf(auth.currentUser?.uid || '') || 0];
+    
+    // In multiplayer, only auto-move if turn is the local player's color.
+    // In singleplayer, auto-move for any active turn color.
+    const isMultiplayer = (roomData?.players?.length ?? 0) > 1;
+    if (isMultiplayer && turn !== myColor) return;
+
+    // Filter movable pieces for the current active turn
+    const movablePieces = pieces.filter(p => p.color === turn && (
+       (p.position === -1 && diceValue === 6) || 
+       (p.position >= 0 && p.position + diceValue <= 56)
+    ));
+
+    if (movablePieces.length === 0) return;
+
+    // Wait 6 seconds after dice value is set to auto-move
+    const timer = setTimeout(() => {
+       if (diceValue !== null && !isProcessingMoveRef.current) {
+          // Double-check turn eligibility
+          if (!isMultiplayer || turn === myColor) {
+             const p = movablePieces[0];
+             handlePieceClick(p);
+          }
+       }
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [diceValue, turn, pieces, isRolling, roomId, roomData]);
+
   // Advanced Sound System State & Listeners
   const [audioVersion, setAudioVersion] = useState(0);
   const audioState = {
@@ -584,7 +640,13 @@ function LudoBoard({ stake, onLeave, roomId }: { stake: number, onLeave: () => v
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      } catch (inner) {
+        console.log("Retrying getUserMedia with simple constraints");
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
       setMicStream(stream);
       setMicTestActive(true);
 
